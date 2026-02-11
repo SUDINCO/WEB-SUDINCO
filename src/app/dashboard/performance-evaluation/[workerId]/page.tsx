@@ -171,64 +171,33 @@ export default function PerformanceEvaluationFormPage() {
     const router = useRouter();
     const params = useParams();
     const searchParams = useSearchParams();
-    const { workerId: workerCodigo } = params; // This is now a 'codigo'
+    const { workerId: workerCodigo } = params;
     const reviewEvaluationId = searchParams.get('reviewEvaluationId');
 
     const firestore = useFirestore();
     const { user: authUser } = useUser();
     
+    // Fetch all users once
     const { data: allUsers, isLoading: usersLoading } = useCollection<UserProfile>(useMemo(() => firestore ? collection(firestore, 'users') : null, [firestore]));
 
-    const workerQuery = useMemo(() => {
-        if (!firestore || typeof workerCodigo !== 'string') return null;
-        return query(collection(firestore, 'users'), where("codigo", "==", workerCodigo), limit(1));
-    }, [firestore, workerCodigo]);
-    
-    const { data: workerData, isLoading: isWorkerLoading } = useCollection<UserProfile>(workerQuery);
-    const worker = useMemo(() => workerData?.[0], [workerData]);
+    // Find the specific worker from the allUsers array
+    const worker = useMemo(() => {
+        if (!allUsers || typeof workerCodigo !== 'string') return null;
+        return allUsers.find(u => u.codigo === workerCodigo) || null;
+    }, [allUsers, workerCodigo]);
+
+    const evaluator = useMemo(() => {
+        if (!allUsers || !worker) return null;
+        const evaluatorEmail = worker.evaluador || worker.liderArea || authUser?.email;
+        if (!evaluatorEmail) return null;
+        return allUsers.find(u => u.email === evaluatorEmail) || null;
+    }, [allUsers, worker, authUser]);
     
     const evaluationToReviewRef = useMemo(() => {
         if (!firestore || !reviewEvaluationId) return null;
         return doc(firestore, 'performanceEvaluations', reviewEvaluationId);
     }, [firestore, reviewEvaluationId]);
     const { data: evaluationToReview, isLoading: isReviewLoading } = useDoc(evaluationToReviewRef);
-
-    const [evaluator, setEvaluator] = useState<UserProfile | null>(null);
-    const [isEvaluatorLoading, setIsEvaluatorLoading] = useState(true);
-
-    useEffect(() => {
-        const fetchEvaluator = async () => {
-            if (!firestore || !worker) {
-                setIsEvaluatorLoading(false);
-                return;
-            };
-
-            const evaluatorEmail = worker.evaluador || worker.liderArea || authUser?.email;
-            if (!evaluatorEmail) {
-                setIsEvaluatorLoading(false);
-                return;
-            }
-
-            try {
-                const usersRef = collection(firestore, "users");
-                const q = query(usersRef, where("email", "==", evaluatorEmail));
-                const querySnapshot = await getDocs(q);
-                if (!querySnapshot.empty) {
-                    setEvaluator({ id: querySnapshot.docs[0].id, ...querySnapshot.docs[0].data() } as UserProfile);
-                } else {
-                     setEvaluator(null);
-                }
-            } catch (error) {
-                console.error("Error fetching evaluator:", error);
-                setEvaluator(null);
-            } finally {
-                setIsEvaluatorLoading(false);
-            }
-        };
-
-        fetchEvaluator();
-    }, [firestore, worker, authUser]);
-
 
     const form = useForm<z.infer<typeof evaluationSchema>>({
         resolver: zodResolver(evaluationSchema),
@@ -271,13 +240,13 @@ export default function PerformanceEvaluationFormPage() {
             const fetchLastEvaluation = async () => {
                 const evalsQuery = query(
                     collection(firestore, 'performanceEvaluations'),
-                    where('workerId', '==', worker.id)
+                    where('workerId', '==', worker.id),
+                    orderBy('evaluationDate', 'desc'),
+                    limit(1)
                 );
                 const querySnapshot = await getDocs(evalsQuery);
                 if (!querySnapshot.empty) {
-                    const allEvals = querySnapshot.docs.map(doc => doc.data());
-                    allEvals.sort((a, b) => new Date(b.evaluationDate).getTime() - new Date(a.evaluationDate).getTime());
-                    const lastEval = allEvals[0];
+                    const lastEval = querySnapshot.docs[0].data();
                     form.reset(lastEval);
                 }
             };
@@ -311,7 +280,7 @@ export default function PerformanceEvaluationFormPage() {
 
 
     const onSubmit = async (data: z.infer<typeof evaluationSchema>) => {
-        if (!worker || !evaluator || !firestore) return;
+        if (!worker || !evaluator || !firestore || !allUsers) return;
 
         const observer = allUsers?.find(u => u.email === worker.observerEmail);
         const hasObserver = !!worker.observerEmail;
@@ -362,7 +331,7 @@ export default function PerformanceEvaluationFormPage() {
         }
     };
     
-    if (isWorkerLoading || isEvaluatorLoading || usersLoading || isReviewLoading) {
+    if (usersLoading || isReviewLoading) {
         return (
             <div className="flex justify-center items-center h-full">
                 <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
@@ -406,7 +375,7 @@ export default function PerformanceEvaluationFormPage() {
         if (!dateStr) return 'N/A';
         const date = new Date(dateStr);
         if(isNaN(date.getTime())) return 'N/A';
-        // Adding timezone offset to prevent date from changing
+        // Adjusting for timezone issues
         const adjustedDate = new Date(date.valueOf() + date.getTimezoneOffset() * 60 * 1000);
         return adjustedDate.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
     }
