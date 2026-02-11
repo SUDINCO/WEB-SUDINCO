@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 
 import { useCollection, useFirestore } from '@/firebase';
-import { collection, doc, setDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, writeBatch } from 'firebase/firestore';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -325,6 +325,7 @@ export default function ScheduleSettingsPage() {
 
         const cleanedPattern = {
             ...data,
+            jobTitle: data.jobTitle.trim().toUpperCase(),
             cycle: data.cycle.map(s => s === 'LIB' ? null : s?.toUpperCase() || null).filter(s => s !== '' && s !== undefined)
         };
 
@@ -334,8 +335,24 @@ export default function ScheduleSettingsPage() {
         }
         
         try {
+            const batch = writeBatch(firestore);
+            
             const patternRef = doc(firestore, 'shiftPatterns', cleanedPattern.jobTitle);
-            await setDoc(patternRef, cleanedPattern);
+            batch.set(patternRef, cleanedPattern);
+
+            // Check if cargo exists, if not, create it
+            const cargoExists = cargos?.some(c => c.name.toUpperCase() === cleanedPattern.jobTitle);
+            if (!cargoExists) {
+                const newCargoRef = doc(collection(firestore, 'cargos'));
+                batch.set(newCargoRef, { name: cleanedPattern.jobTitle });
+                toast({
+                    title: "Nuevo Cargo Creado",
+                    description: `El cargo "${cleanedPattern.jobTitle}" se ha añadido al sistema.`
+                });
+            }
+
+            await batch.commit();
+
             toast({
                 title: "Patrón Creado",
                 description: `Se ha creado un nuevo patrón para el cargo ${cleanedPattern.jobTitle}.`
@@ -380,10 +397,11 @@ export default function ScheduleSettingsPage() {
                                         <FormLabel>Cargo</FormLabel>
                                         <Combobox 
                                             options={availableCargos}
-                                            placeholder="Seleccionar cargo..."
+                                            placeholder="Seleccionar o crear cargo..."
                                             searchPlaceholder="Buscar cargo..."
-                                            notFoundMessage="No hay más cargos sin patrón."
+                                            notFoundMessage="No se encontró el cargo. Puedes crear uno nuevo."
                                             {...field}
+                                            allowCreate
                                         />
                                         <FormMessage />
                                     </FormItem>
