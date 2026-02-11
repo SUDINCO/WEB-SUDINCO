@@ -842,7 +842,7 @@ export default function DashboardHomePage() {
                                     <div className="p-1">
                                         <div className="flex flex-col items-center text-center p-4">
                                             <Avatar className="h-16 w-16 mb-3 border-4 border-amber-300">
-                                                <AvatarImage src={`https://i.pravatar.cc/150?u=${user.id}`} />
+                                                <AvatarImage src={user.photoUrl} />
                                                 <AvatarFallback>{user.nombres[0]}{user.apellidos[0]}</AvatarFallback>
                                             </Avatar>
                                             <h3 className="font-semibold text-md text-foreground">{user.nombres} {user.apellidos}</h3>

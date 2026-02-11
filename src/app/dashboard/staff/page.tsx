@@ -1650,7 +1650,7 @@ export default function StaffPage() {
                             <TableCell>
                                 <div className="flex items-center gap-3">
                                     <Avatar>
-                                        <AvatarImage src={user.photoUrl || `https://i.pravatar.cc/150?u=${user.email}`} />
+                                        <AvatarImage src={user.photoUrl} />
                                         <AvatarFallback>{user.nombres?.[0]}{user.apellidos?.[0]}</AvatarFallback>
                                     </Avatar>
                                     <div>
