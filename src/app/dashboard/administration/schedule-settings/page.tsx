@@ -294,11 +294,11 @@ export default function ScheduleSettingsPage() {
 
     return (
         <div className="space-y-6">
-            <h1 className="text-lg font-semibold md:text-2xl">Configuración de Horarios</h1>
+            <h1 className="text-lg font-semibold md:text-2xl">Configuración de Patrones de Turno</h1>
 
             <Tabs defaultValue="patterns">
                 <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="patterns">Patrones de Horarios</TabsTrigger>
+                    <TabsTrigger value="patterns">Patrones de Turnos</TabsTrigger>
                     <TabsTrigger value="rules">Reglas del Sistema</TabsTrigger>
                 </TabsList>
                 <TabsContent value="patterns" className="mt-6">
