@@ -2,9 +2,9 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * import * as z from 'zod';
+import * as z from 'zod';
 import {
   Card,
   CardContent,
@@ -217,11 +217,11 @@ export default function WorkSchedulesPage() {
         
         const definedShiftNames = new Set(definedShiftsForCargo.map(s => s.name));
         
-        const isComplete = uniqueShiftsInPattern.every(shiftName => definedShiftNames.has(shiftName));
+        const isComplete = uniqueShiftsInPattern.every(shiftName => definedShiftNames.has(shiftName!));
         
         return {
             jobTitle: pattern.jobTitle,
-            pattern: Array.from(new Set(pattern.cycle.filter(Boolean))),
+            pattern: Array.from(new Set(pattern.cycle.filter(Boolean) as string[])),
             isComplete,
             definedShifts: definedShiftsForCargo,
         };
@@ -315,5 +315,6 @@ export default function WorkSchedulesPage() {
     </>
   );
 }
+    
 
     
