@@ -2,9 +2,9 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
+import * import * as z from 'zod';
 import {
   Card,
   CardContent,
@@ -14,23 +14,27 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { PlusCircle, Trash2, Edit, Clock, Watch } from 'lucide-react';
+import { PlusCircle, Edit, CheckCircle, Clock } from 'lucide-react';
+import { useCollection, useFirestore } from '@/firebase';
+import { collection, doc, addDoc, updateDoc, writeBatch } from 'firebase/firestore';
+import { toast } from '@/hooks/use-toast';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import {
   Form,
   FormControl,
@@ -39,14 +43,8 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { useCollection, useFirestore } from '@/firebase';
-import { collection, doc, addDoc, deleteDoc, updateDoc } from 'firebase/firestore';
-import { toast } from '@/hooks/use-toast';
-import { Input } from '@/components/ui/input';
-import { Combobox } from '@/components/ui/combobox';
-import { Badge } from '@/components/ui/badge';
 import type { ShiftPattern } from '@/lib/types';
-
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface WorkShift {
   id: string;
@@ -56,227 +54,266 @@ interface WorkShift {
   endTime: string;
 }
 
-const shiftSchema = z.object({
-  name: z.string(), // Will be read-only in the form
-  startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Formato de hora inválido (HH:mm)."),
-  endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Formato de hora inválido (HH:mm)."),
+interface CargoScheduleStatus {
+  jobTitle: string;
+  pattern: string[];
+  isComplete: boolean;
+  definedShifts: WorkShift[];
+}
+
+const editorSchema = z.object({
+  shifts: z.array(z.object({
+    id: z.string().optional(),
+    name: z.string(),
+    startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Formato inválido (HH:mm)."),
+    endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Formato inválido (HH:mm)."),
+  }))
 });
 
-type ShiftFormData = z.infer<typeof shiftSchema>;
-
-export default function WorkSchedulesPage() {
-  const [selectedCargo, setSelectedCargo] = useState<string>('');
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingShift, setEditingShift] = useState<Partial<WorkShift> | null>(null);
-  const [shiftToDelete, setShiftToDelete] = useState<WorkShift | null>(null);
-
+function ShiftEditorDialog({
+  isOpen,
+  onOpenChange,
+  cargoData,
+}: {
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
+  cargoData: CargoScheduleStatus | null;
+}) {
   const firestore = useFirestore();
-  const shiftsCollectionRef = useMemo(() => firestore ? collection(firestore, 'workShifts') : null, [firestore]);
-  const patternsCollectionRef = useMemo(() => firestore ? collection(firestore, 'shiftPatterns') : null, [firestore]);
-  
-  const { data: allShifts, isLoading: shiftsLoading } = useCollection<WorkShift>(shiftsCollectionRef);
-  const { data: allPatterns, isLoading: patternsLoading } = useCollection<ShiftPattern>(patternsCollectionRef);
-
-  const form = useForm<ShiftFormData>({
-    resolver: zodResolver(shiftSchema),
-    defaultValues: { name: '', startTime: '00:00', endTime: '00:00' },
+  const form = useForm<z.infer<typeof editorSchema>>({
+    resolver: zodResolver(editorSchema),
+    defaultValues: { shifts: [] },
   });
 
-  const cargoOptions = useMemo(() => {
-    if (!allPatterns) return [];
-    return allPatterns.map(p => ({ label: p.jobTitle, value: p.jobTitle }));
-  }, [allPatterns]);
+  const { control, handleSubmit, reset } = form;
+  const { fields } = useFieldArray({ control, name: 'shifts' });
 
-  const uniqueShiftsInPattern = useMemo(() => {
-    if (!selectedCargo || !allPatterns) return [];
-    const pattern = allPatterns.find(p => p.jobTitle === selectedCargo);
-    if (!pattern || !pattern.cycle) return [];
-    // Filter out null/empty strings and get unique values
-    return Array.from(new Set(pattern.cycle.filter(Boolean)));
-  }, [selectedCargo, allPatterns]);
+  useEffect(() => {
+    if (isOpen && cargoData) {
+      const shiftsForForm = cargoData.pattern
+        .filter(name => name !== 'LIB')
+        .map(shiftName => {
+          const existingShift = cargoData.definedShifts.find(s => s.name === shiftName);
+          return {
+            id: existingShift?.id,
+            name: shiftName,
+            startTime: existingShift?.startTime || '00:00',
+            endTime: existingShift?.endTime || '00:00',
+          };
+        });
+      reset({ shifts: shiftsForForm });
+    }
+  }, [isOpen, cargoData, reset]);
 
-  const definedShiftsForCargo = useMemo(() => {
-    if (!selectedCargo || !allShifts) return [];
-    return allShifts.filter(s => s.jobTitle === selectedCargo);
-  }, [selectedCargo, allShifts]);
+  const onSubmit = async (data: z.infer<typeof editorSchema>) => {
+    if (!firestore || !cargoData) return;
+    
+    const batch = writeBatch(firestore);
+    const shiftsCollectionRef = collection(firestore, 'workShifts');
 
-  const handleOpenForm = (shift: Partial<WorkShift>) => {
-    setEditingShift(shift);
-    form.reset({
-        name: shift.name || '',
-        startTime: shift.startTime || '06:00',
-        endTime: shift.endTime || '18:00',
+    data.shifts.forEach(shift => {
+      const dataToSave = {
+        jobTitle: cargoData.jobTitle,
+        name: shift.name,
+        startTime: shift.startTime,
+        endTime: shift.endTime,
+      };
+
+      if (shift.id) { // Update existing
+        const docRef = doc(shiftsCollectionRef, shift.id);
+        batch.update(docRef, dataToSave);
+      } else { // Create new
+        const docRef = doc(shiftsCollectionRef);
+        batch.set(docRef, dataToSave);
+      }
     });
-    setIsFormOpen(true);
+
+    try {
+      await batch.commit();
+      toast({ title: "Horarios Guardados", description: `Se han guardado los horarios para ${cargoData.jobTitle}.`});
+      onOpenChange(false);
+    } catch (error) {
+      console.error("Error saving shifts:", error);
+      toast({ variant: 'destructive', title: 'Error', description: 'No se pudieron guardar los horarios.' });
+    }
   };
   
-  const onSubmit = async (data: ShiftFormData) => {
-    if (!shiftsCollectionRef || !selectedCargo || !editingShift?.name) return;
-
-    const dataToSave = {
-        name: editingShift.name.toUpperCase(), // Ensure name is uppercase
-        jobTitle: selectedCargo,
-        startTime: data.startTime,
-        endTime: data.endTime,
-    };
-
-    try {
-        if(editingShift.id) { // It's an update
-            const docRef = doc(shiftsCollectionRef, editingShift.id);
-            await updateDoc(docRef, dataToSave);
-            toast({ title: "Horario Actualizado", description: `El horario para el turno "${dataToSave.name}" ha sido guardado.` });
-        } else { // It's a new definition
-            await addDoc(shiftsCollectionRef, dataToSave);
-            toast({ title: "Horario Creado", description: `El horario para el turno "${dataToSave.name}" ha sido creado.` });
-        }
-        setIsFormOpen(false);
-        setEditingShift(null);
-    } catch (error) {
-        console.error("Error saving shift:", error);
-        toast({ variant: 'destructive', title: 'Error', description: 'No se pudo guardar el horario.' });
-    }
-  };
-
-  const handleDeleteShift = async () => {
-    if (!shiftToDelete || !shiftsCollectionRef) return;
-    try {
-        await deleteDoc(doc(shiftsCollectionRef, shiftToDelete.id));
-        toast({ title: 'Horario Eliminado', description: `El horario para el turno "${shiftToDelete.name}" ha sido eliminado.` });
-    } catch(error) {
-        console.error("Error deleting shift:", error);
-        toast({ variant: 'destructive', title: 'Error', description: 'No se pudo eliminar el horario.' });
-    } finally {
-        setShiftToDelete(null);
-    }
-  };
-
-  const isLoading = shiftsLoading || patternsLoading;
+  if (!cargoData) return null;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-lg font-semibold md:text-2xl">Horarios de Trabajo</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-            Define los horarios de inicio y fin para las abreviaturas de turnos de cada cargo.
-        </p>
-      </div>
-
-      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Definir Horario para Turno: {editingShift?.name}</DialogTitle>
-          </DialogHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FormField control={form.control} name="startTime" render={({ field }) => (
-                  <FormItem><FormLabel>Hora de Inicio</FormLabel><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField control={form.control} name="endTime" render={({ field }) => (
-                  <FormItem><FormLabel>Hora de Fin</FormLabel><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-xl">
+        <DialogHeader>
+          <DialogTitle>Gestionar Horarios para: {cargoData.jobTitle}</DialogTitle>
+          <DialogDescription>
+            Define las horas de inicio y fin para cada turno del patrón.
+          </DialogDescription>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={handleSubmit(onSubmit)}>
+            <ScrollArea className="max-h-[60vh] pr-4">
+              <div className="space-y-4 py-4">
+                {fields.map((field, index) => (
+                  <Card key={field.id}>
+                    <CardHeader className="p-4">
+                      <CardTitle className="text-base">Turno: {field.name}</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0">
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={control}
+                          name={`shifts.${index}.startTime`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Hora Inicio</FormLabel>
+                              <FormControl><Input type="time" {...field} /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                         <FormField
+                          control={control}
+                          name={`shifts.${index}.endTime`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Hora Fin</FormLabel>
+                              <FormControl><Input type="time" {...field} /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
-              <DialogFooter className="pt-4">
-                <Button type="button" variant="ghost" onClick={() => setIsFormOpen(false)}>Cancelar</Button>
-                <Button type="submit" disabled={form.formState.isSubmitting}>
-                  {form.formState.isSubmitting ? 'Guardando...' : 'Guardar Horario'}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-      
-      <AlertDialog open={!!shiftToDelete} onOpenChange={() => setShiftToDelete(null)}>
-        <AlertDialogContent>
-            <AlertDialogHeader>
-                <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                <AlertDialogDescription>Esta acción no se puede deshacer. Se eliminará permanentemente la definición de este horario.</AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDeleteShift} className='bg-destructive text-destructive-foreground hover:bg-destructive/90'>Eliminar</AlertDialogAction>
-            </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      
-      <Card>
-        <CardHeader>
-          <CardTitle>Gestión de Horarios por Cargo</CardTitle>
-          <CardDescription>
-            Selecciona un cargo para ver los turnos definidos en su patrón y establecer sus horarios.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-            <div className="max-w-sm mb-6">
-                <Combobox 
-                    options={cargoOptions}
-                    value={selectedCargo}
-                    onChange={setSelectedCargo}
-                    placeholder="Selecciona un cargo..."
-                    searchPlaceholder="Buscar cargo..."
-                    notFoundMessage="No se encontró el cargo."
-                />
-            </div>
-            {selectedCargo ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {isLoading ? <p>Cargando...</p> : uniqueShiftsInPattern.map(shiftName => {
-                        if (shiftName.toUpperCase() === 'LIB') {
-                            return (
-                                <Card key={shiftName} className="bg-gray-50 dark:bg-gray-800">
-                                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                        <CardTitle className="text-sm font-medium">TURNO LIBRE</CardTitle>
-                                        <Badge variant="outline">LIB</Badge>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <p className="text-xs text-muted-foreground">Este es un día libre y no requiere horario.</p>
-                                    </CardContent>
-                                </Card>
-                            )
-                        }
-
-                        const existingShift = definedShiftsForCargo.find(s => s.name === shiftName);
-
-                        return (
-                            <Card key={shiftName}>
-                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-medium">Turno: {shiftName}</CardTitle>
-                                    <Watch className="h-4 w-4 text-muted-foreground" />
-                                </CardHeader>
-                                <CardContent>
-                                    {existingShift ? (
-                                        <div className="space-y-3">
-                                            <div className="text-2xl font-bold">{existingShift.startTime} - {existingShift.endTime}</div>
-                                            <div className="flex gap-2">
-                                                <Button size="sm" variant="outline" onClick={() => handleOpenForm(existingShift)}>
-                                                    <Edit className="mr-2 h-4 w-4"/> Editar
-                                                </Button>
-                                                <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setShiftToDelete(existingShift)}>
-                                                    <Trash2 className="mr-2 h-4 w-4"/> Eliminar
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-3">
-                                             <p className="text-2xl font-bold text-muted-foreground">--:-- - --:--</p>
-                                            <Button size="sm" onClick={() => handleOpenForm({ name: shiftName })}>
-                                                <PlusCircle className="mr-2 h-4 w-4"/> Definir Horario
-                                            </Button>
-                                        </div>
-                                    )}
-                                </CardContent>
-                            </Card>
-                        )
-                    })}
-                </div>
-            ) : (
-                <div className="h-48 flex flex-col items-center justify-center text-center text-muted-foreground bg-muted/50 rounded-md">
-                    <Clock className="h-10 w-10 mb-2" />
-                    <p className="font-medium">Por favor, selecciona un cargo para comenzar.</p>
-                </div>
-            )}
-        </CardContent>
-      </Card>
-    </div>
+            </ScrollArea>
+            <DialogFooter className="pt-4 border-t">
+              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
+              <Button type="submit">Guardar Cambios</Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
   );
 }
+
+
+export default function WorkSchedulesPage() {
+  const [cargoToEdit, setCargoToEdit] = useState<CargoScheduleStatus | null>(null);
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+
+  const firestore = useFirestore();
+  const { data: allPatterns, isLoading: patternsLoading } = useCollection<ShiftPattern>(useMemo(() => firestore ? collection(firestore, 'shiftPatterns') : null, [firestore]));
+  const { data: allShifts, isLoading: shiftsLoading } = useCollection<WorkShift>(useMemo(() => firestore ? collection(firestore, 'workShifts') : null, [firestore]));
+  
+  const scheduleSummary = useMemo<CargoScheduleStatus[]>(() => {
+    if (!allPatterns || !allShifts) return [];
+
+    return allPatterns.map(pattern => {
+        const uniqueShiftsInPattern = Array.from(new Set(pattern.cycle.filter(s => s && s !== 'LIB')));
+        const definedShiftsForCargo = allShifts.filter(s => s.jobTitle === pattern.jobTitle);
+        
+        const definedShiftNames = new Set(definedShiftsForCargo.map(s => s.name));
+        
+        const isComplete = uniqueShiftsInPattern.every(shiftName => definedShiftNames.has(shiftName));
+        
+        return {
+            jobTitle: pattern.jobTitle,
+            pattern: Array.from(new Set(pattern.cycle.filter(Boolean))),
+            isComplete,
+            definedShifts: definedShiftsForCargo,
+        };
+    }).sort((a, b) => a.jobTitle.localeCompare(b.jobTitle));
+  }, [allPatterns, allShifts]);
+
+  const handleEditClick = (cargoData: CargoScheduleStatus) => {
+    setCargoToEdit(cargoData);
+    setIsEditorOpen(true);
+  };
+
+  const isLoading = patternsLoading || shiftsLoading;
+
+  return (
+    <>
+      <ShiftEditorDialog
+        isOpen={isEditorOpen}
+        onOpenChange={setIsEditorOpen}
+        cargoData={cargoToEdit}
+      />
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-lg font-semibold md:text-2xl">Horarios de Trabajo</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+              Define los horarios de inicio y fin para las abreviaturas de turnos de cada cargo.
+          </p>
+        </div>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle>Resumen de Horarios por Cargo</CardTitle>
+            <CardDescription>
+              Gestiona los horarios para cada cargo que tiene un patrón de turnos asignado.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[250px]">Cargo</TableHead>
+                  <TableHead>Patrón de Turnos</TableHead>
+                  <TableHead className="w-[150px]">Estado</TableHead>
+                  <TableHead className="text-right w-[180px]">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={`skel-${i}`}>
+                      <TableCell colSpan={4} className="h-12"><div className="bg-gray-200 rounded animate-pulse h-8 w-full"></div></TableCell>
+                    </TableRow>
+                  ))
+                ) : scheduleSummary.length > 0 ? (
+                  scheduleSummary.map((item) => (
+                    <TableRow key={item.jobTitle}>
+                      <TableCell className="font-medium">{item.jobTitle}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {item.pattern.map(shift => (
+                            <Badge key={shift} variant="secondary">{shift}</Badge>
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {item.isComplete ? (
+                          <Badge className="bg-green-100 text-green-800"><CheckCircle className="mr-1 h-3 w-3" /> Completo</Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-amber-700 border-amber-300"><Clock className="mr-1 h-3 w-3" /> Pendiente</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="outline" onClick={() => handleEditClick(item)}>
+                          <Edit className="mr-2 h-4 w-4" />
+                          Gestionar Horarios
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={4} className="h-24 text-center">
+                      No hay cargos con patrones de turnos definidos.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </div>
+    </>
+  );
+}
+
+    
