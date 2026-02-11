@@ -1,9 +1,8 @@
 
 'use client';
 
-import React, { createContext, useContext, useMemo, ReactNode, useState, useEffect } from 'react';
+import React, { createContext, useContext, useMemo, ReactNode } from 'react';
 import { doc } from 'firebase/firestore';
-import { LoaderCircle } from 'lucide-react';
 import { useUser, useFirestore, useDoc } from '@/firebase';
 import type { UserProfile, Role } from '@/lib/types';
 
@@ -26,7 +25,6 @@ export function useUserProfile() {
 export function UserProfileProvider({ children }: { children: ReactNode }) {
   const { user, loading: userLoading } = useUser();
   const firestore = useFirestore();
-  const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
 
   const userProfileDocRef = useMemo(() => {
     if (!firestore || !user?.uid) return null;
@@ -45,16 +43,8 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
 
   const { data: userRole, isLoading: roleLoading } = useDoc<Role>(roleDocRef);
 
-  const isCurrentlyLoading = userLoading || profileLoading || roleLoading;
-
-  useEffect(() => {
-    if (!isCurrentlyLoading) {
-      setHasInitiallyLoaded(true);
-    }
-  }, [isCurrentlyLoading]);
-
-  // isLoading is now only true during the very first application load cycle.
-  const isLoading = !hasInitiallyLoaded;
+  // The loading state is a combination of auth, profile, and role loading.
+  const isLoading = userLoading || profileLoading || roleLoading;
 
   const value = useMemo(() => ({
     userProfile,
@@ -68,3 +58,4 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
     </UserProfileContext.Provider>
   );
 }
+
