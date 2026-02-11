@@ -123,7 +123,9 @@ function PatternsTabContent({ initialPatterns }: { initialPatterns: ShiftPattern
 
         const cleanedPattern = {
             ...patternToSave,
-            cycle: patternToSave.cycle.map(s => s === 'LIB' ? null : s?.toUpperCase() || null).filter(s => s !== '' && s !== undefined)
+            cycle: (patternToSave.cycle || [])
+                .filter(s => s && s.trim() !== '')
+                .map(s => (s.trim().toUpperCase() === 'LIB' ? null : s.trim().toUpperCase()))
         };
         
         try {
@@ -326,7 +328,7 @@ export default function ScheduleSettingsPage() {
         const cleanedPattern = {
             ...data,
             jobTitle: data.jobTitle.trim().toUpperCase(),
-            cycle: data.cycle.map(s => s === 'LIB' ? null : s?.toUpperCase() || null).filter(s => s !== '' && s !== undefined)
+            cycle: data.cycle.filter(s => s && s.trim() !== '').map(s => s.trim().toUpperCase() === 'LIB' ? null : s.trim().toUpperCase())
         };
 
         if (cleanedPattern.cycle.length === 0) {
@@ -445,6 +447,7 @@ export default function ScheduleSettingsPage() {
                                         />
                                     ))}
                                 </div>
+                                 <FormMessage>{addForm.formState.errors.cycle?.message}</FormMessage>
                             </div>
                             <DialogFooter>
                                 <Button type="button" variant="ghost" onClick={() => setIsAddDialogOpen(false)}>Cancelar</Button>
