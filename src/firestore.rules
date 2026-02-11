@@ -1,0 +1,147 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper Functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    function getUserData() {
+        return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isMaster() {
+      return isSignedIn() && request.auth.token.email == 'master@sudinco.com';
+    }
+
+    function isMasterOrAdmin() {
+      if (isMaster()) {
+        return true;
+      }
+      if (!isSignedIn()) {
+        return false;
+      }
+      // Workaround for potential auth UID mismatches for specific admin users.
+      if (request.auth.token.email == 'jaespinoza@sudinco.com') {
+        return true;
+      }
+      if (!exists(/databases/$(database)/documents/users/$(request.auth.uid))) {
+        return false;
+      }
+      let userData = getUserData();
+      return userData.isAdmin == true;
+    }
+    
+    // --- Collection Rules ---
+
+    // USERS: Users can update their own data. Admins/Masters can update any user.
+    // Signed-in users can read user data (e.g., for selecting leaders, etc.).
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow update: if isOwner(userId) || isMasterOrAdmin();
+      allow create: if isMasterOrAdmin();
+      allow delete: if isMaster();
+    }
+    
+    // ROLES: Only Master can manage roles. All signed-in users can read them.
+    match /roles/{roleId} {
+      allow read: if isSignedIn();
+      allow write: if isMaster(); 
+    }
+
+    // CONSULTANT GROUPS: Only Master or Admin can manage consultant groups.
+    match /consultantGroups/{groupId} {
+      allow read, write: if isMasterOrAdmin();
+    }
+
+    // PERFORMANCE EVALUATIONS: 
+    match /performanceEvaluations/{evaluationId} {
+      allow create: if isSignedIn();
+      allow read: if isSignedIn();
+      // The original evaluator, the designated observer, or an Admin/Master can update.
+      allow update: if isMasterOrAdmin() || (isSignedIn() && (
+        // Case 1: The Observer is updating their status/comments.
+        request.auth.token.email == resource.data.observerEmail
+        ||
+        // Case 2: The original Evaluator is re-evaluating after a review request.
+        (request.auth.uid == resource.data.evaluatorId && 
+         resource.data.observerStatus == 'review_requested')
+      ));
+      allow delete: if isMaster();
+    }
+
+    // VACATION REQUESTS: Users manage their own requests.
+    match /vacationRequests/{requestId} {
+        allow create: if isMasterOrAdmin() || (isSignedIn() && request.resource.data.userId == request.auth.uid);
+        allow get: if isMasterOrAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+        allow list: if isSignedIn();
+        allow update: if isMasterOrAdmin() || (isOwner(resource.data.userId) && resource.data.status == 'pending');
+        allow delete: if isMasterOrAdmin() || isOwner(resource.data.userId);
+    }
+
+    // LEADER ASSIGNMENT RULES: Only Master/Admin can manage these rules.
+    match /leaderAssignmentRules/{ruleId} {
+        allow read, write: if isMasterOrAdmin();
+    }
+
+    // GENERIC OPTION COLLECTIONS (Empresas, Cargos, etc.):
+    // Any authenticated user can read, but only Admins/Master can write.
+    match /empresas/{empresaId} {
+      allow read: if isSignedIn();
+      allow write: if isMasterOrAdmin();
+    }
+    match /cargos/{cargoId} {
+      allow read: if isSignedIn();
+      allow write: if isMasterOrAdmin();
+    }
+    match /ubicaciones/{ubicacionId} {
+      allow read: if isSignedIn();
+      allow write: if isMasterOrAdmin();
+    }
+    match /areas/{areaId} {
+      allow read: if isSignedIn();
+      allow write: if isMasterOrAdmin();
+    }
+    match /centrosCosto/{centroCostoId} {
+      allow read: if isSignedIn();
+      allow write: if isMasterOrAdmin();
+    }
+
+    // HIRING & PROFILE EVALUATION MODULE:
+    match /candidates/{candidateId} {
+      allow read, write: if isMasterOrAdmin();
+    }
+    match /hiringProcesses/{processId} {
+      allow read, write: if isMasterOrAdmin();
+    }
+    match /profileEvaluations/{evaluationId} {
+      allow read, write: if isMasterOrAdmin();
+    }
+     match /profileEvaluationPercentages/{percentageId} {
+      allow read, write: if isMasterOrAdmin();
+    }
+    match /hiringApprovals/{approvalId} {
+      allow read: if isSignedIn();
+      allow create: if isMasterOrAdmin();
+      allow update: if isMasterOrAdmin() ||
+                       (isSignedIn() && request.auth.token.email == resource.data.jefeInmediatoEmail && resource.data.status == 'pending') ||
+                       (isSignedIn() && request.auth.token.email == resource.data.directorRHHEmail && resource.data.status == 'approved-boss');
+      allow delete: if isMasterOrAdmin();
+    }
+
+    // SCHEDULE MODULE:
+    match /shiftPatterns/{jobTitle} {
+      allow read, write: if isMasterOrAdmin();
+    }
+    match /savedSchedules/{periodId} {
+      allow read, write: if isMasterOrAdmin();
+    }
+  }
+}

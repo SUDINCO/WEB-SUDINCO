@@ -1,0 +1,792 @@
+
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "type": "object",
+      "description": "Represents a user in the system, who is also a worker in the company.",
+      "properties": {
+        "codigo": {
+          "type": "string",
+          "description": "The worker's code."
+        },
+        "cedula": {
+          "type": "string",
+          "description": "The worker's national ID."
+        },
+        "apellidos": {
+          "type": "string",
+          "description": "The worker's last names."
+        },
+        "nombres": {
+          "type": "string",
+          "description": "The worker's first names."
+        },
+        "fechaIngreso": {
+          "type": "string",
+          "format": "date",
+          "description": "The worker's hiring date."
+        },
+        "fechaNacimiento": {
+            "type": "string",
+            "format": "date",
+            "description": "The worker's date of birth."
+        },
+        "fechaEvaluacionAnual": {
+            "type": "string",
+            "format": "date",
+            "description": "The custom annual evaluation date for this worker."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The worker's email address, used for login."
+        },
+        "empresa": {
+          "type": "string",
+          "description": "The company the worker belongs to."
+        },
+        "cargo": {
+          "type": "string",
+          "description": "The worker's job position."
+        },
+        "ubicacion": {
+          "type": "string",
+          "description": "The worker's location."
+        },
+        "departamento": {
+          "type": "string",
+          "description": "The department or area the worker belongs to."
+        },
+        "centroCosto": {
+            "type": "string",
+            "description": "The cost center associated with the worker."
+        },
+        "liderArea": {
+          "type": "string",
+          "description": "The area leader's email."
+        },
+        "consultor": {
+          "type": "string",
+          "description": "The consultant assigned."
+        },
+        "rol": {
+          "type": "string",
+          "description": "The user's role in the system, determines permissions."
+        },
+        "isLeader": {
+            "type": "boolean",
+            "description": "Indicates if the worker is an area leader."
+        },
+        "tipoContrato": {
+          "type": "string",
+          "enum": ["INDEFINIDO", "EMERGENTE"],
+          "description": "The type of employment contract."
+        },
+        "Status": {
+          "type": "string",
+          "enum": [
+            "active",
+            "inactive"
+          ],
+          "description": "The user's current status."
+        },
+        "requiresPasswordChange": {
+            "type": "boolean",
+            "description": "If true, the user must change their password on the next login."
+        }
+      },
+      "required": [
+        "codigo",
+        "cedula",
+        "apellidos",
+        "nombres",
+        "fechaIngreso",
+        "fechaNacimiento",
+        "email",
+        "empresa",
+        "cargo",
+        "departamento",
+        "Status",
+        "rol",
+        "tipoContrato"
+      ]
+    },
+    "Role": {
+      "title": "Role",
+      "type": "object",
+      "description": "Defines a user role and its associated permissions.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the role (e.g., 'Master', 'Supervisor')."
+        },
+        "permissions": {
+          "type": "object",
+          "description": "A map of module IDs to boolean flags indicating access.",
+          "additionalProperties": {
+            "type": "boolean"
+          }
+        }
+      },
+      "required": ["name", "permissions"]
+    },
+    "ConsultantGroup": {
+      "title": "Consultant Group",
+      "type": "object",
+      "description": "Defines a group of consultants.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the consultant group."
+        },
+        "members": {
+          "type": "array",
+          "description": "An array of user IDs that are members of this group.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": ["name", "members"]
+    },
+    "PerformanceEvaluation": {
+      "title": "Performance Evaluation",
+      "type": "object",
+      "description": "Stores a performance evaluation for a worker.",
+      "properties": {
+        "workerId": { "type": "string" },
+        "evaluatorId": { "type": "string" },
+        "evaluationDate": { "type": "string", "format": "date" },
+        "generalEvaluation": { "type": "number" },
+        "conocimientosTecnicos": { "type": "string" },
+        "calidadTrabajo": { "type": "string" },
+        "cumplimientoPoliticas": { "type": "string" },
+        "proactividad": { "type": "string" },
+        "comunicacion": { "type": "string" },
+        "integridad": { "type": "string" },
+        "adaptabilidad": { "type": "string" },
+        "servicioCliente": { "type": "string" },
+        "compromisoCompania": { "type": "string" },
+        "observations": { "type": "string" },
+        "messageForWorker": {
+          "type": "string",
+          "description": "A message from the evaluator to the worker."
+        },
+        "conocimientosTecnicosJustification": { "type": "string" },
+        "calidadTrabajoJustification": { "type": "string" },
+        "cumplimientoPoliticasJustification": { "type": "string" },
+        "proactividadJustification": { "type": "string" },
+        "comunicacionJustification": { "type": "string" },
+        "integridadJustification": { "type": "string" },
+        "adaptabilidadJustification": { "type": "string" },
+        "servicioClienteJustification": { "type": "string" },
+        "compromisoCompaniaJustification": { "type": "string" },
+        "observerId": { "type": "string" },
+        "observerEmail": { "type": "string", "format": "email" },
+        "observerStatus": {
+          "type": "string",
+          "enum": ["pending", "approved", "review_requested"],
+          "description": "The status of the observer's review."
+        },
+        "observerComments": {
+          "type": "string",
+          "description": "Comments from the observer, especially if requesting a review."
+        },
+        "reinforcementPlan": {
+            "type": "object",
+            "description": "Plan de capacitación post-evaluación.",
+            "properties": {
+                "requiresReinforcement": {
+                    "type": "boolean"
+                },
+                "skillType": {
+                    "type": "string",
+                    "enum": ["tecnica", "blanda"]
+                },
+                "specificSkills": {
+                    "type": "array",
+                    "items": { "type": "string" }
+                },
+                "reinforcementType": {
+                    "type": "string"
+                },
+                "reinforcementDescription": {
+                    "type": "string",
+                    "description": "Descripción detallada del plan de capacitación."
+                }
+            }
+        }
+      },
+      "required": [
+        "workerId", 
+        "evaluatorId", 
+        "evaluationDate", 
+        "generalEvaluation",
+        "conocimientosTecnicos",
+        "calidadTrabajo",
+        "cumplimientoPoliticas",
+        "proactividad",
+        "comunicacion",
+        "integridad",
+        "adaptabilidad",
+        "servicioCliente",
+        "compromisoCompania"
+      ]
+    },
+    "ManagerEvaluation": {
+      "title": "Manager Evaluation (180)",
+      "type": "object",
+      "description": "An employee's evaluation of their direct manager.",
+      "properties": {
+        "employeeId": { "type": "string", "description": "ID of the employee performing the evaluation." },
+        "managerId": { "type": "string", "description": "ID of the manager being evaluated." },
+        "performanceEvaluationId": { "type": "string", "description": "ID of the employee's performance evaluation that triggered this." },
+        "evaluationDate": { "type": "string", "format": "date-time" },
+        "leadership_q1": { "type": "number", "description": "Comunica claramente los objetivos del área." },
+        "leadership_q2": { "type": "number", "description": "Define prioridades claras para el trabajo diario." },
+        "leadership_q3": { "type": "number", "description": "Toma decisiones oportunas cuando el equipo lo necesita." },
+        "communication_q1": { "type": "number", "description": "Escucha las opiniones y sugerencias del equipo." },
+        "communication_q2": { "type": "number", "description": "Se comunica de forma clara y respetuosa." },
+        "communication_q3": { "type": "number", "description": "Está disponible cuando el equipo necesita apoyo." },
+        "performance_q1": { "type": "number", "description": "Da retroalimentación clara sobre el desempeño." },
+        "performance_q2": { "type": "number", "description": "Reconoce el buen trabajo cuando corresponde." },
+        "performance_q3": { "type": "number", "description": "Mantiene coherencia entre la retroalimentación y las acciones que toma." },
+        "openFeedback": { "type": "string", "description": "¿Qué debería mejorar tu jefe para apoyar mejor al equipo?" }
+      },
+      "required": [
+        "employeeId", "managerId", "performanceEvaluationId", "evaluationDate",
+        "leadership_q1", "leadership_q2", "leadership_q3",
+        "communication_q1", "communication_q2", "communication_q3",
+        "performance_q1", "performance_q2", "performance_q3"
+      ]
+    },
+    "VacationRequest": {
+      "title": "Vacation Request",
+      "type": "object",
+      "description": "Stores a vacation or leave request from an employee.",
+      "properties": {
+        "userId": { "type": "string", "description": "The ID of the user making the request." },
+        "userName": { "type": "string" },
+        "userCedula": { "type": "string" },
+        "userArea": { "type": "string" },
+        "userCargo": { "type": "string" },
+        "leaderEmail": { "type": "string", "format": "email", "description": "Email of the area leader for notification." },
+        "requestType": { "type": "string", "enum": ["vacaciones", "permiso"] },
+        "reason": { "type": "string" },
+        "startDate": { "type": "string", "format": "date" },
+        "endDate": { "type": "string", "format": "date" },
+        "totalDays": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"], "description": "The current status of the request." },
+        "requestDate": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId",
+        "userName",
+        "userCedula",
+        "userArea",
+        "userCargo",
+        "leaderEmail",
+        "requestType",
+        "startDate",
+        "endDate",
+        "totalDays",
+        "status",
+        "requestDate"
+      ]
+    },
+    "LeaderAssignmentRule": {
+      "title": "Leader Assignment Rule",
+      "type": "object",
+      "description": "Defines a rule for automatically assigning an area leader to a user.",
+      "properties": {
+          "name": {
+              "type": "string",
+              "description": "A descriptive name for the rule."
+          },
+          "conditions": {
+              "type": "object",
+              "properties": {
+                  "empresa": { "type": "string" },
+                  "cargo": { "type": "string" },
+                  "ubicacion": { "type": "string" },
+                  "departamento": { "type": "string" },
+                  "centroCosto": { "type": "string" }
+              },
+              "required": ["empresa", "cargo", "ubicacion", "departamento", "centroCosto"]
+          },
+          "leaderId": {
+              "type": "string",
+              "description": "The ID of the user who is the leader for this rule."
+          },
+          "leaderName": {
+              "type": "string",
+              "description": "The full name of the leader for display purposes."
+          },
+          "leaderEmail": {
+              "type": "string",
+              "format": "email",
+              "description": "The email of the leader for assignment."
+          }
+      },
+      "required": ["name", "conditions", "leaderId", "leaderName", "leaderEmail"]
+    },
+    "Empresa": {
+      "title": "Empresa",
+      "type": "object",
+      "description": "A company.",
+      "properties": { "name": { "type": "string" } }, "required": ["name"]
+    },
+    "Cargo": {
+      "title": "Cargo",
+      "type": "object",
+      "description": "A job position.",
+      "properties": { "name": { "type": "string" } }, "required": ["name"]
+    },
+    "Ubicacion": {
+      "title": "Ubicacion",
+      "type": "object",
+      "description": "A location.",
+      "properties": { "name": { "type": "string" } }, "required": ["name"]
+    },
+    "Area": {
+      "title": "Area",
+      "type": "object",
+      "description": "A work area.",
+      "properties": { "name": { "type": "string" } }, "required": ["name"]
+    },
+    "CentroCosto": {
+      "title": "Centro de Costo",
+      "type": "object",
+      "description": "A cost center.",
+      "properties": { "name": { "type": "string" } }, "required": ["name"]
+    },
+    "Candidate": {
+      "title": "Candidate",
+      "type": "object",
+      "description": "Represents a potential employee candidate.",
+      "properties": {
+        "photoUrl": {
+            "type": "string",
+            "description": "URL or Data URI of the candidate's photo."
+        },
+        "cedula": { "type": "string" },
+        "celular": { "type": "string" },
+        "apellidos": { "type": "string" },
+        "nombres": { "type": "string" },
+        "edad": { "type": "number" },
+        "nivelEstudios": { "type": "string" },
+        "institucion": { "type": "string" },
+        "tituloProfesional": { "type": "string" },
+        "anosExperiencia": { "type": "number" },
+        "cargosAplicables": { "type": "array", "items": { "type": "string" }},
+        "observacion": { "type": "string" }
+      },
+      "required": ["cedula", "celular", "apellidos", "nombres", "edad", "nivelEstudios", "anosExperiencia", "cargosAplicables"]
+    },
+    "HiringProcess": {
+      "title": "Hiring Process",
+      "type": "object",
+      "description": "Represents a hiring process for a specific job position.",
+      "properties": {
+        "empresa": { "type": "string" },
+        "cargo": { "type": "string" },
+        "formacionAcademicaPct": { "type": "number" },
+        "conocimientosTecnicosPct": { "type": "number" },
+        "experienciaPct": { "type": "number" },
+        "competenciasPct": { "type": "number" },
+        "tiempoRequerido": { "type": "string" },
+        "tipoContrato": { "type": "string", "enum": ["INDEFINIDO", "EMERGENTE"], "description": "The type of contract for this position." },
+        "ubicacion": { "type": "string" },
+        "departamento": { "type": "string" },
+        "jefeInmediato": { "type": "string", "format": "email" },
+        "status": { "type": "string", "enum": ["open", "closed", "on-hold"] },
+        "shortlistCandidateIds": { "type": "array", "items": { "type": "string" } },
+        "hiredCandidateIds": { "type": "array", "items": { "type": "string" } },
+        "isRetroactive": {
+            "type": "boolean",
+            "description": "Indicates if the hiring process is being registered after the employee has already started."
+        },
+        "effectiveHiringDate": {
+            "type": "string",
+            "format": "date",
+            "description": "The actual date the employee started, used for retroactive processes."
+        },
+        "justificationForRetroactive": {
+            "type": "string",
+            "description": "Justification for why the hiring process is retroactive."
+        }
+      },
+      "required": ["empresa", "cargo", "tiempoRequerido", "tipoContrato", "ubicacion", "departamento", "jefeInmediato", "status", "formacionAcademicaPct", "conocimientosTecnicosPct", "experienciaPct", "competenciasPct"]
+    },
+    "ProfileEvaluation": {
+      "title": "Profile Evaluation",
+      "type": "object",
+      "description": "Stores a pre-hiring profile evaluation for a candidate.",
+      "properties": {
+        "candidateId": { "type": "string" },
+        "processId": { "type": "string" },
+        "candidateCedula": { "type": "string" },
+        "notaGeneral": { "type": "number" },
+        "fechaEvaluacion": { "type": "string", "format": "date" },
+        "cargoPostulado": { "type": "string" },
+        "formacionAcademica": { "type": "number" },
+        "conocimientosTecnicos": { "type": "number" },
+        "experiencia": { "type": "number" },
+        "competencias": { "type": "number" },
+        "status": { "type": "string", "enum": ["C", "NC"] },
+        "aspiracionSalarial": {
+          "type": "number",
+          "description": "The candidate's desired salary in USD."
+        }
+      },
+      "required": ["candidateId", "processId", "candidateCedula", "notaGeneral", "fechaEvaluacion", "cargoPostulado", "formacionAcademica", "conocimientosTecnicos", "experiencia", "competencias", "status"]
+    },
+    "HiringApproval": {
+      "title": "Hiring Approval",
+      "description": "Represents a request for approving a new hire or re-hire. Contains the whole shortlist for the manager to choose from.",
+      "type": "object",
+      "properties": {
+          "processId": { "type": "string" },
+          "requesterEmail": { "type": "string", "format": "email" },
+          "jefeInmediatoEmail": { "type": "string", "format": "email" },
+          "directorRHHEmail": { "type": "string", "format": "email" },
+          "createdAt": { "type": "number" },
+          "status": { "type": "string", "enum": ["pending", "approved-boss", "approved-rh", "rejected"] },
+          "processInfo": {
+              "type": "object",
+              "properties": {
+                  "cargo": { "type": "string" },
+                  "empresa": { "type": "string" },
+                  "tipoContrato": { "type": "string" },
+                  "isRetroactive": { "type": "boolean" },
+                  "effectiveHiringDate": { "type": "string", "format": "date" },
+                  "justificationForRetroactive": { "type": "string" }
+              }
+          },
+          "shortlist": {
+              "type": "array",
+              "description": "The entire shortlist of candidates for this approval request.",
+              "items": {
+                  "type": "object",
+                  "properties": {
+                      "candidateId": { "type": "string" },
+                      "candidateInfo": {
+                          "type": "object",
+                          "properties": {
+                              "id": { "type": "string" },
+                              "nombres": { "type": "string" },
+                              "apellidos": { "type": "string" },
+                              "cedula": { "type": "string" }
+                          }
+                      },
+                      "evaluationInfo": {
+                          "type": "object",
+                          "description": "A snapshot of the profile evaluation for this candidate.",
+                           "properties": {
+                                "candidateId": { "type": "string" },
+                                "processId": { "type": "string" },
+                                "candidateCedula": { "type": "string" },
+                                "notaGeneral": { "type": "number" },
+                                "fechaEvaluacion": { "type": "string", "format": "date" },
+                                "cargoPostulado": { "type": "string" },
+                                "formacionAcademica": { "type": "number" },
+                                "conocimientosTecnicos": { "type": "number" },
+                                "experiencia": { "type": "number" },
+                                "competencias": { "type": "number" },
+                                "status": { "type": "string", "enum": ["C", "NC"] },
+                                "aspiracionSalarial": { "type": "number" }
+                          }
+                      }
+                  },
+                  "required": ["candidateId", "candidateInfo", "evaluationInfo"]
+              }
+          },
+          "recommendations": {
+              "type": "array",
+              "description": "A list of candidates recommended by the recruiter, each with a specific comment.",
+              "items": {
+                  "type": "object",
+                  "properties": {
+                      "candidateId": { "type": "string" },
+                      "comment": { "type": "string" }
+                  },
+                  "required": ["candidateId", "comment"]
+              }
+          },
+          "bossSelection": {
+              "type": "object",
+              "description": "The candidate selected by the immediate boss from the list of recommendations.",
+              "properties": {
+                  "selectedCandidateId": { "type": "string" },
+                  "bossComments": { "type": "string" },
+                  "selectionDate": { "type": "number" }
+              }
+          }
+      },
+      "required": ["processId", "requesterEmail", "jefeInmediatoEmail", "directorRHHEmail", "createdAt", "status", "shortlist", "recommendations"]
+    },
+    "ShiftPattern": {
+      "title": "Shift Pattern",
+      "type": "object",
+      "description": "Defines a work schedule pattern for a specific job title.",
+      "properties": {
+        "jobTitle": { "type": "string" },
+        "scheduleType": { "type": "string", "enum": ["ROTATING", "MONDAY_TO_FRIDAY"] },
+        "cycle": {
+          "type": "array",
+          "items": {
+            "type": ["string", "null"]
+          }
+        }
+      },
+      "required": ["jobTitle", "scheduleType", "cycle"]
+    },
+    "SavedSchedule": {
+      "title": "Saved Schedule",
+      "type": "object",
+      "description": "Stores a generated schedule for a specific period and filter set.",
+      "properties": {
+        "schedule": {
+          "type": "object",
+          "description": "A map where keys are collaborator IDs and values are maps of day keys to shifts.",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": { "type": ["string", "null"] }
+          }
+        },
+        "conditioning": {
+          "type": "object",
+          "properties": {
+            "isAutomatic": { "type": "boolean" },
+            "morning": { "type": "number" },
+            "afternoon": { "type": "number" },
+            "night": { "type": "number" }
+          }
+        },
+        "location": { "type": "string" },
+        "jobTitle": { "type": "string" },
+        "savedAt": { "type": "number" }
+      },
+      "required": ["schedule", "conditioning", "location", "jobTitle", "savedAt"]
+    },
+    "Publication": {
+      "title": "Publication",
+      "type": "object",
+      "description": "A company-wide announcement or post.",
+      "properties": {
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "authorAvatarUrl": { "type": "string", "format": "uri" },
+        "text": { "type": "string" },
+        "imageUrl": { "type": "string", "format": "uri" },
+        "location": { "type": "string" },
+        "category": {
+            "type": "string",
+            "description": "The category of the publication.",
+            "enum": [
+                "Anuncio / Comunicado",
+                "Galería",
+                "Información",
+                "Celebración",
+                "Logro / Reconocimiento",
+                "Aviso Importante",
+                "Agenda",
+                "Resultados / Indicadores",
+                "Marketplace"
+            ]
+        },
+        "eventDate": {
+            "type": "string",
+            "format": "date",
+            "description": "The date of the event, if the publication is an announcement for a future event."
+        },
+        "taggedUserIds": {
+            "type": "array",
+            "items": { "type": "string" }
+        },
+        "reactions": {
+            "type": "object",
+            "description": "A map of reaction types to an array of user IDs who reacted.",
+            "additionalProperties": {
+                "type": "array",
+                "items": { "type": "string" }
+            }
+        },
+        "createdAt": { "type": "number", "description": "Timestamp of creation." },
+        "updatedAt": { "type": "number", "description": "Timestamp of the last update." },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "approved", "rejected"],
+          "description": "The approval status of the publication."
+        },
+        "rejectionReason": {
+          "type": "string",
+          "description": "Reason why the publication was rejected."
+        }
+      },
+      "required": ["authorId", "authorName", "text", "createdAt", "category", "status"]
+    },
+    "SimpleEvent": {
+      "title": "Simple Event",
+      "type": "object",
+      "description": "A simple event or meeting for the calendar.",
+      "properties": {
+        "title": { "type": "string", "description": "The title of the event." },
+        "eventDate": { "type": "string", "format": "date", "description": "The date of the event." },
+        "eventTime": { "type": "string", "format": "time", "description": "The time of the event (optional)." },
+        "creatorId": { "type": "string", "description": "The ID of the user who created the event." },
+        "creatorName": { "type": "string", "description": "The name of the user who created the event." }
+      },
+      "required": ["title", "eventDate", "creatorId", "creatorName"]
+    },
+    "AttendanceRecord": {
+      "title": "Attendance Record",
+      "type": "object",
+      "description": "Stores an attendance record for a collaborator.",
+      "properties": {
+        "collaboratorId": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "scheduledShift": { "type": ["string", "null"] },
+        "entryTime": { "type": ["string", "null"], "format": "date-time" },
+        "exitTime": { "type": ["string", "null"], "format": "date-time" },
+        "entryLatitude": { "type": "number", "description": "Latitude at clock-in." },
+        "entryLongitude": { "type": "number", "description": "Longitude at clock-in." },
+        "exitLatitude": { "type": "number", "description": "Latitude at clock-out." },
+        "exitLongitude": { "type": "number", "description": "Longitude at clock-out." },
+        "status": {
+          "type": "string",
+          "enum": ["on-time", "late", "absent", "in-progress", "completed", "day-off"]
+        },
+        "entryWorkLocationName": {
+            "type": "string",
+            "description": "The name of the work location where the clock-in was registered."
+        },
+        "exitWorkLocationName": {
+            "type": "string",
+            "description": "The name of the work location where the clock-out was registered."
+        }
+      },
+      "required": ["collaboratorId", "date", "status"]
+    },
+    "WorkLocation": {
+      "title": "Work Location",
+      "type": "object",
+      "description": "Defines a physical work location with geofencing for attendance.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the work location."
+        },
+        "latitude": {
+          "type": "number",
+          "description": "The latitude of the location's center point."
+        },
+        "longitude": {
+          "type": "number",
+          "description": "The longitude of the location's center point."
+        },
+        "radius": {
+          "type": "number",
+          "description": "The radius in meters from the center point within which attendance is allowed."
+        }
+      },
+      "required": ["name", "latitude", "longitude", "radius"]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password"
+    ]
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Stores information about company users/workers, including their role for system access."
+    },
+    "/roles/{roleId}": {
+        "schema": { "$ref": "#/entities/Role" },
+        "description": "Stores role definitions and their permissions."
+    },
+    "/consultantGroups/{groupId}": {
+      "schema": { "$ref": "#/entities/ConsultantGroup" },
+      "description": "Stores consultant groups and their members."
+    },
+    "/performanceEvaluations/{evaluationId}": {
+      "schema": { "$ref": "#/entities/PerformanceEvaluation" },
+      "description": "Stores performance evaluation records for employees."
+    },
+    "/managerEvaluations/{evaluationId}": {
+      "schema": { "$ref": "#/entities/ManagerEvaluation" },
+      "description": "Stores 180-degree evaluations of managers by their direct reports."
+    },
+    "/vacationRequests/{requestId}": {
+      "schema": { "$ref": "#/entities/VacationRequest" },
+      "description": "Stores employee vacation and leave requests."
+    },
+    "/leaderAssignmentRules/{ruleId}": {
+        "schema": { "$ref": "#/entities/LeaderAssignmentRule" },
+        "description": "Stores rules for automatic leader assignment."
+    },
+    "/empresas/{empresaId}": {
+      "schema": { "$ref": "#/entities/Empresa" },
+      "description": "List of all companies."
+    },
+    "/cargos/{cargoId}": {
+      "schema": { "$ref": "#/entities/Cargo" },
+      "description": "List of all job positions."
+    },
+    "/ubicaciones/{ubicacionId}": {
+      "schema": { "$ref": "#/entities/Ubicacion" },
+      "description": "List of all locations."
+    },
+    "/areas/{areaId}": {
+      "schema": { "$ref": "#/entities/Area" },
+      "description": "List of all work areas."
+    },
+    "/centrosCosto/{centroCostoId}": {
+      "schema": { "$ref": "#/entities/CentroCosto" },
+      "description": "List of all cost centers."
+    },
+    "/candidates/{candidateId}": {
+      "schema": { "$ref": "#/entities/Candidate" },
+      "description": "Repository of all potential candidates."
+    },
+    "/hiringProcesses/{processId}": {
+      "schema": { "$ref": "#/entities/HiringProcess" },
+      "description": "Stores all hiring processes."
+    },
+    "/profileEvaluations/{evaluationId}": {
+      "schema": { "$ref": "#/entities/ProfileEvaluation" },
+      "description": "Stores pre-hiring evaluations for candidates."
+    },
+    "/hiringApprovals/{approvalId}": {
+      "schema": { "$ref": "#/entities/HiringApproval" },
+      "description": "Stores requests for hiring approvals."
+    },
+    "/shiftPatterns/{jobTitle}": {
+      "schema": { "$ref": "#/entities/ShiftPattern" },
+      "description": "Stores the work schedule patterns for each job title."
+    },
+    "/savedSchedules/{periodId}": {
+      "schema": { "$ref": "#/entities/SavedSchedule" },
+      "description": "Stores the generated and confirmed schedules for each period and filter set."
+    },
+    "/publications/{publicationId}": {
+      "schema": { "$ref": "#/entities/Publication" },
+      "description": "Stores company-wide announcements and posts."
+    },
+    "/simpleEvents/{eventId}": {
+      "schema": { "$ref": "#/entities/SimpleEvent" },
+      "description": "Stores simple calendar events and meetings, like personal reminders or team meetings."
+    },
+    "/attendance/{attendanceId}": {
+      "schema": { "$ref": "#/entities/AttendanceRecord" },
+      "description": "Stores attendance records for collaborators."
+    },
+    "/workLocations/{locationId}": {
+      "schema": { "$ref": "#/entities/WorkLocation" },
+      "description": "Stores defined work locations and their geofence radii for attendance validation."
+    }
+  }
+}

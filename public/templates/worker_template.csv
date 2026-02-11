@@ -1,0 +1,3 @@
+codigo,cedula,apellidos,nombres,fechaIngreso,email,empresa,ubicacion,departamento,cargo,liderArea,consultor,rol,status
+1001,0987654321,Pérez Gómez,Juan Carlos,2023-01-15,juan.perez@example.com,Grupo Sudinco,Guayaquil,Tecnología,Desarrollador Senior,Ana Gómez,Carlos Ruiz,Empleado,active
+1002,1234567890,García López,María Isabel,2022-11-20,maria.garcia@example.com,Sudinco Tech,Quito,Recursos Humanos,Reclutadora,Laura Torres,Sofía Vargas,Admin,active
