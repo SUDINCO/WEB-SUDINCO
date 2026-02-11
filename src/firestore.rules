@@ -36,7 +36,7 @@ service cloud.firestore {
         return false;
       }
       let userData = getUserData();
-      return userData.isAdmin == true;
+      return userData.rol == 'MASTER' || userData.rol == 'ADMINISTRADOR';
     }
     
     // --- Collection Rules ---
@@ -140,8 +140,42 @@ service cloud.firestore {
     match /shiftPatterns/{jobTitle} {
       allow read, write: if isMasterOrAdmin();
     }
+    match /workShifts/{shiftId} {
+      allow read: if isSignedIn();
+      allow write: if isMasterOrAdmin();
+    }
     match /savedSchedules/{periodId} {
       allow read, write: if isMasterOrAdmin();
+    }
+    
+    // PUBLICATIONS
+    match /publications/{publicationId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() 
+                    && request.resource.data.authorId == request.auth.uid
+                    && request.resource.data.status == 'pending';
+      allow update: if isMasterOrAdmin() || 
+                       (isSignedIn() && resource.data.authorId == request.auth.uid && resource.data.status == 'pending');
+      allow delete: if isMasterOrAdmin() || (isSignedIn() && resource.data.authorId == request.auth.uid);
+    }
+    
+    // SIMPLE EVENTS
+    match /simpleEvents/{eventId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.creatorId == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.creatorId == request.auth.uid;
+    }
+
+    // ATTENDANCE RECORDS
+    match /attendance/{recordId} {
+      allow read, update: if isSignedIn() && resource.data.collaboratorId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.collaboratorId == request.auth.uid;
+    }
+    
+    // WORK LOCATIONS: Any signed-in user can read locations for validation, but only admins can manage them.
+    match /workLocations/{locationId} {
+        allow read: if isSignedIn();
+        allow write: if isMasterOrAdmin();
     }
   }
 }

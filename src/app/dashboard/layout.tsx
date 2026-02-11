@@ -69,12 +69,14 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isAppsMenuOpen, setAppsMenuOpen] = useState(false);
 
-  const { user } = useUser();
-  const { userProfile, userRole, isLoading } = useUserProfile();
+  const { user, loading: userLoading } = useUser();
+  const { userProfile, userRole, isLoading: profileLoading } = useUserProfile();
   const auth = useAuth();
   const inactivityTimer = useRef<NodeJS.Timeout>();
 
   const [showPasswordChangeDialog, setShowPasswordChangeDialog] = useState(false);
+  
+  const isLoading = userLoading || profileLoading;
 
   const handlePasswordChanged = () => {
     setShowPasswordChangeDialog(false);
