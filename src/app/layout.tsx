@@ -5,7 +5,10 @@ import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 export const metadata: Metadata = {
-  title: 'CORE Acceso',
+  title: {
+    default: "CORE",
+    template: "%s | CORE",
+  },
   description: 'Página de acceso para la aplicación CORE',
 };
 
