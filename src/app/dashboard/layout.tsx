@@ -225,48 +225,6 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     ? navLinks.find(m => m.module === activeModule)?.groups?.find(group => group.sublinks.some(sublink => isActive(sublink.href)))?.title
     : null, [activeModule, navLinks, pathname, isActive]);
   
-  if (isLoading) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
-        <LoaderCircle className="h-10 w-10 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (user && user.email !== 'master@sudinco.com' && !userProfile) {
-    return (
-      <div className="flex min-h-screen w-full flex-col items-center justify-center bg-gray-100 text-center">
-        <Shield className="h-10 w-10 text-destructive" />
-        <h1 className="mt-4 text-2xl font-bold">Acceso Denegado</h1>
-        <p className="mt-2 text-lg text-gray-600">
-          Tu usuario no está registrado como trabajador en el sistema.
-        </p>
-        <p className="text-sm text-gray-500">Por favor, contacta al administrador.</p>
-        <Button onClick={onSignOutClick} className="mt-6">Cerrar Sesión</Button>
-      </div>
-    );
-  }
-
-  if (user && user.email !== 'master@sudinco.com' && userProfile?.Status === 'inactive') {
-    return (
-      <div className="flex min-h-screen w-full flex-col items-center justify-center bg-gray-100 text-center">
-        <Shield className="h-10 w-10 text-destructive" />
-        <h1 className="mt-4 text-2xl font-bold">Acceso Denegado</h1>
-        <p className="mt-2 text-lg text-gray-600">
-          Tu usuario se encuentra inactivo.
-        </p>
-        <p className="text-sm text-gray-500">Por favor, contacta al administrador.</p>
-        <Button onClick={onSignOutClick} className="mt-6">Cerrar Sesión</Button>
-      </div>
-    );
-  }
-  
-  if (!user || !userProfile) {
-    // This case will now mostly handle the logged-out state, after loading is false.
-    // The useEffect above will redirect.
-    return null;
-  }
-
   const handleLinkClick = () => {
     if (isSheetOpen) {
       setIsSheetOpen(false);
@@ -344,8 +302,8 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     </nav>
   );
 
-  return (
-    <>
+  const renderLayout = () => (
+     <>
       <NextTopLoader
         color="#2563EB"
         initialPosition={0.08}
@@ -455,7 +413,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="flex items-center gap-2 text-white hover:bg-blue-800 hover:text-white px-3 py-2 h-auto text-base rounded-md">
                     <User className="h-5 w-5" />
-                    <span className="font-medium hidden md:inline">{user.email}</span>
+                    <span className="font-medium hidden md:inline">{user?.email}</span>
                     <ChevronDown className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -483,6 +441,61 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
       </div>
     </>
   );
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <LoaderCircle className="h-10 w-10 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // If done loading but no user, show spinner while redirect effect runs.
+  if (!user) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <LoaderCircle className="h-10 w-10 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Master user gets access regardless of profile status
+  if (user.email === 'master@sudinco.com') {
+    return renderLayout();
+  }
+
+  // For all other users, a profile is required.
+  if (!userProfile) {
+    return (
+      <div className="flex min-h-screen w-full flex-col items-center justify-center bg-gray-100 text-center">
+        <Shield className="h-10 w-10 text-destructive" />
+        <h1 className="mt-4 text-2xl font-bold">Acceso Denegado</h1>
+        <p className="mt-2 text-lg text-gray-600">
+          Tu usuario no está registrado como trabajador en el sistema.
+        </p>
+        <p className="text-sm text-gray-500">Por favor, contacta al administrador.</p>
+        <Button onClick={onSignOutClick} className="mt-6">Cerrar Sesión</Button>
+      </div>
+    );
+  }
+
+  // Profile exists, check status.
+  if (userProfile.Status === 'inactive') {
+    return (
+      <div className="flex min-h-screen w-full flex-col items-center justify-center bg-gray-100 text-center">
+        <Shield className="h-10 w-10 text-destructive" />
+        <h1 className="mt-4 text-2xl font-bold">Acceso Denegado</h1>
+        <p className="mt-2 text-lg text-gray-600">
+          Tu usuario se encuentra inactivo.
+        </p>
+        <p className="text-sm text-gray-500">Por favor, contacta al administrador.</p>
+        <Button onClick={onSignOutClick} className="mt-6">Cerrar Sesión</Button>
+      </div>
+    );
+  }
+  
+  // User is valid, active, and has a profile.
+  return renderLayout();
 }
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
