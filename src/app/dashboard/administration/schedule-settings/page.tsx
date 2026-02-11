@@ -35,7 +35,7 @@ const patternsFormSchema = z.object({
 const newPatternSchema = z.object({
   jobTitle: z.string().min(1, "Debe seleccionar un cargo."),
   scheduleType: z.enum(['ROTATING', 'MONDAY_TO_FRIDAY']),
-  cycle: z.array(z.string().nullable()).min(1, "El ciclo debe tener al menos un turno."),
+  cycle: z.array(z.object({ value: z.string().nullable() })).min(1, "El ciclo debe tener al menos un turno."),
 });
 
 
@@ -116,7 +116,7 @@ function PatternsTabContent({ initialPatterns }: { initialPatterns: ShiftPattern
         keyName: 'formId',
     });
 
-    const onSubmit = async (data: z.infer<typeof patternsFormSchema>>) => {
+    const onSubmit = async (data: z.infer<typeof patternsFormSchema>) => {
         if (!firestore) return;
         const patternToSave = data.patterns.find(p => p.jobTitle === editingId);
         if (!patternToSave) return;
@@ -306,7 +306,7 @@ export default function ScheduleSettingsPage() {
         defaultValues: {
             jobTitle: '',
             scheduleType: 'ROTATING',
-            cycle: Array(7).fill(''),
+            cycle: Array(7).fill({ value: '' }),
         }
     });
 
@@ -329,6 +329,7 @@ export default function ScheduleSettingsPage() {
             ...data,
             jobTitle: data.jobTitle.trim().toUpperCase(),
             cycle: data.cycle
+                .map(item => item.value)
                 .filter((s): s is string => !!s && s.trim() !== '')
                 .map(s => s.trim().toUpperCase())
         };
@@ -365,7 +366,7 @@ export default function ScheduleSettingsPage() {
             resetAddForm({
                 jobTitle: '',
                 scheduleType: 'ROTATING',
-                cycle: Array(7).fill(''),
+                cycle: Array(7).fill({ value: '' }),
             });
         } catch (error) {
             console.error("Error creating pattern:", error);
@@ -438,7 +439,7 @@ export default function ScheduleSettingsPage() {
                                         <FormField
                                             key={field.id}
                                             control={addFormControl}
-                                            name={`cycle.${index}`}
+                                            name={`cycle.${index}.value`}
                                             render={({ field }) => (
                                                 <FormItem>
                                                     <FormControl>
