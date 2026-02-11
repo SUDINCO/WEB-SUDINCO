@@ -829,94 +829,75 @@ export default function StaffPage() {
 
 
   const confirmImport = async () => {
-    if (!importAnalysis || !firestore || !usersCollectionRef) return;
+    if (!importAnalysis || !firestore) return;
   
     const batch = writeBatch(firestore);
-    const newUsersForAuth: { email: string, cedula: string }[] = [];
+    const newUsersToCreate = importAnalysis.filter(i => i.status === 'new' && i.user.email && i.user.cedula);
+    const usersToUpdate = importAnalysis.filter(i => i.status === 'update' && i.user.id);
   
-    importAnalysis.forEach(item => {
-      if (item.status === 'new' && item.user.email && item.user.cedula) {
-        const newDocRef = doc(usersCollectionRef); // Create a new doc ref
-        const userDataWithPasswordFlag = { ...item.user, requiresPasswordChange: true };
-        batch.set(newDocRef, userDataWithPasswordFlag);
-        newUsersForAuth.push({ email: item.user.email, cedula: item.user.cedula });
-      } else if (item.status === 'update' && item.user.id) {
-        const userDocRef = doc(firestore, 'users', item.user.id);
+    // Handle updates first, as they don't involve auth creation
+    usersToUpdate.forEach(item => {
+        const userDocRef = doc(firestore, 'users', item.user.id!);
         const updateData: { [key: string]: any } = {};
         item.changes.forEach(change => {
           updateData[change.field] = change.newValue;
         });
         batch.update(userDocRef, updateData);
-      }
     });
   
+    // Now handle new users with auth creation
+    let tempApp;
     try {
-      await batch.commit();
-      const createdCount = importAnalysis.filter(i => i.status === 'new').length;
-      const updatedCount = importAnalysis.filter(i => i.status === 'update').length;
-      toast({
-        title: "Importación de Perfiles Completada",
-        description: `${createdCount} usuarios creados y ${updatedCount} actualizados en la base de datos.`
-      });
+        if (newUsersToCreate.length > 0) {
+            tempApp = initializeApp(firebaseConfig, `user-import-session-${Date.now()}`);
+            const tempAuth = getAuth(tempApp);
+    
+            for (const item of newUsersToCreate) {
+                try {
+                    // 1. Create Auth user and get UID
+                    const userCredential = await createUserWithEmailAndPassword(tempAuth, item.user.email!, item.user.cedula!);
+                    const userUid = userCredential.user.uid;
+        
+                    // 2. Use that UID for the Firestore document in the batch
+                    const userDocRef = doc(firestore, 'users', userUid);
+                    const userDataWithPasswordFlag = { ...item.user, requiresPasswordChange: true };
+                    delete (userDataWithPasswordFlag as any).id; // ensure no old 'id' field is present
+                    batch.set(userDocRef, userDataWithPasswordFlag);
+                } catch (authError: any) {
+                    console.error(`Failed to create auth account for ${item.user.email}:`, authError.message);
+                    toast({
+                        variant: 'destructive',
+                        title: `Error al crear cuenta para ${item.user.email}`,
+                        description: `Motivo: ${authError.message}`,
+                        duration: 7000
+                    });
+                }
+            }
+        }
   
-      if (newUsersForAuth.length > 0) {
+        // Commit all Firestore changes (updates and new users) at once
+        await batch.commit();
+
         toast({
-          title: 'Creando Cuentas de Acceso...',
-          description: `Se crearán ${newUsersForAuth.length} nuevas cuentas. Esto puede tardar un momento.`
+            title: "Importación Completada",
+            description: `${newUsersToCreate.length} usuarios creados y ${usersToUpdate.length} actualizados.`
         });
   
-        let tempApp;
-        try {
-          // Create a temporary app instance for auth creation to avoid logging out the current user
-          tempApp = initializeApp(firebaseConfig, `user-import-session-${Date.now()}`);
-          const tempAuth = getAuth(tempApp);
-  
-          for (const newUser of newUsersForAuth) {
-            try {
-              // Use the temporary auth instance to create the user
-              await createUserWithEmailAndPassword(tempAuth, newUser.email, newUser.cedula);
-            } catch (authError: any) {
-              console.error(`Failed to create auth account for ${newUser.email}:`, authError.message);
-              toast({
-                variant: 'destructive',
-                title: `Error al crear cuenta para ${newUser.email}`,
-                description: `Motivo: ${authError.message}`,
-                duration: 7000
-              });
-            }
-          }
-  
-          toast({
-            title: 'Proceso de Cuentas Finalizado',
-            description: `Se ha intentado crear todas las cuentas de acceso. Revise si hay notificaciones de error.`
-          });
-        } catch (e) {
-          console.error("Error during temporary app initialization for import:", e);
-          toast({
-            variant: 'destructive',
-            title: 'Error de Importación de Cuentas',
-            description: 'No se pudo inicializar el proceso de creación de cuentas de autenticación.',
-          });
-        } finally {
-          // IMPORTANT: Clean up the temporary app instance
-          if (tempApp) {
-            await deleteApp(tempApp);
-          }
-        }
-      }
-  
     } catch (error) {
-      console.error("Error importing users:", error);
-      toast({
-        variant: "destructive",
-        title: "Error en la importación",
-        description: "Ocurrió un error al guardar los datos."
-      });
+        console.error("Error importing users:", error);
+        toast({
+            variant: "destructive",
+            title: "Error en la importación",
+            description: "Ocurrió un error al guardar los datos."
+        });
+    } finally {
+        if (tempApp) {
+            await deleteApp(tempApp);
+        }
+        setIsImportDialogOpen(false);
+        setImportAnalysis(null);
+        setDataToImport([]);
     }
-  
-    setIsImportDialogOpen(false);
-    setImportAnalysis(null);
-    setDataToImport([]);
   };
 
   const handleCreateGroup = async () => {
@@ -1053,7 +1034,7 @@ export default function StaffPage() {
                 <AlertDialogDescription>
                     Esta acción es irreversible. Se eliminarán los perfiles de {selectedUsers.length} usuario(s) de la base de datos de Firestore.
                     <br/><br/>
-                    <span className="font-bold text-destructive">Importante:</span> Las cuentas de autenticación de estos usuarios NO se eliminarán automáticamente. Deberás eliminarlas manualmente desde la Consola de Firebase para completar el proceso.
+                    <span className="font-bold text-destructive">Importante:</span> Las cuentas de autenticación de estos usuarios NO se eliminarán automáticamente. Deberás eliminarlas manually desde la Consola de Firebase para completar el proceso.
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -1126,7 +1107,7 @@ export default function StaffPage() {
                                 <ul className="space-y-1">
                                     {groupMembers.map(member => (
                                         <li key={member.id} className="flex justify-between items-center p-2 rounded-md hover:bg-muted">
-                                            <span className="text-sm">{member.nombres} {member.apellidos}</span>
+                                            <span className="text-sm">{member.nombres} ${member.apellidos}</span>
                                             <Button variant="ghost" size="sm" onClick={() => handleToggleMember(member.id)}>Quitar</Button>
                                         </li>
                                     ))}
@@ -1157,7 +1138,7 @@ export default function StaffPage() {
                                                     <Checkbox onCheckedChange={() => handleToggleMember(user.id)} />
                                                 </TableCell>
                                                 <TableCell>
-                                                    <div className="font-medium">{user.nombres} {user.apellidos}</div>
+                                                    <div className="font-medium">{user.nombres} ${user.apellidos}</div>
                                                     <div className="text-xs text-muted-foreground">{user.cargo}</div>
                                                 </TableCell>
                                             </TableRow>
