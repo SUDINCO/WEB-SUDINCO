@@ -125,7 +125,7 @@ function PatternsTabContent({ initialPatterns }: { initialPatterns: ShiftPattern
             ...patternToSave,
             cycle: (patternToSave.cycle || [])
                 .filter(s => s && s.trim() !== '')
-                .map(s => (s.trim().toUpperCase() === 'LIB' ? null : s.trim().toUpperCase()))
+                .map(s => s.trim().toUpperCase())
         };
         
         try {
@@ -151,7 +151,7 @@ function PatternsTabContent({ initialPatterns }: { initialPatterns: ShiftPattern
     const handleEdit = (index: number) => {
         const pattern = form.getValues(`patterns.${index}`);
         const newCycle = [...(pattern.cycle || [])];
-        while (newCycle.length < 15) { newCycle.push(''); }
+        while (newCycle.length < 7) { newCycle.push(''); }
         const displayCycle = newCycle.map(shift => (shift === null ? 'LIB' : shift === undefined ? '' : shift));
         update(index, { ...pattern, cycle: displayCycle as (string | null)[] });
         setEditingId(pattern.jobTitle);
@@ -240,7 +240,7 @@ function PatternsTabContent({ initialPatterns }: { initialPatterns: ShiftPattern
                                                                     {(value as (string | null)[]).map((shift, i) => (
                                                                         <Input
                                                                             key={i}
-                                                                            value={shift === null ? 'LIB' : shift ?? ''}
+                                                                            value={shift ?? ''}
                                                                             onChange={(e) => {
                                                                                 const newCycle = [...value];
                                                                                 newCycle[i] = e.target.value.toUpperCase();
@@ -255,8 +255,8 @@ function PatternsTabContent({ initialPatterns }: { initialPatterns: ShiftPattern
                                                     ) : (
                                                         <div className="flex flex-wrap items-center gap-1">
                                                             {(field.cycle || []).map((shift, i) => (
-                                                                <Badge key={i} variant={shift ? 'default' : 'secondary'} className="text-xs">
-                                                                    {shift || 'LIB'}
+                                                                <Badge key={i} variant={'default'} className="text-xs">
+                                                                    {shift}
                                                                 </Badge>
                                                             ))}
                                                         </div>
@@ -306,7 +306,7 @@ export default function ScheduleSettingsPage() {
         defaultValues: {
             jobTitle: '',
             scheduleType: 'ROTATING',
-            cycle: Array(15).fill(''),
+            cycle: Array(7).fill(''),
         }
     });
 
@@ -328,7 +328,7 @@ export default function ScheduleSettingsPage() {
         const cleanedPattern = {
             ...data,
             jobTitle: data.jobTitle.trim().toUpperCase(),
-            cycle: data.cycle.filter(s => s && s.trim() !== '').map(s => s.trim().toUpperCase() === 'LIB' ? null : s.trim().toUpperCase())
+            cycle: data.cycle.filter(s => s && s.trim() !== '').map(s => s.trim().toUpperCase())
         };
 
         if (cleanedPattern.cycle.length === 0) {
@@ -363,7 +363,7 @@ export default function ScheduleSettingsPage() {
             resetAddForm({
                 jobTitle: '',
                 scheduleType: 'ROTATING',
-                cycle: Array(15).fill(''),
+                cycle: Array(7).fill(''),
             });
         } catch (error) {
             console.error("Error creating pattern:", error);
