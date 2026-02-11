@@ -160,9 +160,9 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
           ]
         },
         {
-          title: "Directorio",
+          title: "Nómina",
           sublinks: [
-            { name: "Directorio", href: "/dashboard/staff", icon: Users, id: "staff" },
+            { name: "Nómina", href: "/dashboard/staff", icon: Users, id: "staff" },
           ]
         },
         {
