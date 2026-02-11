@@ -116,7 +116,7 @@ function PatternsTabContent({ initialPatterns }: { initialPatterns: ShiftPattern
         keyName: 'formId',
     });
 
-    const onSubmit = async (data: z.infer<typeof patternsFormSchema>) => {
+    const onSubmit = async (data: z.infer<typeof patternsFormSchema>>) => {
         if (!firestore) return;
         const patternToSave = data.patterns.find(p => p.jobTitle === editingId);
         if (!patternToSave) return;
@@ -124,7 +124,7 @@ function PatternsTabContent({ initialPatterns }: { initialPatterns: ShiftPattern
         const cleanedPattern = {
             ...patternToSave,
             cycle: (patternToSave.cycle || [])
-                .filter(s => s && s.trim() !== '')
+                .filter((s): s is string => !!s && s.trim() !== '')
                 .map(s => s.trim().toUpperCase())
         };
         
@@ -254,8 +254,8 @@ function PatternsTabContent({ initialPatterns }: { initialPatterns: ShiftPattern
                                                         />
                                                     ) : (
                                                         <div className="flex flex-wrap items-center gap-1">
-                                                            {(field.cycle || []).map((shift, i) => (
-                                                                <Badge key={i} variant={'default'} className="text-xs">
+                                                            {(field.cycle || []).filter(s => s !== null).map((shift, i) => (
+                                                                <Badge key={i} variant={shift === 'LIB' ? 'outline' : 'default'} className="text-xs">
                                                                     {shift}
                                                                 </Badge>
                                                             ))}
@@ -328,7 +328,9 @@ export default function ScheduleSettingsPage() {
         const cleanedPattern = {
             ...data,
             jobTitle: data.jobTitle.trim().toUpperCase(),
-            cycle: data.cycle.filter(s => s && s.trim() !== '').map(s => s.trim().toUpperCase())
+            cycle: data.cycle
+                .filter((s): s is string => !!s && s.trim() !== '')
+                .map(s => s.trim().toUpperCase())
         };
 
         if (cleanedPattern.cycle.length === 0) {
