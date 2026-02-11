@@ -504,8 +504,6 @@ export default function StaffPage() {
             tempApp = initializeApp(firebaseConfig, `user-creation-${Date.now()}`);
             const tempAuth = getAuth(tempApp);
             const userCredential = await createUserWithEmailAndPassword(tempAuth, dataToSave.email, data.cedula);
-            await deleteApp(tempApp);
-            tempApp = undefined;
             const userUid = userCredential.user.uid;
             const userDocRef = doc(firestore, 'users', userUid);
             await setDoc(userDocRef, dataToSave);
@@ -831,69 +829,91 @@ export default function StaffPage() {
 
 
   const confirmImport = async () => {
-    if (!importAnalysis || !firestore || !usersCollectionRef || !auth) return;
-
+    if (!importAnalysis || !firestore || !usersCollectionRef) return;
+  
     const batch = writeBatch(firestore);
-    const newUsersForAuth: {email: string, cedula: string}[] = [];
-
+    const newUsersForAuth: { email: string, cedula: string }[] = [];
+  
     importAnalysis.forEach(item => {
-        if (item.status === 'new' && item.user.email && item.user.cedula) {
-            const newDocRef = doc(usersCollectionRef);
-            batch.set(newDocRef, item.user);
-            newUsersForAuth.push({email: item.user.email, cedula: item.user.cedula});
-        } else if (item.status === 'update' && item.user.id) {
-            const userDocRef = doc(firestore, 'users', item.user.id);
-            const updateData: { [key: string]: any } = {};
-            item.changes.forEach(change => {
-                updateData[change.field] = change.newValue;
-            });
-            batch.update(userDocRef, updateData);
-        }
-    });
-
-    try {
-        await batch.commit();
-        const createdCount = importAnalysis.filter(i => i.status === 'new').length;
-        const updatedCount = importAnalysis.filter(i => i.status === 'update').length;
-        toast({
-            title: "Importación de Perfiles Completada",
-            description: `${createdCount} usuarios creados y ${updatedCount} actualizados en la base de datos.`
+      if (item.status === 'new' && item.user.email && item.user.cedula) {
+        const newDocRef = doc(usersCollectionRef); // Create a new doc ref
+        const userDataWithPasswordFlag = { ...item.user, requiresPasswordChange: true };
+        batch.set(newDocRef, userDataWithPasswordFlag);
+        newUsersForAuth.push({ email: item.user.email, cedula: item.user.cedula });
+      } else if (item.status === 'update' && item.user.id) {
+        const userDocRef = doc(firestore, 'users', item.user.id);
+        const updateData: { [key: string]: any } = {};
+        item.changes.forEach(change => {
+          updateData[change.field] = change.newValue;
         });
-
-        if (newUsersForAuth.length > 0) {
-             toast({
-                title: 'Creando Cuentas de Acceso...',
-                description: `Se crearán ${newUsersForAuth.length} nuevas cuentas. Esto puede tardar un momento.`
-            });
-            
-            for (const newUser of newUsersForAuth) {
-                try {
-                    await createUserWithEmailAndPassword(auth, newUser.email, newUser.cedula);
-                } catch (authError: any) {
-                    console.error(`Failed to create auth account for ${newUser.email}:`, authError.message);
-                    toast({
-                        variant: 'destructive',
-                        title: `Error al crear cuenta para ${newUser.email}`,
-                        description: `Motivo: ${authError.message}`,
-                        duration: 7000
-                    });
-                }
+        batch.update(userDocRef, updateData);
+      }
+    });
+  
+    try {
+      await batch.commit();
+      const createdCount = importAnalysis.filter(i => i.status === 'new').length;
+      const updatedCount = importAnalysis.filter(i => i.status === 'update').length;
+      toast({
+        title: "Importación de Perfiles Completada",
+        description: `${createdCount} usuarios creados y ${updatedCount} actualizados en la base de datos.`
+      });
+  
+      if (newUsersForAuth.length > 0) {
+        toast({
+          title: 'Creando Cuentas de Acceso...',
+          description: `Se crearán ${newUsersForAuth.length} nuevas cuentas. Esto puede tardar un momento.`
+        });
+  
+        let tempApp;
+        try {
+          // Create a temporary app instance for auth creation to avoid logging out the current user
+          tempApp = initializeApp(firebaseConfig, `user-import-session-${Date.now()}`);
+          const tempAuth = getAuth(tempApp);
+  
+          for (const newUser of newUsersForAuth) {
+            try {
+              // Use the temporary auth instance to create the user
+              await createUserWithEmailAndPassword(tempAuth, newUser.email, newUser.cedula);
+            } catch (authError: any) {
+              console.error(`Failed to create auth account for ${newUser.email}:`, authError.message);
+              toast({
+                variant: 'destructive',
+                title: `Error al crear cuenta para ${newUser.email}`,
+                description: `Motivo: ${authError.message}`,
+                duration: 7000
+              });
             }
-             toast({
-                title: 'Proceso de Cuentas Finalizado',
-                description: `Se ha intentado crear todas las cuentas de acceso. Revise si hay notificaciones de error.`
-            });
+          }
+  
+          toast({
+            title: 'Proceso de Cuentas Finalizado',
+            description: `Se ha intentado crear todas las cuentas de acceso. Revise si hay notificaciones de error.`
+          });
+        } catch (e) {
+          console.error("Error during temporary app initialization for import:", e);
+          toast({
+            variant: 'destructive',
+            title: 'Error de Importación de Cuentas',
+            description: 'No se pudo inicializar el proceso de creación de cuentas de autenticación.',
+          });
+        } finally {
+          // IMPORTANT: Clean up the temporary app instance
+          if (tempApp) {
+            await deleteApp(tempApp);
+          }
         }
-
+      }
+  
     } catch (error) {
-         console.error("Error importing users:", error);
-         toast({
-             variant: "destructive",
-             title: "Error en la importación",
-             description: "Ocurrió un error al guardar los datos."
-         });
+      console.error("Error importing users:", error);
+      toast({
+        variant: "destructive",
+        title: "Error en la importación",
+        description: "Ocurrió un error al guardar los datos."
+      });
     }
-
+  
     setIsImportDialogOpen(false);
     setImportAnalysis(null);
     setDataToImport([]);
