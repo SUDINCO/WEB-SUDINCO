@@ -524,6 +524,7 @@ export default function MyEvaluationsPage() {
                 return {
                     ...ev,
                     workerName: worker ? `${worker.nombres} ${worker.apellidos}` : 'Desconocido',
+                    workerCodigo: worker?.codigo,
                 }
             })
             .sort((a,b) => {
@@ -1155,7 +1156,7 @@ export default function MyEvaluationsPage() {
                                                         <TableCell>{displayDate(ev.evaluationDate)}</TableCell>
                                                         <TableCell className="text-sm text-muted-foreground italic">"{ev.observerComments}"</TableCell>
                                                         <TableCell className="text-right">
-                                                            <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/performance-evaluation/${ev.workerId}?reviewEvaluationId=${ev.id}`)}>
+                                                            <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/performance-evaluation/${ev.workerCodigo}?reviewEvaluationId=${ev.id}`)}>
                                                                 <Edit className="mr-2 h-4 w-4" />
                                                                 Re-Evaluar
                                                             </Button>
@@ -1209,7 +1210,7 @@ export default function MyEvaluationsPage() {
                                                             {worker.statusInfo.status === 'pending_observation' ? (
                                                                 <Badge variant="secondary" className="bg-purple-100 text-purple-800">Pendiente de Aprobación</Badge>
                                                             ) : (
-                                                                <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/performance-evaluation/${worker.id}`)}>
+                                                                <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/performance-evaluation/${worker.codigo}`)}>
                                                                     <Activity className="mr-2 h-4 w-4" />
                                                                     Evaluar
                                                                 </Button>

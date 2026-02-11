@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { EvaluationCriteriaGroup } from '@/components/evaluation-criteria-group';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, LoaderCircle } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -171,21 +171,22 @@ export default function PerformanceEvaluationFormPage() {
     const router = useRouter();
     const params = useParams();
     const searchParams = useSearchParams();
-    const { workerId } = params;
+    const { workerId: workerCodigo } = params; // This is now a 'codigo'
     const reviewEvaluationId = searchParams.get('reviewEvaluationId');
 
     const firestore = useFirestore();
     const { user: authUser } = useUser();
     
-    const usersCollectionRef = useMemo(() => firestore ? collection(firestore, 'users') : null, [firestore]);
-    const { data: allUsers, isLoading: usersLoading } = useCollection<UserProfile>(usersCollectionRef);
+    const { data: allUsers, isLoading: usersLoading } = useCollection<UserProfile>(useMemo(() => firestore ? collection(firestore, 'users') : null, [firestore]));
 
-    const workerDocRef = useMemo(() => {
-        if (!firestore || typeof workerId !== 'string') return null;
-        return doc(firestore, 'users', workerId);
-    }, [firestore, workerId]);
-    const { data: worker, isLoading: isWorkerLoading } = useDoc<UserProfile>(workerDocRef);
-
+    const workerQuery = useMemo(() => {
+        if (!firestore || typeof workerCodigo !== 'string') return null;
+        return query(collection(firestore, 'users'), where("codigo", "==", workerCodigo), limit(1));
+    }, [firestore, workerCodigo]);
+    
+    const { data: workerData, isLoading: isWorkerLoading } = useCollection<UserProfile>(workerQuery);
+    const worker = useMemo(() => workerData?.[0], [workerData]);
+    
     const evaluationToReviewRef = useMemo(() => {
         if (!firestore || !reviewEvaluationId) return null;
         return doc(firestore, 'performanceEvaluations', reviewEvaluationId);
@@ -266,16 +267,14 @@ export default function PerformanceEvaluationFormPage() {
     useEffect(() => {
         if (evaluationToReview && !isReviewLoading) {
             form.reset(evaluationToReview);
-        } else if (!reviewEvaluationId && firestore && workerId) {
+        } else if (!reviewEvaluationId && firestore && worker) {
             const fetchLastEvaluation = async () => {
-                 // Simplified query: Fetch all evaluations for the worker
                 const evalsQuery = query(
                     collection(firestore, 'performanceEvaluations'),
-                    where('workerId', '==', workerId)
+                    where('workerId', '==', worker.id)
                 );
                 const querySnapshot = await getDocs(evalsQuery);
                 if (!querySnapshot.empty) {
-                    // Sort in the client
                     const allEvals = querySnapshot.docs.map(doc => doc.data());
                     allEvals.sort((a, b) => new Date(b.evaluationDate).getTime() - new Date(a.evaluationDate).getTime());
                     const lastEval = allEvals[0];
@@ -284,7 +283,7 @@ export default function PerformanceEvaluationFormPage() {
             };
             fetchLastEvaluation();
         }
-    }, [evaluationToReview, isReviewLoading, reviewEvaluationId, firestore, workerId, form]);
+    }, [evaluationToReview, isReviewLoading, reviewEvaluationId, firestore, worker, form]);
 
 
     const watchedValues = form.watch();
@@ -364,11 +363,24 @@ export default function PerformanceEvaluationFormPage() {
     };
     
     if (isWorkerLoading || isEvaluatorLoading || usersLoading || isReviewLoading) {
-        return <div className="flex justify-center items-center h-full"><p>Cargando formulario...</p></div>;
+        return (
+            <div className="flex justify-center items-center h-full">
+                <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
+                <p className="ml-4">Cargando datos del formulario...</p>
+            </div>
+        );
     }
 
     if (!worker) {
-        return <div className="flex justify-center items-center h-full"><p>Trabajador no encontrado.</p></div>;
+        return (
+            <div className="flex flex-col justify-center items-center h-full text-center">
+                <h2 className="text-xl font-semibold text-destructive">Error</h2>
+                <p className="text-muted-foreground">Trabajador no encontrado con el código: {workerCodigo}</p>
+                <Button onClick={() => router.back()} className="mt-4">
+                    <ArrowLeft className="mr-2 h-4 w-4" /> Volver
+                </Button>
+            </div>
+        );
     }
 
     const evaluationCriteria = [
