@@ -14,23 +14,30 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
-import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Edit, Save, XCircle } from 'lucide-react';
-import type { ShiftPattern } from '@/lib/types';
+import { Edit, Save, XCircle, PlusCircle } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Combobox } from '@/components/ui/combobox';
+import type { ShiftPattern, GenericOption } from '@/lib/types';
 
 
-const shiftPatternSchema = z.object({
-  jobTitle: z.string(),
+const patternsFormSchema = z.object({
+  patterns: z.array(z.object({
+    jobTitle: z.string(),
+    scheduleType: z.enum(['ROTATING', 'MONDAY_TO_FRIDAY']),
+    cycle: z.array(z.string().nullable()).min(1, "El ciclo debe tener al menos un turno."),
+  })),
+});
+
+const newPatternSchema = z.object({
+  jobTitle: z.string().min(1, "Debe seleccionar un cargo."),
   scheduleType: z.enum(['ROTATING', 'MONDAY_TO_FRIDAY']),
   cycle: z.array(z.string().nullable()).min(1, "El ciclo debe tener al menos un turno."),
 });
 
-const patternsFormSchema = z.object({
-  patterns: z.array(shiftPatternSchema),
-});
 
 function RulesTabContent() {
     return (
@@ -287,29 +294,171 @@ function PatternsTabContent({ initialPatterns }: { initialPatterns: ShiftPattern
 export default function ScheduleSettingsPage() {
     const firestore = useFirestore();
     const { data: initialPatterns, isLoading: patternsLoading } = useCollection<ShiftPattern>(useMemo(() => firestore ? collection(firestore, 'shiftPatterns') : null, [firestore]));
+    const { data: cargos, isLoading: cargosLoading } = useCollection<GenericOption>(useMemo(() => firestore ? collection(firestore, 'cargos') : null, [firestore]));
+    
+    const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+    const { toast } = useToast();
 
-    if (patternsLoading) {
+    const addForm = useForm<z.infer<typeof newPatternSchema>>({
+        resolver: zodResolver(newPatternSchema),
+        defaultValues: {
+            jobTitle: '',
+            scheduleType: 'ROTATING',
+            cycle: Array(15).fill(''),
+        }
+    });
+
+    const { control: addFormControl, handleSubmit: handleAddSubmit, reset: resetAddForm } = addForm;
+    const { fields: cycleFields } = useFieldArray({
+        control: addFormControl,
+        name: 'cycle',
+    });
+
+    const availableCargos = useMemo(() => {
+        if (!cargos || !initialPatterns) return [];
+        const existingJobTitles = new Set(initialPatterns.map(p => p.jobTitle));
+        return cargos.filter(c => !existingJobTitles.has(c.name)).map(c => ({ label: c.name, value: c.name }));
+    }, [cargos, initialPatterns]);
+
+    const onAddSubmit = async (data: z.infer<typeof newPatternSchema>) => {
+        if (!firestore) return;
+
+        const cleanedPattern = {
+            ...data,
+            cycle: data.cycle.map(s => s === 'LIB' ? null : s?.toUpperCase() || null).filter(s => s !== '' && s !== undefined)
+        };
+
+        if (cleanedPattern.cycle.length === 0) {
+            addForm.setError('cycle', { type: 'manual', message: 'El ciclo no puede estar vacío.' });
+            return;
+        }
+        
+        try {
+            const patternRef = doc(firestore, 'shiftPatterns', cleanedPattern.jobTitle);
+            await setDoc(patternRef, cleanedPattern);
+            toast({
+                title: "Patrón Creado",
+                description: `Se ha creado un nuevo patrón para el cargo ${cleanedPattern.jobTitle}.`
+            });
+            setIsAddDialogOpen(false);
+            resetAddForm({
+                jobTitle: '',
+                scheduleType: 'ROTATING',
+                cycle: Array(15).fill(''),
+            });
+        } catch (error) {
+            console.error("Error creating pattern:", error);
+            toast({
+                variant: 'destructive',
+                title: "Error al crear",
+                description: "No se pudo crear el nuevo patrón."
+            });
+        }
+    };
+
+    if (patternsLoading || cargosLoading) {
         return <div>Cargando configuración de horarios...</div>;
     }
 
     return (
-        <div className="space-y-6">
-            <h1 className="text-lg font-semibold md:text-2xl">Configuración de Patrones de Turno</h1>
+        <>
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                <DialogContent className="sm:max-w-3xl">
+                    <DialogHeader>
+                        <DialogTitle>Añadir Nuevo Patrón de Turno</DialogTitle>
+                        <DialogDescription>
+                            Selecciona un cargo y define su ciclo de trabajo y tipo de jornada.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <Form {...addForm}>
+                        <form onSubmit={handleAddSubmit(onAddSubmit)} className="space-y-6 pt-4">
+                             <FormField
+                                control={addFormControl}
+                                name="jobTitle"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Cargo</FormLabel>
+                                        <Combobox 
+                                            options={availableCargos}
+                                            placeholder="Seleccionar cargo..."
+                                            searchPlaceholder="Buscar cargo..."
+                                            notFoundMessage="No hay más cargos sin patrón."
+                                            {...field}
+                                        />
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={addFormControl}
+                                name="scheduleType"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Tipo de Jornada</FormLabel>
+                                        <Select onValueChange={field.onChange} value={field.value}>
+                                            <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                            <SelectContent>
+                                                <SelectItem value="ROTATING">Semana Completa (Rotativo)</SelectItem>
+                                                <SelectItem value="MONDAY_TO_FRIDAY">Lunes a Viernes</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <div>
+                                <FormLabel>Patrón de Turnos (Ciclo)</FormLabel>
+                                <p className="text-sm text-muted-foreground">
+                                    Introduce los turnos en secuencia. Usa 'LIB' para días libres. Los campos vacíos se ignorarán.
+                                </p>
+                                <div className="grid grid-cols-5 gap-2 mt-2">
+                                     {cycleFields.map((field, index) => (
+                                        <FormField
+                                            key={field.id}
+                                            control={addFormControl}
+                                            name={`cycle.${index}`}
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormControl>
+                                                        <Input {...field} value={field.value ?? ''} className="text-center h-8" />
+                                                    </FormControl>
+                                                </FormItem>
+                                            )}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                            <DialogFooter>
+                                <Button type="button" variant="ghost" onClick={() => setIsAddDialogOpen(false)}>Cancelar</Button>
+                                <Button type="submit">Crear Patrón</Button>
+                            </DialogFooter>
+                        </form>
+                    </Form>
+                </DialogContent>
+            </Dialog>
 
-            <Tabs defaultValue="patterns">
-                <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="patterns">Patrones de Turnos</TabsTrigger>
-                    <TabsTrigger value="rules">Reglas del Sistema</TabsTrigger>
-                </TabsList>
-                <TabsContent value="patterns" className="mt-6">
-                    {initialPatterns && <PatternsTabContent initialPatterns={initialPatterns} />}
-                </TabsContent>
-                <TabsContent value="rules" className="mt-6">
-                    <RulesTabContent />
-                </TabsContent>
-            </Tabs>
-        </div>
+            <div className="space-y-6">
+                 <div className="flex items-center justify-between">
+                    <h1 className="text-lg font-semibold md:text-2xl">Configuración de Patrones de Turno</h1>
+                    <Button onClick={() => setIsAddDialogOpen(true)}>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Añadir Patrón por Cargo
+                    </Button>
+                </div>
+
+                <Tabs defaultValue="patterns">
+                    <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="patterns">Patrones de Turnos</TabsTrigger>
+                        <TabsTrigger value="rules">Reglas del Sistema</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="patterns" className="mt-6">
+                        {initialPatterns && <PatternsTabContent initialPatterns={initialPatterns} />}
+                    </TabsContent>
+                    <TabsContent value="rules" className="mt-6">
+                        <RulesTabContent />
+                    </TabsContent>
+                </Tabs>
+            </div>
+        </>
     );
 }
-
-    
