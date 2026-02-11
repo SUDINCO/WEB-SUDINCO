@@ -1156,7 +1156,22 @@ export default function MyEvaluationsPage() {
                                                         <TableCell>{displayDate(ev.evaluationDate)}</TableCell>
                                                         <TableCell className="text-sm text-muted-foreground italic">"{ev.observerComments}"</TableCell>
                                                         <TableCell className="text-right">
-                                                            <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/performance-evaluation/${ev.workerCodigo}?reviewEvaluationId=${ev.id}`)}>
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={() => {
+                                                                    if (ev.workerCodigo) {
+                                                                        router.push(`/dashboard/performance-evaluation/${ev.workerCodigo}?reviewEvaluationId=${ev.id}`);
+                                                                    } else {
+                                                                        toast({
+                                                                            variant: 'destructive',
+                                                                            title: 'Error de Datos',
+                                                                            description: 'No se pudo encontrar el código del empleado para esta evaluación.',
+                                                                        });
+                                                                    }
+                                                                }}
+                                                                disabled={!ev.workerCodigo}
+                                                            >
                                                                 <Edit className="mr-2 h-4 w-4" />
                                                                 Re-Evaluar
                                                             </Button>
