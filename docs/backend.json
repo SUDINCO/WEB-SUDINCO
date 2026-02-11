@@ -542,6 +542,32 @@
       },
       "required": ["jobTitle", "scheduleType", "cycle"]
     },
+    "WorkShift": {
+      "title": "Work Shift",
+      "type": "object",
+      "description": "Defines a specific work shift with its start and end times, associated with a job title.",
+      "properties": {
+        "jobTitle": {
+          "type": "string",
+          "description": "The job title this shift applies to."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the shift (e.g., 'Turno Diurno', 'Guardia Nocturna')."
+        },
+        "startTime": {
+          "type": "string",
+          "format": "time",
+          "description": "The start time of the shift (e.g., '06:00')."
+        },
+        "endTime": {
+          "type": "string",
+          "format": "time",
+          "description": "The end time of the shift (e.g., '18:00')."
+        }
+      },
+      "required": ["jobTitle", "name", "startTime", "endTime"]
+    },
     "SavedSchedule": {
       "title": "Saved Schedule",
       "type": "object",
@@ -767,6 +793,10 @@
     "/shiftPatterns/{jobTitle}": {
       "schema": { "$ref": "#/entities/ShiftPattern" },
       "description": "Stores the work schedule patterns for each job title."
+    },
+    "/workShifts/{shiftId}": {
+      "schema": { "$ref": "#/entities/WorkShift" },
+      "description": "Stores all defined work shifts for different job titles."
     },
     "/savedSchedules/{periodId}": {
       "schema": { "$ref": "#/entities/SavedSchedule" },

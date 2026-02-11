@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import Link from "next/link";
@@ -181,6 +182,14 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
       ]
     },
     {
+      module: "Asignaciones",
+      icon: ClipboardCheck,
+      sublinks: [
+        { name: "Horarios de Trabajo", href: "/dashboard/asignaciones/horarios", icon: Clock, id: "work-schedules" },
+        { name: "Ubicaciones de Trabajo", href: "/dashboard/administration/work-locations", icon: MapPin, id: "work-locations" },
+      ]
+    },
+    {
       module: "Administración",
       icon: Shield,
       sublinks: [
@@ -189,7 +198,6 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         { name: "Roles y Permisos", href: "/dashboard/administration/roles", icon: FileText, id: "roles" },
         { name: "Asignación de Líderes", href: "/dashboard/administration/leader-assignment", icon: UserCog, id: "leader-assignment" },
         { name: "Configuración de Patrones de Turno", href: "/dashboard/administration/schedule-settings", icon: SlidersHorizontal, id: "schedule-settings" },
-        { name: "Ubicaciones de Trabajo", href: "/dashboard/administration/work-locations", icon: MapPin, id: "work-locations" },
       ]
     }
   ], []);
@@ -219,11 +227,11 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const activeModule = useMemo(() => navLinks.find(module =>
     (module.sublinks && module.sublinks.some(sublink => isActive(sublink.href))) ||
     (module.groups && module.groups.some(group => group.sublinks.some(sublink => isActive(sublink.href))))
-  )?.module, [navLinks, pathname, isActive]);
-
+  )?.module, [navLinks, pathname]);
+  
   const activeGroup = useMemo(() => activeModule
     ? navLinks.find(m => m.module === activeModule)?.groups?.find(group => group.sublinks.some(sublink => isActive(sublink.href)))?.title
-    : null, [activeModule, navLinks, pathname, isActive]);
+    : null, [activeModule, navLinks, pathname]);
   
   const handleLinkClick = () => {
     if (isSheetOpen) {

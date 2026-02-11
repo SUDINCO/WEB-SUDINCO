@@ -70,13 +70,19 @@ const permissionsMap = [
     ],
   },
   {
+    menu: 'Asignaciones',
+    tabs: [
+        { id: 'work-schedules', name: 'Horarios de Trabajo' },
+        { id: 'work-locations', name: 'Ubicaciones de Trabajo' },
+    ]
+  },
+  {
     menu: 'Administración',
     tabs: [
       { id: 'performance-evaluation', name: 'Evaluación de Desempeño' },
       { id: 'roles', name: 'Roles y Permisos' },
       { id: 'leader-assignment', name: 'Asignación de Líderes' },
-      { id: 'schedule-settings', name: 'Configuración de Horarios' },
-      { id: 'work-locations', name: 'Ubicaciones de Trabajo' },
+      { id: 'schedule-settings', name: 'Configuración de Patrones de Turno' },
     ],
   },
 ];
