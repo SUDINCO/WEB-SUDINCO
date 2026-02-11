@@ -849,7 +849,7 @@ export default function PerformanceEvaluationPage() {
                                                 <History className="mr-2 h-4 w-4" />
                                                 Historial
                                             </Button>
-                                            <Button variant="outline" size="sm" disabled={statusInfo.isCompleted} onClick={() => router.push(`/dashboard/performance-evaluation/${worker.id}`)}>
+                                            <Button variant="outline" size="sm" disabled={statusInfo.isCompleted} onClick={() => router.push(`/dashboard/performance-evaluation/${worker.codigo}`)}>
                                                 <Activity className="mr-2 h-4 w-4" />
                                                 Evaluar
                                             </Button>
