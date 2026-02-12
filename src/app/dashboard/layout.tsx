@@ -54,7 +54,6 @@ import { useRouter, usePathname } from "next/navigation";
 import { useAuth, useUser } from "@/firebase";
 import { signOut } from "firebase/auth";
 import { toast } from "@/hooks/use-toast";
-import { ForcePasswordChangeDialog } from "@/components/force-password-change-dialog";
 import { BottomNav } from "@/components/dashboard/bottom-nav";
 import { AppsMenu } from "@/components/dashboard/apps-menu";
 import { cn } from "@/lib/utils";
@@ -74,13 +73,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const auth = useAuth();
   const inactivityTimer = useRef<NodeJS.Timeout>();
 
-  const [showPasswordChangeDialog, setShowPasswordChangeDialog] = useState(false);
-  
   const isLoading = userLoading || profileLoading;
-
-  const handlePasswordChanged = () => {
-    setShowPasswordChangeDialog(false);
-  };
 
   const handleSignOut = useCallback(() => {
     if (auth) {
@@ -103,9 +96,10 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (user && userProfile?.requiresPasswordChange) {
-      setShowPasswordChangeDialog(true);
+      router.push('/force-password-change');
     }
-  }, [user, userProfile]);
+  }, [user, userProfile, router]);
+
 
   useEffect(() => {
     const events = ['mousemove', 'keydown', 'click', 'scroll'];
@@ -325,7 +319,6 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         speed={200}
         shadow="0 0 10px #2563EB,0 0 5px #2563EB"
       />
-      <ForcePasswordChangeDialog open={showPasswordChangeDialog} onPasswordChanged={handlePasswordChanged} />
       
       {/* Container for both mobile and desktop views */}
       <div className="h-full">
@@ -460,8 +453,8 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // If done loading but no user, show spinner while redirect effect runs.
-  if (!user) {
+  // If done loading but no user, or if password change is required, show spinner while redirect effect runs.
+  if (!user || userProfile?.requiresPasswordChange) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <LoaderCircle className="h-10 w-10 animate-spin text-primary" />
