@@ -1100,7 +1100,7 @@ export default function MyEvaluationsPage() {
                         <Textarea
                             ref={justificationTextRef}
                             placeholder="Escribe la justificación aquí..."
-                            defaultValue={justificationState ? getMassValues(`evaluations.${justificationState.index}.${justificationState.criterionName}Justification`) : ''}
+                            defaultValue={justificationState ? getMassValues(`evaluations.${justificationState.index}.${criterionName}Justification`) : ''}
                         />
                     </div>
                     <DialogFooter>
@@ -1161,7 +1161,7 @@ export default function MyEvaluationsPage() {
                                                                 size="sm"
                                                                 onClick={() => {
                                                                     if (ev.workerId) {
-                                                                        router.push(`/dashboard/performance-evaluation/${ev.workerId}?reviewEvaluationId=${ev.id}`);
+                                                                        router.push(`/dashboard/performance-evaluation?workerId=${ev.workerId}&reviewEvaluationId=${ev.id}`);
                                                                     } else {
                                                                         toast({
                                                                             variant: 'destructive',
@@ -1225,7 +1225,7 @@ export default function MyEvaluationsPage() {
                                                             {worker.statusInfo.status === 'pending_observation' ? (
                                                                 <Badge variant="secondary" className="bg-purple-100 text-purple-800">Pendiente de Aprobación</Badge>
                                                             ) : (
-                                                                <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/performance-evaluation/${worker.id}`)}>
+                                                                <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/performance-evaluation?workerId=${worker.id}`)}>
                                                                     <Activity className="mr-2 h-4 w-4" />
                                                                     Evaluar
                                                                 </Button>
