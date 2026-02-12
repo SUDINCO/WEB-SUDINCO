@@ -2,7 +2,7 @@
 
 "use client";
 
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -57,7 +57,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Activity, AlertTriangle, CheckCircle, Clock, LoaderCircle, Download, History, MessageSquareWarning, Edit, Trash2, Users } from 'lucide-react';
 import { useCollection, useFirestore, useUser } from '@/firebase';
-import { collection, query, where, getDocs, doc, deleteDoc, writeBatch } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, deleteDoc, writeBatch, orderBy, limit } from 'firebase/firestore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { generateEvaluationPDF } from '@/lib/pdf-generator';
 import { PersonDTO } from '@/lib/contracts';
@@ -513,6 +513,14 @@ export default function MyEvaluationsPage() {
     const { control: massEvalControl, reset: massEvalReset, watch: massEvalWatch, getValues: getMassValues, setValue: setMassValue, handleSubmit: handleMassSubmit, formState: { isSubmitting: isMassSubmitting } } = massEvalForm;
     const { fields } = useFieldArray({ control: massEvalControl, name: "evaluations" });
     const watchedMassEval = massEvalWatch();
+    
+    useEffect(() => {
+        if (justificationState && justificationTextRef.current) {
+            const { index, criterionName } = justificationState;
+            const value = getMassValues(`evaluations.${index}.${criterionName}Justification`);
+            justificationTextRef.current.value = (value as string) || '';
+        }
+    }, [justificationState, getMassValues]);
 
     const reviewsRequested = useMemo(() => {
         if (!allEvaluations || !authUser || !allWorkers) return [];
@@ -1100,7 +1108,6 @@ export default function MyEvaluationsPage() {
                         <Textarea
                             ref={justificationTextRef}
                             placeholder="Escribe la justificación aquí..."
-                            defaultValue={justificationState ? getMassValues(`evaluations.${justificationState.index}.${criterionName}Justification`) : ''}
                         />
                     </div>
                     <DialogFooter>

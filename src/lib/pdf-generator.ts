@@ -1,13 +1,10 @@
 import jsPDF from 'jspdf';
-import autoTable, { type CellHookData } from 'jspdf-autotable';
+import 'jspdf-autotable';
+import { type CellHookData } from 'jspdf-autotable';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { PersonDTO, EvaluationDTO } from './contracts';
 
-
-interface jsPDFWithAutoTable extends jsPDF {
-  autoTable: (options: any) => jsPDFWithAutoTable;
-}
 
 const formatDate = (dateStr: string | undefined | number) => {
     if (!dateStr) return 'N/A';
@@ -33,7 +30,7 @@ const ratings: Record<string, { label: string, color: [number, number, number] }
 };
 
 export const generateEvaluationPDF = (worker: PersonDTO, evaluator: PersonDTO, evaluation: EvaluationDTO) => {
-    const doc = new jsPDF() as jsPDFWithAutoTable;
+    const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 14;
 
@@ -54,7 +51,7 @@ export const generateEvaluationPDF = (worker: PersonDTO, evaluator: PersonDTO, e
     doc.setFontSize(9);
     doc.text('DATOS DEL COLABORADOR', pageWidth / 2, lastY + 5, { align: 'center' });
     lastY += 7;
-    doc.autoTable({
+    (doc as any).autoTable({
         startY: lastY,
         body: [
             [
@@ -80,7 +77,7 @@ export const generateEvaluationPDF = (worker: PersonDTO, evaluator: PersonDTO, e
     doc.rect(margin, lastY, pageWidth - margin * 2, 7, 'F');
     doc.text('DATOS DEL EVALUADOR', pageWidth / 2, lastY + 5, { align: 'center' });
     lastY += 7;
-    doc.autoTable({
+    (doc as any).autoTable({
         startY: lastY,
         body: [[
             { content: `Cédula: ${evaluator.cedula || 'N/A'}`, styles: { fontStyle: 'bold' } },
@@ -104,7 +101,7 @@ export const generateEvaluationPDF = (worker: PersonDTO, evaluator: PersonDTO, e
         ['ED', 'EN DESARROLLO', 'Demuestra comportamientos asociados a la competencia pero necesita apoyo.'],
         ['TI', 'TIENE', 'Domina con un gran nivel de experticia los comportamientos asociados a la competencia.'],
     ];
-    doc.autoTable({
+    (doc as any).autoTable({
         startY: lastY,
         head: [['ABREVIA', 'CRITERIO', 'DESCRIPCIÓN']],
         body: gradesData,
@@ -151,7 +148,7 @@ export const generateEvaluationPDF = (worker: PersonDTO, evaluator: PersonDTO, e
         }
 
         const selectedRating = (evaluation as any)[criterion.key];
-        const justification = (evaluation as any)[`\'\'\'${criterion.key}Justification\'\'\'`] || '';
+        const justification = (evaluation as any)[`'${criterion.key}Justification'`] || '';
 
         // Draw containing box
         doc.setDrawColor(200);
@@ -225,11 +222,11 @@ export const generateEvaluationPDF = (worker: PersonDTO, evaluator: PersonDTO, e
     doc.text('Evaluación General', evalX + evalWidth / 2, lastY + 7, { align: 'center' });
     doc.setFontSize(22);
     doc.setTextColor(221, 14, 58); // primary color
-    doc.text(`\'\'\'${evaluation.generalEvaluation}%\'\'\'`, evalX + evalWidth / 2, lastY + 17, { align: 'center' });
+    doc.text(`'${evaluation.generalEvaluation}%'`, evalX + evalWidth / 2, lastY + 17, { align: 'center' });
     doc.setTextColor(0);
 
     // Save the PDF
-    const fileName = `Evaluacion_\'\'\'${worker.nombreCompleto.replace(/\s+/g, '_')}\'\'\'.pdf`;
+    const fileName = `Evaluacion_'${worker.nombreCompleto.replace(/\s+/g, '_')}'.pdf`;
     doc.save(fileName);
 };
 
@@ -290,7 +287,7 @@ const getInitials = (text: string = '') => {
     return text.split(' ').filter(Boolean).map(word => word[0]).join('').toUpperCase();
 };
 
-const addPage1Header = (doc: jsPDFWithAutoTable, approval: HiringApproval) => {
+const addPage1Header = (doc: jsPDF, approval: HiringApproval) => {
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 10;
     let lastY = 12;
@@ -303,11 +300,11 @@ const addPage1Header = (doc: jsPDFWithAutoTable, approval: HiringApproval) => {
     
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
-    doc.text(`Fecha de Emisión: \'\'\'${format(new Date(approval.createdAt), 'dd/MM/yyyy')}\'\'\'`, margin, lastY);
+    doc.text(`Fecha de Emisión: '${format(new Date(approval.createdAt), 'dd/MM/yyyy')}'`, margin, lastY);
     
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
-    const codeText = `Código: SUD-PLF-\'\'\'${new Date(approval.createdAt).getFullYear()}\'\'\'-\'\'\'${approval.id.slice(0, 4)}\'\'\'`;
+    const codeText = `Código: SUD-PLF-'${new Date(approval.createdAt).getFullYear()}'-'${approval.id.slice(0, 4)}'`;
     doc.text(codeText, pageWidth - margin, lastY, { align: 'right' });
     
     lastY += 8;
@@ -319,7 +316,7 @@ const addPage1Header = (doc: jsPDFWithAutoTable, approval: HiringApproval) => {
     return lastY;
 };
 
-const addPage2Header = (doc: jsPDFWithAutoTable, approval: HiringApproval) => {
+const addPage2Header = (doc: jsPDF, approval: HiringApproval) => {
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 10;
     let lastY = 12;
@@ -341,7 +338,7 @@ const addSignatureBlock = (doc: jsPDF, x: number, y: number, signatory: Signator
     const signatureWidth = 65;
     doc.setFontSize(8);
     doc.setFont('helvetica', 'bold');
-    doc.text(`\'\'\'${signatory.nombres} \'\'\'${signatory.apellidos}\'\'\'.toUpperCase()`, x + signatureWidth / 2, y - 3, { align: 'center' });
+    doc.text(`'${signatory.nombres} '${signatory.apellidos}'.toUpperCase()`, x + signatureWidth / 2, y - 3, { align: 'center' });
     
     doc.setDrawColor(0);
     doc.setLineWidth(0.2);
@@ -372,7 +369,7 @@ export const generateHiringApprovalPDF = (
         orientation: 'landscape',
         unit: 'mm',
         format: 'a4'
-    }) as jsPDFWithAutoTable;
+    });
 
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
@@ -397,8 +394,8 @@ export const generateHiringApprovalPDF = (
         doc.setTextColor(0);
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(7);
-        const effectiveDateText = `Fecha de Ingreso Efectiva: \'\'\'${formatDate(approval.processInfo.effectiveHiringDate)}\'\'\'`;
-        const justificationText = `Justificación: \'\'\'${approval.processInfo.justificationForRetroactive || 'No se proporcionó justificación.'}\'\'\'`;
+        const effectiveDateText = `Fecha de Ingreso Efectiva: '${formatDate(approval.processInfo.effectiveHiringDate)}'`;
+        const justificationText = `Justificación: '${approval.processInfo.justificationForRetroactive || 'No se proporcionó justificación.'}'`;
         
         doc.text(effectiveDateText, margin + 4, page1Y + 9);
         doc.text(justificationText, margin + 4, page1Y + 13, { maxWidth: pageWidth - margin * 2 - 8 });
@@ -411,20 +408,20 @@ export const generateHiringApprovalPDF = (
     const cargo = approval.processInfo?.cargo || '';
     const year = new Date(approval.createdAt).getFullYear().toString().slice(-2);
     const sequence = approval.id.slice(0, 4).toUpperCase();
-    const codEval = `\'\'\'${getInitials(empresa)}\'\'\'-\'\'\'${getInitials(cargo)}\'\'\'-\'\'\'${year}\'\'\'-\'\'\'${sequence}\'\'\'`;
+    const codEval = `'${getInitials(empresa)}'-'${getInitials(cargo)}'-'${year}'-'${sequence}'`;
     
     const tableBody = [[
-        `\'\'\'${candidate.apellidos}\'\'\' \'\'\'${candidate.nombres}\'\'\'`,
+        `'${candidate.apellidos}' '${candidate.nombres}'`,
         approval.processInfo?.cargo || 'N/A',
         'N/A', 
         'N/A', 
         approval.processInfo?.isRetroactive ? formatDate(approval.processInfo.effectiveHiringDate) : (approval.bossSelection?.selectionDate ? formatDate(approval.bossSelection.selectionDate) : 'N/A'),
-        evaluation.aspiracionSalarial ? `$\'\'\'${evaluation.aspiracionSalarial.toFixed(2)}\'\'\'` : 'N/A',
+        evaluation.aspiracionSalarial ? `$'${evaluation.aspiracionSalarial.toFixed(2)}'` : 'N/A',
         codEval,
         approval.bossSelection?.bossComments || 'APROBADO'
     ]];
 
-    doc.autoTable({
+    (doc as any).autoTable({
         startY: page1Y,
         head: [['NOMBRE CANDIDATO', 'PUESTO', 'C. COSTOS', 'CAMP.', 'INGRESO', 'SUELDO', 'COD EVAL', 'OBSERVACIONES']],
         body: tableBody,
@@ -479,15 +476,15 @@ export const generateHiringApprovalPDF = (
     const competenciasResultado = ((evaluation.competencias - 1) / 4) * competenciasPct;
 
     const mainTableBody2 = [[
-        `\'\'\'${candidate.apellidos}\'\'\' \'\'\'${candidate.nombres}\'\'\'`,
+        `'${candidate.apellidos}' '${candidate.nombres}'`,
         approval.processInfo?.cargo || 'N/A',
-        `\'\'\'${formacionResultado.toFixed(0)}\'\'\'%`,
-        `\'\'\'${conocimientosResultado.toFixed(0)}\'\'\'%`,
-        `\'\'\'${experienciaResultado.toFixed(0)}\'\'\'%`,
-        `\'\'\'${competenciasResultado.toFixed(0)}\'\'\'%`,
+        `'${formacionResultado.toFixed(0)}'%`,
+        `'${conocimientosResultado.toFixed(0)}'%`,
+        `'${experienciaResultado.toFixed(0)}'%`,
+        `'${competenciasResultado.toFixed(0)}'%`,
     ]];
 
-    doc.autoTable({
+    (doc as any).autoTable({
         startY: page2Y,
         head: [['NOMBRE CANDIDATO', 'PUESTO', 'FORMACIÓN ACADÉMICA', 'CONOCIMIENTOS TÉCNICOS', 'EXPERIENCIA', 'COMPETENCIAS']],
         body: mainTableBody2,
@@ -504,13 +501,13 @@ export const generateHiringApprovalPDF = (
     ];
 
     const ponderacionBody = [
-        ['FORMACIÓN ACADÉMICA', `\'\'\'${formacionPct}\'\'\'%`, 'Cumple(1)/No Cumple(0)', evaluation.formacionAcademica, `\'\'\'${formacionResultado.toFixed(0)}\'\'\'%`],
-        ['CONOCIMIENTOS TÉCNICOS', `\'\'\'${conocimientosPct}\'\'\'%`, '1 - 10', evaluation.conocimientosTecnicos, `\'\'\'${experienciaResultado.toFixed(0)}\'\'\'%`],
-        ['EXPERIENCIA', `\'\'\'${experienciaPct}\'\'\'%`, '0 - 20', evaluation.experiencia, `\'\'\'${experienciaResultado.toFixed(0)}\'\'\'%`],
-        ['COMPETENCIAS', `\'\'\'${competenciasPct}\'\'\'%`, '1 - 5', evaluation.competencias, `\'\'\'${competenciasResultado.toFixed(0)}\'\'\'%`],
+        ['FORMACIÓN ACADÉMICA', `'${formacionPct}'%`, 'Cumple(1)/No Cumple(0)', evaluation.formacionAcademica, `'${formacionResultado.toFixed(0)}'%`],
+        ['CONOCIMIENTOS TÉCNICOS', `'${conocimientosPct}'%`, '1 - 10', evaluation.conocimientosTecnicos, `'${experienciaResultado.toFixed(0)}'%`],
+        ['EXPERIENCIA', `'${experienciaPct}'%`, '0 - 20', evaluation.experiencia, `'${experienciaResultado.toFixed(0)}'%`],
+        ['COMPETENCIAS', `'${competenciasPct}'%`, '1 - 5', evaluation.competencias, `'${competenciasResultado.toFixed(0)}'%`],
     ];
 
-    doc.autoTable({
+    (doc as any).autoTable({
         startY: page2Y,
         head: ponderacionHead,
         body: ponderacionBody,
@@ -531,10 +528,10 @@ export const generateHiringApprovalPDF = (
     const summaryTableStartY = (doc as any).lastAutoTable.finalY + 5;
     const statusLabel = evaluation.status === 'C' ? 'CONTRATABLE' : 'NO CONTRATABLE';
 
-    doc.autoTable({
+    (doc as any).autoTable({
         startY: summaryTableStartY,
         head: [['EVALUACIÓN GENERAL', 'STATUS']],
-        body: [[`\'\'\'${evaluation.notaGeneral}\'\'\'%`, statusLabel]],
+        body: [[`'${evaluation.notaGeneral}'%`, statusLabel]],
         theme: 'grid',
         tableWidth: (pageWidth - margin * 2) * 0.7,
         margin: { left: margin },
@@ -571,13 +568,13 @@ export const generateHiringApprovalPDF = (
         doc.setPage(i);
         doc.setFontSize(8);
         doc.text(
-            `Página \'\'\'${i}\'\'\' de \'\'\'${pageCount}\'\'\'`,
+            `Página '${i}' de '${pageCount}'`,
             pageWidth - margin,
             pageHeight - 10,
             { align: 'right' }
         );
     }
     
-    const fileName = `Aprobacion_\'\'\'${candidate.apellidos}\'\'\'_\'\'\'${candidate.nombres}\'\'\'.pdf`;
+    const fileName = `Aprobacion_'${candidate.apellidos}'_'${candidate.nombres}'.pdf`;
     doc.save(fileName);
 };
