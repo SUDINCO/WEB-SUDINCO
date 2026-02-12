@@ -36,7 +36,7 @@ service cloud.firestore {
         return false;
       }
       let userData = getUserData();
-      return userData.isAdmin == true;
+      return userData.rol == 'MASTER' || userData.rol == 'ADMINISTRADOR';
     }
     
     // --- Collection Rules ---
@@ -179,3 +179,5 @@ service cloud.firestore {
     }
   }
 }
+
+    
