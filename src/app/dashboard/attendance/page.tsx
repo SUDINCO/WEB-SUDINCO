@@ -39,6 +39,7 @@ import {
   AlertCircle,
   XCircle,
   Hourglass,
+  Info,
 } from 'lucide-react';
 import { useUser, useFirestore, useCollection } from '@/firebase';
 import {
@@ -68,6 +69,10 @@ import {
   subMonths,
   getDay,
   isSameDay,
+  startOfWeek,
+  endOfWeek,
+  subWeeks,
+  addWeeks,
 } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { toast } from '@/hooks/use-toast';
@@ -110,6 +115,12 @@ type WorkLocation = {
   longitude: number;
   radius: number;
 };
+
+interface WorkShift {
+  name: string;
+  startTime: string;
+  endTime: string;
+}
 
 function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
   const R = 6371e3; // metres
@@ -227,154 +238,126 @@ function TimeTracker({ userProfile, schedule, onClockIn, onClockOut, latestRecor
   );
 }
 
-function MonthlySchedule({ schedule, month, onMonthChange, attendanceByDay, onDayClick }: { 
-  schedule: Map<string, string | null> | undefined,
-  month: Date,
-  onMonthChange: (newMonth: Date) => void,
-  attendanceByDay: Map<string, AttendanceRecord>,
-  onDayClick: (day: Date, record?: AttendanceRecord, shift?: string | null) => void,
+function WeeklySchedule({
+  schedule,
+  workShifts,
+  attendanceByDay,
+  onInfoClick,
+}: {
+  schedule: Map<string, string | null> | undefined;
+  workShifts: WorkShift[];
+  attendanceByDay: Map<string, AttendanceRecord>;
+  onInfoClick: (day: Date, record?: AttendanceRecord, shift?: string | null) => void;
 }) {
+  const [currentDate, setCurrentDate] = useState(new Date());
+
+  const weekDays = useMemo(() => {
+    const start = startOfWeek(currentDate, { weekStartsOn: 1 }); // Monday
+    const end = endOfWeek(currentDate, { weekStartsOn: 1 }); // Sunday
+    return eachDayOfInterval({ start, end });
+  }, [currentDate]);
+
+  const weekTitle = useMemo(() => {
+      const start = weekDays[0];
+      const end = weekDays[weekDays.length - 1];
+      
+      const startMonthFmt = format(start, 'MMMM', { locale: es });
+      const endMonthFmt = format(end, 'MMMM', { locale: es });
+      const yearFmt = format(start, 'yyyy');
+      
+      const title = startMonthFmt === endMonthFmt ? `${startMonthFmt} de ${yearFmt}` : `${startMonthFmt} / ${endMonthFmt} de ${yearFmt}`;
+      const subtitle = `Semana del ${format(start, 'd')} al ${format(end, "d 'de' MMMM")}`;
+
+      return { title, subtitle };
+  }, [weekDays]);
+
+
+  const handlePrevWeek = () => setCurrentDate(subWeeks(currentDate, 1));
+  const handleNextWeek = () => setCurrentDate(addWeeks(currentDate, 1));
+
+  const shiftTimesMap = useMemo(() => {
+    const map = new Map<string, string>();
+    if (workShifts) {
+        workShifts.forEach(shift => {
+          map.set(shift.name, `${shift.startTime} - ${shift.endTime}`);
+        });
+    }
+    return map;
+  }, [workShifts]);
+
   if (!schedule) {
     return <Card><CardContent className="p-4 text-center text-muted-foreground">Cargando horario...</CardContent></Card>;
   }
 
-  const shifts = new Map<string, string>();
-  const daysInMonth = eachDayOfInterval({
-    start: startOfMonth(month),
-    end: endOfMonth(month),
-  });
-
-  daysInMonth.forEach(day => {
-    const dayKey = format(day, 'yyyy-MM-dd');
-    const shift = schedule.get(dayKey);
-    const displayShift = shift === null ? 'LIB' : shift;
-    if (displayShift) {
-        shifts.set(dayKey, displayShift);
-    }
-  });
-
-  const DayWithShift = ({ date, shift, record, onClick }: { date: Date, shift: string | null | undefined, record: AttendanceRecord | undefined, onClick: () => void }) => {
-    const isTodayFlag = isSameDay(date, new Date());
-    const isPastDay = isBefore(date, startOfDay(new Date()));
-    
-    let workedDuration = null;
-    if (record?.entryTime && record?.exitTime) {
-        const diff = differenceInSeconds(new Date(record.exitTime), new Date(record.entryTime));
-        const hours = Math.floor(diff / 3600);
-        const minutes = Math.floor((diff % 3600) / 60);
-        workedDuration = `${String(hours).padStart(2, '0')}h ${String(minutes).padStart(2, '0')}m`;
-    }
-
-    let dayStatus: 'completed' | 'in-progress' | 'absent' | 'day-off' | null = null;
-    if (record?.status === 'completed' || record?.status === 'on-time' || record?.status === 'late') {
-        dayStatus = 'completed';
-    } else if (record?.status === 'in-progress') {
-        dayStatus = 'in-progress';
-    } else if (isPastDay && shift && shift !== 'LIB' && !record) {
-        dayStatus = 'absent';
-    } else if (!shift || shift === 'LIB') {
-        dayStatus = 'day-off';
-    }
-
-
-    return (
-      <button
-        type="button"
-        onClick={onClick}
-        disabled={dayStatus === 'day-off' && !record}
-        className={cn(
-            "relative flex flex-col items-start justify-start h-24 md:h-36 w-full p-1 text-xs border-t border-r text-left transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 disabled:cursor-not-allowed",
-            isTodayFlag && "ring-2 ring-primary ring-inset",
-            dayStatus === 'completed' && "bg-green-50 hover:bg-green-100",
-            dayStatus === 'in-progress' && "bg-yellow-50 hover:bg-yellow-100",
-            dayStatus === 'absent' && "bg-red-50 hover:bg-red-100",
-            dayStatus === 'day-off' && "bg-gray-50",
-            !dayStatus && "hover:bg-accent/50",
-        )}
-      >
-        <div className={cn("font-semibold", isTodayFlag && "text-primary")}>{date.getDate()}</div>
-        {shift && (
-          <Badge 
-            variant={shift === 'LIB' ? 'outline' : 'secondary'} 
-            className={cn(
-                "mt-1 text-[10px] px-1.5 py-0.5 h-auto font-bold",
-                shift === 'VAC' && "bg-yellow-400 text-yellow-900",
-                shift && shift.startsWith('N') && "bg-gray-700 text-white",
-                shift && shift.startsWith('T') && "bg-orange-400 text-orange-900",
-                shift && shift.startsWith('M') && "bg-blue-400 text-white",
-            )}
-          >
-            {shift}
-          </Badge>
-        )}
-        {record?.entryTime && (
-             <div className="hidden md:block text-[10px] leading-tight mt-2 w-full space-y-1 text-left px-1">
-                 {workedDuration && (
-                    <div className="flex items-center gap-1 font-semibold">
-                        <Clock className="h-3 w-3 shrink-0" />
-                        <span>{workedDuration}</span>
-                    </div>
-                 )}
-                 <div className="flex items-start gap-1">
-                    <LogIn className="h-3 w-3 shrink-0 mt-0.5 text-green-600"/>
-                    <div>
-                        <span>{format(new Date(record.entryTime), 'HH:mm')}</span>
-                        <p className="text-muted-foreground truncate">{record.entryWorkLocationName || 'N/A'}</p>
-                    </div>
-                 </div>
-                 {record.exitTime && (
-                    <div className="flex items-start gap-1">
-                        <LogOut className="h-3 w-3 shrink-0 mt-0.5 text-red-600"/>
-                        <div>
-                            <span>{format(new Date(record.exitTime), 'HH:mm')}</span>
-                            <p className="text-muted-foreground truncate">{record.exitWorkLocationName || 'N/A'}</p>
-                        </div>
-                    </div>
-                 )}
-             </div>
-        )}
-      </button>
-    );
-  };
-
-  const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-  const firstDayOfMonth = startOfMonth(month);
-  const startingDayOfWeek = getDay(firstDayOfMonth);
-  const emptyCells = Array(startingDayOfWeek).fill(null);
-
   return (
     <Card>
-      <CardHeader className="flex flex-col sm:flex-row items-center justify-between gap-2">
-        <CardTitle className="capitalize text-xl">{format(month, 'MMMM yyyy', { locale: es })}</CardTitle>
-        <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={() => onMonthChange(subMonths(month, 1))}>
-                <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => onMonthChange(new Date())}>Hoy</Button>
-            <Button variant="outline" size="icon" onClick={() => onMonthChange(addMonths(month, 1))}>
-                <ChevronRight className="h-4 w-4" />
-            </Button>
+      <CardHeader>
+        <div className="flex justify-between items-center">
+            <div>
+                <CardTitle className="flex items-center gap-2"><CalendarDays className="h-5 w-5 text-primary" />Cronograma Semanal</CardTitle>
+                <CardDescription>{weekTitle.title} - {weekTitle.subtitle}</CardDescription>
+            </div>
+            <div className="flex gap-2">
+                <Button variant="outline" size="icon" onClick={handlePrevWeek}><ChevronLeft className="h-4 w-4" /></Button>
+                <Button variant="outline" size="icon" onClick={handleNextWeek}><ChevronRight className="h-4 w-4" /></Button>
+            </div>
         </div>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-7 border-l border-b">
-          {dayNames.map(day => (
-            <div key={day} className="text-center font-bold text-xs p-2 border-t border-r bg-muted/50">{day}</div>
-          ))}
-          {emptyCells.map((_, index) => (
-            <div key={`empty-${index}`} className="h-24 md:h-36 border-t border-r bg-muted/20"></div>
-          ))}
-          {daysInMonth.map((day) => {
-            const dayKey = format(day, 'yyyy-MM-dd');
-            const shift = shifts.get(dayKey);
-            const record = attendanceByDay.get(dayKey);
-            return <DayWithShift key={day.toString()} date={day} shift={shift} record={record} onClick={() => onDayClick(day, record, shift)} />
-          })}
-        </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Día</TableHead>
+              <TableHead>Horario</TableHead>
+              <TableHead>Entrada</TableHead>
+              <TableHead>Salida</TableHead>
+              <TableHead className="text-right">Info</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {weekDays.map(day => {
+              const dayKey = format(day, 'yyyy-MM-dd');
+              const shift = schedule.get(dayKey);
+              const scheduleTime = shift ? shiftTimesMap.get(shift) : null;
+              const record = attendanceByDay.get(dayKey);
+              const entryTime = record?.entryTime ? format(new Date(record.entryTime), 'HH:mm') : '-';
+              const exitTime = record?.exitTime ? format(new Date(record.exitTime), 'HH:mm') : '-';
+              
+              let displayHorario = 'Libre';
+              if (scheduleTime) {
+                displayHorario = scheduleTime;
+              } else if (shift) { // Shows VAC, PM, etc.
+                const absenceTypes: {[key: string]: string} = {
+                    'VAC': 'Vacaciones', 'PM': 'Permiso Médico', 'LIC': 'Licencia',
+                    'SUS': 'Suspensión', 'RET': 'Retiro', 'FI': 'Falta Injustificada', 'TRA': 'Traslado'
+                };
+                displayHorario = absenceTypes[shift] || shift;
+              }
+
+              return (
+                <TableRow key={dayKey}>
+                  <TableCell>
+                    <div className="font-medium capitalize">{format(day, 'E', { locale: es })}</div>
+                    <div className="text-sm text-muted-foreground">{format(day, 'd/M')}</div>
+                  </TableCell>
+                  <TableCell>{displayHorario}</TableCell>
+                  <TableCell>{entryTime}</TableCell>
+                  <TableCell>{exitTime}</TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="ghost" size="icon" onClick={() => onInfoClick(day, record, shift)}>
+                      <Info className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
       </CardContent>
     </Card>
   );
 }
+
 
 function AttendanceDetailDialog({ dayInfo, open, onOpenChange }: { dayInfo: { date: Date, record?: AttendanceRecord, shift?: string | null } | null, open: boolean, onOpenChange: (open: boolean) => void }) {
     if (!dayInfo) return null;
@@ -463,7 +446,6 @@ function AttendancePageContent() {
   const [latestRecord, setLatestRecord] = useState<AttendanceRecord | null>(null);
   const [isClocking, setIsClocking] = useState(false);
   
-  const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDayInfo, setSelectedDayInfo] = useState<{ date: Date, record?: AttendanceRecord, shift?: string | null } | null>(null);
 
   const context = useScheduleState();
@@ -472,6 +454,7 @@ function AttendancePageContent() {
   const { data: users, isLoading: usersLoading } = useCollection<UserProfile>(useMemo(() => firestore ? collection(firestore, 'users') : null, [firestore]));
   const { data: vacations, isLoading: vacationsLoading } = useCollection<Vacation>(useMemo(() => firestore ? collection(firestore, 'vacationRequests') : null, [firestore]));
   const { data: workLocations, isLoading: locationsLoading } = useCollection<WorkLocation>(useMemo(() => firestore ? collection(firestore, 'workLocations') : null, [firestore]));
+  const { data: workShifts, isLoading: workShiftsLoading } = useCollection<WorkShift>(useMemo(() => firestore ? collection(firestore, 'workShifts') : null, [firestore]));
   
   const { data: attendanceRecords, isLoading: attendanceLoading } = useCollection<AttendanceRecord>(useMemo(() => {
     if (!firestore || !userProfile) return null;
@@ -548,7 +531,6 @@ function AttendancePageContent() {
         if (recordDate) {
             const dateKey = format(recordDate, 'yyyy-MM-dd');
             const entryTime = (rec.entryTime as any)?.toDate();
-            // Get the latest record for a given day
             if (!map.has(dateKey) || (entryTime && map.get(dateKey)!.entryTime! < entryTime)) {
                 map.set(dateKey, {
                     ...rec,
@@ -562,154 +544,101 @@ function AttendancePageContent() {
     return map;
   }, [attendanceRecords]);
 
-    const getCurrentPosition = (): Promise<GeolocationPosition> => {
-        return new Promise((resolve, reject) => {
-            if (!navigator.geolocation) {
-                reject(new Error('La geolocalización no es soportada por este navegador.'));
-            }
-            navigator.geolocation.getCurrentPosition(resolve, reject, {
-                enableHighAccuracy: true,
-                timeout: 10000, // 10 seconds
-                maximumAge: 0
-            });
-        });
-    };
+  const getCurrentPosition = (): Promise<GeolocationPosition> => {
+      return new Promise((resolve, reject) => {
+          if (!navigator.geolocation) {
+              reject(new Error('La geolocalización no es soportada por este navegador.'));
+          }
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+              enableHighAccuracy: true,
+              timeout: 10000,
+              maximumAge: 0
+          });
+      });
+  };
 
-  const handleClockIn = async () => {
-    if (!userProfile || !firestore || latestRecord) return;
+  const handleClockAction = async (action: 'in' | 'out') => {
+    if (!userProfile || !firestore) return;
+    if (action === 'in' && latestRecord) return;
+    if (action === 'out' && !latestRecord) return;
+
     setIsClocking(true);
+    let position = null;
+    let locationName = "Ubicación no registrada";
+
     try {
         toast({ title: 'Obteniendo ubicación...', description: 'Por favor, autoriza el acceso a tu ubicación.' });
-        const position = await getCurrentPosition();
-        const { latitude, longitude } = position.coords;
-
-        if (!workLocations) {
-            toast({ variant: 'destructive', title: 'Error', description: 'No se pudieron cargar las ubicaciones de trabajo.' });
-            setIsClocking(false);
-            return;
-        }
-
-        let validLocation: WorkLocation | null = null;
-        for (const location of workLocations) {
-            const distance = getDistance(latitude, longitude, location.latitude, location.longitude);
-            if (distance <= location.radius) {
-                validLocation = location;
-                break;
+        position = await getCurrentPosition();
+        
+        if (position && workLocations) {
+            for (const location of workLocations) {
+                const distance = getDistance(position.coords.latitude, position.coords.longitude, location.latitude, location.longitude);
+                if (distance <= location.radius) {
+                    locationName = location.name;
+                    break;
+                }
             }
         }
-        
-        const locationName = validLocation ? validLocation.name : "Ubicación no registrada";
-
-        const newRecord = {
-            collaboratorId: userProfile.id,
-            date: new Date(),
-            scheduledShift: schedule.get(userProfile.id)?.get(format(new Date(), 'yyyy-MM-dd')) || null,
-            entryTime: new Date(),
-            exitTime: null,
-            status: 'in-progress' as const,
-            entryLatitude: latitude,
-            entryLongitude: longitude,
-            entryWorkLocationName: locationName,
-        };
-        const attendanceCollection = collection(firestore, 'attendance');
-        await addDoc(attendanceCollection, newRecord);
-        
-        if (validLocation) {
-            toast({ title: 'Entrada Registrada', description: `Ubicación: ${locationName}. ¡Que tengas una excelente jornada!` });
-        } else {
-            toast({ 
-                variant: 'destructive',
-                title: 'Entrada Registrada Fuera de Rango', 
-                description: 'Tu entrada ha sido registrada, pero no te encuentras en una ubicación de trabajo autorizada.' 
-            });
-        }
     } catch (e: any) {
-        let description = 'No se pudo registrar la entrada.';
+        let description = 'No se pudo obtener la ubicación, pero se continuará con el registro.';
         if (e.code === 1) { // PERMISSION_DENIED
-            description = 'Permiso de ubicación denegado. No se puede registrar la entrada.';
-        } else if (e.message) {
-            description = e.message;
+             description = 'Permiso de ubicación denegado. El registro continuará sin geolocalización.';
         }
-        toast({ variant: 'destructive', title: 'Error', description });
+        toast({ variant: 'destructive', title: 'Advertencia de Ubicación', description });
+    }
+
+    try {
+        if (action === 'in') {
+            const newRecord = {
+                collaboratorId: userProfile.id,
+                date: new Date(),
+                scheduledShift: schedule.get(userProfile.id)?.get(format(new Date(), 'yyyy-MM-dd')) || null,
+                entryTime: new Date(),
+                exitTime: null,
+                status: 'in-progress' as const,
+                entryLatitude: position?.coords.latitude || null,
+                entryLongitude: position?.coords.longitude || null,
+                entryWorkLocationName: locationName,
+            };
+            const attendanceCollection = collection(firestore, 'attendance');
+            await addDoc(attendanceCollection, newRecord);
+            toast({ title: 'Entrada Registrada', description: `Ubicación: ${locationName}. ¡Que tengas una excelente jornada!` });
+        } else if (action === 'out' && latestRecord) {
+            const recordDoc = doc(firestore, 'attendance', latestRecord.id);
+            await updateDoc(recordDoc, {
+                exitTime: new Date(),
+                status: 'completed' as const,
+                exitLatitude: position?.coords.latitude || null,
+                exitLongitude: position?.coords.longitude || null,
+                exitWorkLocationName: locationName,
+            });
+            toast({ title: 'Salida Registrada', description: `Ubicación: ${locationName}. ¡Disfruta tu descanso!` });
+        }
+    } catch(error) {
+        console.error("Error clocking action:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'No se pudo registrar la acción.' });
     } finally {
         setIsClocking(false);
     }
   };
 
-  const handleClockOut = async () => {
-    if (!latestRecord || !firestore) return;
-    setIsClocking(true);
-    try {
-        toast({ title: 'Obteniendo ubicación...', description: 'Por favor, autoriza el acceso a tu ubicación.' });
-        const position = await getCurrentPosition();
-        const { latitude, longitude } = position.coords;
-
-        if (!workLocations) {
-            toast({ variant: 'destructive', title: 'Error', description: 'No se pudieron cargar las ubicaciones de trabajo.' });
-            setIsClocking(false);
-            return;
-        }
-
-        let validLocation: WorkLocation | null = null;
-        for (const location of workLocations) {
-            const distance = getDistance(latitude, longitude, location.latitude, location.longitude);
-            if (distance <= location.radius) {
-                validLocation = location;
-                break;
-            }
-        }
-        
-        const locationName = validLocation ? validLocation.name : "Ubicación no registrada";
-
-        const recordDoc = doc(firestore, 'attendance', latestRecord.id);
-        await updateDoc(recordDoc, {
-            exitTime: new Date(),
-            status: 'completed' as const,
-            exitLatitude: latitude,
-            exitLongitude: longitude,
-            exitWorkLocationName: locationName,
-        });
-
-        if (validLocation) {
-            toast({ title: 'Salida Registrada', description: `Ubicación: ${locationName}. ¡Disfruta tu descanso!` });
-        } else {
-            toast({ 
-                variant: 'destructive',
-                title: 'Salida Registrada Fuera de Rango', 
-                description: 'Tu salida ha sido registrada, pero no te encuentras en una ubicación de trabajo autorizada.' 
-            });
-        }
-    } catch (e: any) {
-        let description = 'No se pudo registrar la salida.';
-        if (e.code === 1) { // PERMISSION_DENIED
-            description = 'Permiso de ubicación denegado. No se puede registrar la salida.';
-        } else if (e.message) {
-            description = e.message;
-        }
-        toast({ variant: 'destructive', title: 'Error', description });
-    } finally {
-      setIsClocking(false);
-    }
-  };
 
   const currentUserSchedule = useMemo(() => {
     if (!schedule || !userProfile) return undefined;
     return schedule.get(userProfile.id);
   }, [schedule, userProfile]);
 
-  const handleDayClick = (date: Date, record?: AttendanceRecord, shift?: string | null) => {
-    if (record || (shift && shift !== 'LIB')) {
+  const handleInfoClick = (date: Date, record?: AttendanceRecord, shift?: string | null) => {
       setSelectedDayInfo({ date, record, shift });
-    }
   };
 
 
-  const isLoading = authLoading || profileLoading || usersLoading || contextLoading || vacationsLoading || locationsLoading;
+  const isLoading = authLoading || profileLoading || usersLoading || contextLoading || vacationsLoading || locationsLoading || workShiftsLoading || attendanceLoading;
 
   if (isLoading) {
     return (
       <div className="flex h-full w-full items-center justify-center">
-        <LoaderCircle className="h-8 w-8 animate-spin" />
+        <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -728,18 +657,17 @@ function AttendancePageContent() {
       <TimeTracker 
         userProfile={userProfile} 
         schedule={currentUserSchedule}
-        onClockIn={handleClockIn}
-        onClockOut={handleClockOut}
+        onClockIn={() => handleClockAction('in')}
+        onClockOut={() => handleClockAction('out')}
         latestRecord={latestRecord}
         isClocking={isClocking}
       />
       <div className="mt-6">
-        <MonthlySchedule 
-          schedule={currentUserSchedule} 
-          month={currentMonth} 
-          onMonthChange={setCurrentMonth} 
+        <WeeklySchedule 
+          schedule={currentUserSchedule}
+          workShifts={workShifts || []}
           attendanceByDay={attendanceByDay}
-          onDayClick={handleDayClick}
+          onInfoClick={handleInfoClick}
         />
       </div>
     </div>
