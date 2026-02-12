@@ -39,7 +39,6 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { generateHiringApprovalPDF } from '@/lib/pdf-generator';
 import { useUser, useFirestore, useCollection } from '@/firebase';
 import { collection, doc, updateDoc, writeBatch } from 'firebase/firestore';
 import {
@@ -170,7 +169,8 @@ export default function ApprovalsPage() {
     }
   };
   
-  const handleDownload = (approval: HiringApproval) => {
+  const handleDownload = async (approval: HiringApproval) => {
+    const { generateHiringApprovalPDF } = await import('@/lib/pdf-generator');
     const selectedCandidateId = approval.bossSelection?.selectedCandidateId;
 
     if (!selectedCandidateId) {

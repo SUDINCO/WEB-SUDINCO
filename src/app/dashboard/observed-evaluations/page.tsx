@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useMemo, useState } from 'react';
@@ -12,7 +13,6 @@ import { Button } from '@/components/ui/button';
 import { Download, LoaderCircle, Check, AlertTriangle, Send, Eye, Search } from 'lucide-react';
 import { useCollection, useFirestore, useUser } from '@/firebase';
 import { collection, query, where, doc, setDoc } from 'firebase/firestore';
-import { generateEvaluationPDF } from '@/lib/pdf-generator';
 import { PersonDTO } from '@/lib/contracts';
 import { toast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
@@ -324,7 +324,8 @@ export default function ObservedEvaluationsPage() {
         setSheetOpen(false); // Close sheet after action
     };
 
-    const handleDownloadPdf = (evaluation: PerformanceEvaluation) => {
+    const handleDownloadPdf = async (evaluation: PerformanceEvaluation) => {
+        const { generateEvaluationPDF } = await import('@/lib/pdf-generator');
         const worker = allWorkers?.find(w => w.id === evaluation.workerId);
         const evaluator = allWorkers?.find(w => w.id === evaluation.evaluatorId);
 

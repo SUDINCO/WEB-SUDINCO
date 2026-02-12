@@ -61,8 +61,7 @@ import { toast } from '@/hooks/use-toast';
 import * as XLSX from 'xlsx';
 import { Combobox } from '@/components/ui/combobox';
 import { useDoc, useCollection, useFirestore } from '@/firebase';
-import { collection, doc, writeBatch, query, where, getDocs, updateDoc, deleteDoc, addDoc } from 'firebase/firestore';
-import { generateEvaluationPDF } from '@/lib/pdf-generator';
+import { collection, doc, writeBatch, query, where, getDocs, updateDoc, deleteDoc, addDoc, orderBy, limit } from 'firebase/firestore';
 import { PersonDTO } from '@/lib/contracts';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -503,7 +502,7 @@ function EvaluationForm({ workerId, reviewEvaluationId }: { workerId: string, re
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
                         {evaluationCriteria.map(criteria => (
                             <Controller key={criteria.name} name={criteria.name} control={form.control} render={({ field }) => (
-                                <Controller name={`${criteria.name}Justification` as any} control={form.control} render={({ field: justificationField }) => (
+                                <Controller name={`${criteria.name}Justification`} control={form.control} render={({ field: justificationField }) => (
                                     <EvaluationCriteriaGroup title={criteria.title} description={criteria.description} field={field} justificationField={justificationField} formInstance={form} />
                                 )}/>
                             )}/>
@@ -784,8 +783,9 @@ function EvaluationHistorySheet({ open, onOpenChange, worker, allEvaluations, al
         return evaluator ? `${evaluator.nombres} ${evaluator.apellidos}` : 'Desconocido';
     };
     
-     const handleDownloadPdf = (evaluation: PerformanceEvaluation) => {
+     const handleDownloadPdf = async (evaluation: PerformanceEvaluation) => {
         if(!worker) return;
+        const { generateEvaluationPDF } = await import('@/lib/pdf-generator');
         const evaluator = allWorkers?.find(w => w.id === evaluation.evaluatorId);
         if (!evaluator) {
              toast({
@@ -915,7 +915,7 @@ function EvaluationHistorySheet({ open, onOpenChange, worker, allEvaluations, al
 
 function EvaluationList() {
     const router = useRouter();
-    const fileInputRef = useRef<HTMLInputElement>(null);
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
     const [filter, setFilter] = useState('');
     const [isImportAlertOpen, setIsImportAlertOpen] = useState(false);
     const [selectedWorker, setSelectedWorker] = useState<UserProfile | null>(null);
@@ -1390,7 +1390,7 @@ function EvaluationList() {
                 <TableHeader>
                     <TableRow>
                         <TableHead>
-                            <Checkbox
+                            <Checkbox 
                                 checked={allOnPageSelected}
                                 onCheckedChange={() => handleSelectAll(tableType)}
                                 aria-label={`Seleccionar todo en ${tableType}`}

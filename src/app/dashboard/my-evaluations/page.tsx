@@ -59,7 +59,6 @@ import { Activity, AlertTriangle, CheckCircle, Clock, LoaderCircle, Download, Hi
 import { useCollection, useFirestore, useUser } from '@/firebase';
 import { collection, query, where, getDocs, doc, deleteDoc, writeBatch, orderBy, limit } from 'firebase/firestore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { generateEvaluationPDF } from '@/lib/pdf-generator';
 import { PersonDTO } from '@/lib/contracts';
 import { toast } from '@/hooks/use-toast';
 import { addDays, set, differenceInDays, isSameDay, subDays, addYears, isBefore, isWithinInterval } from 'date-fns';
@@ -329,8 +328,9 @@ function EvaluationHistorySheet({ open, onOpenChange, worker, allEvaluations, al
         return evaluator ? `${evaluator.nombres} ${evaluator.apellidos}` : 'Desconocido';
     };
     
-     const handleDownloadPdf = (evaluation: PerformanceEvaluation) => {
+     const handleDownloadPdf = async (evaluation: PerformanceEvaluation) => {
         if (!worker) return;
+        const { generateEvaluationPDF } = await import('@/lib/pdf-generator');
         const evaluator = allWorkers?.find(w => w.id === evaluation.evaluatorId);
         if (!evaluator) {
              toast({
@@ -517,7 +517,8 @@ export default function MyEvaluationsPage() {
     useEffect(() => {
         if (justificationState && justificationTextRef.current) {
             const { index, criterionName } = justificationState;
-            const value = getMassValues(`evaluations.${index}.${criterionName}Justification`);
+            const fieldName = `evaluations.${index}.${criterionName}Justification` as const;
+            const value = getMassValues(fieldName);
             justificationTextRef.current.value = (value as string) || '';
         }
     }, [justificationState, getMassValues]);
@@ -935,7 +936,7 @@ export default function MyEvaluationsPage() {
                                                 </TableCell>
                                                 {evaluationCriteria.flatMap(criterion => {
                                                     const currentVal = watchedRow?.[criterion.name];
-                                                    const justi = watchedRow?.[`${criterion.name}Justification`];
+                                                    const justi = watchedRow?.[`${criterion.name}Justification` as const];
                                                     return ['NT', 'BA', 'ED', 'TI'].map((rating, ratingIndex) => {
                                                         const isSelected = currentVal === rating;
                                                         const requiresJusti = (rating === 'NT' || rating === 'BA') && isSelected && !justi;
@@ -1108,6 +1109,7 @@ export default function MyEvaluationsPage() {
                         <Textarea
                             ref={justificationTextRef}
                             placeholder="Escribe la justificación aquí..."
+                            defaultValue={justificationState ? getMassValues(`evaluations.${justificationState.index}.${justificationState.criterionName}Justification`) : ''}
                         />
                     </div>
                     <DialogFooter>
