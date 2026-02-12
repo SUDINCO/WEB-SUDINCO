@@ -195,7 +195,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
       module: "Administración",
       icon: Shield,
       sublinks: [
-        { name: "Aprobación de Publicaciones", href: "/dashboard/administration/communication", icon: Megaphone, id: "publications" },
+        { name: "Aprobación de Publicaciones", href: "/dashboard/administration/evaluation-percentages", icon: Megaphone, id: "publications" },
         { name: "Evaluación de Desempeño", href: "/dashboard/performance-evaluation", icon: ClipboardCheck, id: "performance-evaluation" },
         { name: "Roles y Permisos", href: "/dashboard/administration/roles", icon: FileText, id: "roles" },
         { name: "Asignación de Líderes", href: "/dashboard/administration/leader-assignment", icon: UserCog, id: "leader-assignment" },
