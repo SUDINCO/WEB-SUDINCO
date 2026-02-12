@@ -79,6 +79,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { MultiSelectCombobox } from '@/components/ui/multi-select-combobox';
+import { Textarea } from '@/components/ui/textarea';
 
 
 // --- START OF FORM LOGIC (from [workerId]/page.tsx) ---
@@ -502,7 +503,7 @@ function EvaluationForm({ workerId, reviewEvaluationId }: { workerId: string, re
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
                         {evaluationCriteria.map(criteria => (
                             <Controller key={criteria.name} name={criteria.name} control={form.control} render={({ field }) => (
-                                <Controller name={`${criteria.name}Justification`} control={form.control} render={({ field: justificationField }) => (
+                                <Controller name={`${criteria.name}Justification` as any} control={form.control} render={({ field: justificationField }) => (
                                     <EvaluationCriteriaGroup title={criteria.title} description={criteria.description} field={field} justificationField={justificationField} formInstance={form} />
                                 )}/>
                             )}/>
