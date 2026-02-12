@@ -178,14 +178,13 @@ export default function PerformanceEvaluationFormPage() {
     const firestore = useFirestore();
     const { user: authUser } = useUser();
     
-    // Fetch all users once
-    const { data: allUsers, isLoading: usersLoading } = useCollection<UserProfile>(useMemo(() => firestore ? collection(firestore, 'users') : null, [firestore]));
+    const workerDocRef = useMemo(() => {
+        if (!firestore || typeof workerId !== 'string') return null;
+        return doc(firestore, 'users', workerId);
+    }, [firestore, workerId]);
+    const { data: worker, isLoading: workerLoading } = useDoc<UserProfile>(workerDocRef);
 
-    // Find the specific worker from the allUsers array
-    const worker = useMemo(() => {
-        if (!allUsers || typeof workerId !== 'string') return null;
-        return allUsers.find(u => u.id === workerId) || null;
-    }, [allUsers, workerId]);
+    const { data: allUsers, isLoading: usersLoading } = useCollection<UserProfile>(useMemo(() => firestore ? collection(firestore, 'users') : null, [firestore]));
 
     const evaluator = useMemo(() => {
         if (!allUsers || !worker) return null;
@@ -333,7 +332,7 @@ export default function PerformanceEvaluationFormPage() {
         }
     };
     
-    if (usersLoading || isReviewLoading) {
+    if (workerLoading || usersLoading || isReviewLoading) {
         return (
             <div className="flex justify-center items-center h-full">
                 <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
