@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useEffect, useRef, useState, useMemo } from 'react';
@@ -849,7 +850,7 @@ export default function PerformanceEvaluationPage() {
                                                 <History className="mr-2 h-4 w-4" />
                                                 Historial
                                             </Button>
-                                            <Button variant="outline" size="sm" disabled={statusInfo.isCompleted} onClick={() => router.push(`/dashboard/performance-evaluation/${worker.codigo}`)}>
+                                            <Button variant="outline" size="sm" disabled={statusInfo.isCompleted} onClick={() => router.push(`/dashboard/performance-evaluation/${worker.id}`)}>
                                                 <Activity className="mr-2 h-4 w-4" />
                                                 Evaluar
                                             </Button>

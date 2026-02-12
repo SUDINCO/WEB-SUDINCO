@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -171,7 +172,7 @@ export default function PerformanceEvaluationFormPage() {
     const router = useRouter();
     const params = useParams();
     const searchParams = useSearchParams();
-    const { workerId: workerCodigo } = params;
+    const { workerId } = params;
     const reviewEvaluationId = searchParams.get('reviewEvaluationId');
 
     const firestore = useFirestore();
@@ -182,9 +183,9 @@ export default function PerformanceEvaluationFormPage() {
 
     // Find the specific worker from the allUsers array
     const worker = useMemo(() => {
-        if (!allUsers || typeof workerCodigo !== 'string') return null;
-        return allUsers.find(u => u.codigo === workerCodigo) || null;
-    }, [allUsers, workerCodigo]);
+        if (!allUsers || typeof workerId !== 'string') return null;
+        return allUsers.find(u => u.id === workerId) || null;
+    }, [allUsers, workerId]);
 
     const evaluator = useMemo(() => {
         if (!allUsers || !worker) return null;
@@ -345,7 +346,7 @@ export default function PerformanceEvaluationFormPage() {
         return (
             <div className="flex flex-col justify-center items-center h-full text-center">
                 <h2 className="text-xl font-semibold text-destructive">Error</h2>
-                <p className="text-muted-foreground">Trabajador no encontrado con el código: {workerCodigo}</p>
+                <p className="text-muted-foreground">Trabajador no encontrado con el ID: {workerId}</p>
                 <Button onClick={() => router.back()} className="mt-4">
                     <ArrowLeft className="mr-2 h-4 w-4" /> Volver
                 </Button>

@@ -524,7 +524,7 @@ export default function MyEvaluationsPage() {
                 return {
                     ...ev,
                     workerName: worker ? `${worker.nombres} ${worker.apellidos}` : 'Desconocido',
-                    workerCodigo: worker?.codigo,
+                    workerId: worker?.id, // Ensure workerId is passed along
                 }
             })
             .sort((a,b) => {
@@ -1049,7 +1049,7 @@ export default function MyEvaluationsPage() {
                                                                             <FormItem>
                                                                                 <FormLabel className="text-xs font-semibold">Descripción del Plan</FormLabel>
                                                                                 <FormControl>
-                                                                                    <Textarea placeholder="Detalle el plan..." {...field} />
+                                                                                    <Textarea placeholder="Explique qué se hará, duración, objetivo, etc." {...field} />
                                                                                 </FormControl>
                                                                                 <FormMessage />
                                                                             </FormItem>
@@ -1160,17 +1160,17 @@ export default function MyEvaluationsPage() {
                                                                 variant="outline"
                                                                 size="sm"
                                                                 onClick={() => {
-                                                                    if (ev.workerCodigo) {
-                                                                        router.push(`/dashboard/performance-evaluation/${ev.workerCodigo}?reviewEvaluationId=${ev.id}`);
+                                                                    if (ev.workerId) {
+                                                                        router.push(`/dashboard/performance-evaluation/${ev.workerId}?reviewEvaluationId=${ev.id}`);
                                                                     } else {
                                                                         toast({
                                                                             variant: 'destructive',
                                                                             title: 'Error de Datos',
-                                                                            description: 'No se pudo encontrar el código del empleado para esta evaluación.',
+                                                                            description: 'No se pudo encontrar el ID del empleado para esta evaluación.',
                                                                         });
                                                                     }
                                                                 }}
-                                                                disabled={!ev.workerCodigo}
+                                                                disabled={!ev.workerId}
                                                             >
                                                                 <Edit className="mr-2 h-4 w-4" />
                                                                 Re-Evaluar
@@ -1225,7 +1225,7 @@ export default function MyEvaluationsPage() {
                                                             {worker.statusInfo.status === 'pending_observation' ? (
                                                                 <Badge variant="secondary" className="bg-purple-100 text-purple-800">Pendiente de Aprobación</Badge>
                                                             ) : (
-                                                                <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/performance-evaluation/${worker.codigo}`)}>
+                                                                <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/performance-evaluation/${worker.id}`)}>
                                                                     <Activity className="mr-2 h-4 w-4" />
                                                                     Evaluar
                                                                 </Button>
