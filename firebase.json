@@ -9,6 +9,12 @@
     ],
     "frameworksBackend": {
       "region": "europe-west1"
-    }
+    },
+    "rewrites": [
+      {
+        "source": "**",
+        "function": "server"
+      }
+    ]
   }
 }
