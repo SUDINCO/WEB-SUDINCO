@@ -240,13 +240,14 @@ export default function PerformanceEvaluationFormPage() {
             const fetchLastEvaluation = async () => {
                 const evalsQuery = query(
                     collection(firestore, 'performanceEvaluations'),
-                    where('workerId', '==', worker.id),
-                    orderBy('evaluationDate', 'desc'),
-                    limit(1)
+                    where('workerId', '==', worker.id)
                 );
                 const querySnapshot = await getDocs(evalsQuery);
                 if (!querySnapshot.empty) {
-                    const lastEval = querySnapshot.docs[0].data();
+                    const allEvals = querySnapshot.docs.map(doc => doc.data());
+                    // Sort client-side to find the latest
+                    allEvals.sort((a, b) => new Date(b.evaluationDate).getTime() - new Date(a.evaluationDate).getTime());
+                    const lastEval = allEvals[0];
                     form.reset(lastEval);
                 }
             };
