@@ -201,8 +201,8 @@ const SummaryTable = ({ groupedData, uniqueShifts }: { groupedData: any[], uniqu
               {groupedData.length > 0 ? (
                   groupedData.map(group => (
                       <React.Fragment key={group.jobTitle}>
-                          <TableRow className="bg-amber-400 hover:bg-amber-400">
-                              <TableCell colSpan={uniqueShifts.length + 14} className="font-bold text-center text-black p-1 sticky left-0 bg-amber-400 z-10">
+                          <TableRow className="bg-primary/10 hover:bg-primary/10">
+                              <TableCell colSpan={uniqueShifts.length + 14} className="font-bold text-center text-primary p-1 sticky left-0 bg-primary/10 z-10">
                                   {group.jobTitle}
                               </TableCell>
                           </TableRow>
