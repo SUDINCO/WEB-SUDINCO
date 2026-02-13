@@ -174,62 +174,34 @@ const initialData = {
         {"jobTitle":"AUXILIAR DE MANTENIMIENTO","dayType":"FESTIVO","shift":"M8","startTime":"06:00","endTime":"14:00","nightSurcharge":0,"sup50":0,"ext100":8},
         {"jobTitle":"AUXILIAR DE MANTENIMIENTO","dayType":"FESTIVO","shift":"M8","startTime":"08:00","endTime":"16:00","nightSurcharge":0,"sup50":0,"ext100":8},
         {"jobTitle":"AUXILIAR DE MANTENIMIENTO","dayType":"FESTIVO","shift":"T8","startTime":"14:00","endTime":"22:00","nightSurcharge":0,"sup50":0,"ext100":8},
-        {"jobTitle":"AUXILIAR DE RECAUDO","dayType":"NORMAL","shift":"D12","startTime":"06:00","endTime":"18:00","nightSurcharge":0,"sup50":4,"ext100":0},
         {"jobTitle":"AUXILIAR DE RECAUDO","dayType":"NORMAL","shift":"M8","startTime":"06:00","endTime":"14:00","nightSurcharge":0,"sup50":0,"ext100":0},
-        {"jobTitle":"AUXILIAR DE RECAUDO","dayType":"NORMAL","shift":"MYT","startTime":"06:00","endTime":"22:00","nightSurcharge":0,"sup50":4,"ext100":4},
         {"jobTitle":"AUXILIAR DE RECAUDO","dayType":"NORMAL","shift":"T8","startTime":"14:00","endTime":"22:00","nightSurcharge":3,"sup50":0,"ext100":0},
-        {"jobTitle":"AUXILIAR DE RECAUDO","dayType":"FESTIVO","shift":"D12","startTime":"06:00","endTime":"18:00","nightSurcharge":0,"sup50":0,"ext100":12},
         {"jobTitle":"AUXILIAR DE RECAUDO","dayType":"FESTIVO","shift":"M8","startTime":"06:00","endTime":"14:00","nightSurcharge":0,"sup50":0,"ext100":8},
-        {"jobTitle":"AUXILIAR DE RECAUDO","dayType":"FESTIVO","shift":"MYT","startTime":"06:00","endTime":"22:00","nightSurcharge":0,"sup50":0,"ext100":16},
         {"jobTitle":"AUXILIAR DE RECAUDO","dayType":"FESTIVO","shift":"T8","startTime":"14:00","endTime":"22:00","nightSurcharge":0,"sup50":0,"ext100":8},
-        {"jobTitle":"CAJERO DE RECAUDO","dayType":"NORMAL","shift":"D12","startTime":"06:00","endTime":"18:00","nightSurcharge":0,"sup50":4,"ext100":0},
         {"jobTitle":"CAJERO DE RECAUDO","dayType":"NORMAL","shift":"M8","startTime":"06:00","endTime":"14:00","nightSurcharge":0,"sup50":0,"ext100":0},
-        {"jobTitle":"CAJERO DE RECAUDO","dayType":"NORMAL","shift":"MYT","startTime":"06:00","endTime":"22:00","nightSurcharge":0,"sup50":4,"ext100":4},
-        {"jobTitle":"CAJERO DE RECAUDO","dayType":"NORMAL","shift":"N12","startTime":"18:00","endTime":"06:00","nightSurcharge":7,"sup50":0,"ext100":4},
         {"jobTitle":"CAJERO DE RECAUDO","dayType":"NORMAL","shift":"N8","startTime":"22:00","endTime":"06:00","nightSurcharge":8,"sup50":0,"ext100":0},
-        {"jobTitle":"CAJERO DE RECAUDO","dayType":"NORMAL","shift":"NYM","startTime":"22:00","endTime":"14:00","nightSurcharge":8,"sup50":4,"ext100":4},
         {"jobTitle":"CAJERO DE RECAUDO","dayType":"NORMAL","shift":"T8","startTime":"14:00","endTime":"22:00","nightSurcharge":3,"sup50":0,"ext100":0},
-        {"jobTitle":"CAJERO DE RECAUDO","dayType":"NORMAL","shift":"TYN","startTime":"14:00","endTime":"06:00","nightSurcharge":3,"sup50":2,"ext100":6},
-        {"jobTitle":"CAJERO DE RECAUDO","dayType":"FESTIVO","shift":"D12","startTime":"06:00","endTime":"18:00","nightSurcharge":0,"sup50":0,"ext100":12},
         {"jobTitle":"CAJERO DE RECAUDO","dayType":"FESTIVO","shift":"M8","startTime":"06:00","endTime":"14:00","nightSurcharge":0,"sup50":0,"ext100":8},
-        {"jobTitle":"CAJERO DE RECAUDO","dayType":"FESTIVO","shift":"MYT","startTime":"06:00","endTime":"22:00","nightSurcharge":0,"sup50":0,"ext100":16},
-        {"jobTitle":"CAJERO DE RECAUDO","dayType":"FESTIVO","shift":"N12","startTime":"18:00","endTime":"06:00","nightSurcharge":2,"sup50":0,"ext100":10},
         {"jobTitle":"CAJERO DE RECAUDO","dayType":"FESTIVO","shift":"N8","startTime":"22:00","endTime":"06:00","nightSurcharge":6,"sup50":0,"ext100":2},
-        {"jobTitle":"CAJERO DE RECAUDO","dayType":"FESTIVO","shift":"NYM","startTime":"22:00","endTime":"14:00","nightSurcharge":6,"sup50":4,"ext100":6},
         {"jobTitle":"CAJERO DE RECAUDO","dayType":"FESTIVO","shift":"T8","startTime":"14:00","endTime":"22:00","nightSurcharge":0,"sup50":0,"ext100":8},
-        {"jobTitle":"CAJERO DE RECAUDO","dayType":"FESTIVO","shift":"TYN","startTime":"14:00","endTime":"06:00","nightSurcharge":0,"sup50":2,"ext100":14},
         {"jobTitle":"CONDUCTOR DE GRUA","dayType":"NORMAL","shift":"D12","startTime":"06:00","endTime":"18:00","nightSurcharge":0,"sup50":0,"ext100":0},
         {"jobTitle":"CONDUCTOR DE GRUA","dayType":"NORMAL","shift":"N12","startTime":"18:00","endTime":"06:00","nightSurcharge":7,"sup50":0,"ext100":0},
         {"jobTitle":"CONDUCTOR DE GRUA","dayType":"FESTIVO","shift":"D12","startTime":"06:00","endTime":"18:00","nightSurcharge":0,"sup50":0,"ext100":12},
         {"jobTitle":"CONDUCTOR DE GRUA","dayType":"FESTIVO","shift":"N12","startTime":"18:00","endTime":"06:00","nightSurcharge":0,"sup50":0,"ext100":6},
         {"jobTitle":"OPERADOR DE VEHICULO DE EMERGENCIA","dayType":"NORMAL","shift":"T24","startTime":"06:00","endTime":"06:00","nightSurcharge":0,"sup50":0,"ext100":0},
         {"jobTitle":"OPERADOR DE VEHICULO DE EMERGENCIA","dayType":"FESTIVO","shift":"T24","startTime":"06:00","endTime":"06:00","nightSurcharge":0,"sup50":0,"ext100":18},
-        {"jobTitle":"OPERADOR DE VEHICULO DE EMERGENCIA","dayType":"FESTIVO","shift":"T24 DIAN ANT","startTime":"06:00","endTime":"06:00","nightSurcharge":0,"sup50":0,"ext100":6},
         {"jobTitle":"RESPONSABLE DE ATENCION PREHOSPITALARIA","dayType":"NORMAL","shift":"T24","startTime":"06:00","endTime":"06:00","nightSurcharge":0,"sup50":0,"ext100":0},
         {"jobTitle":"RESPONSABLE DE ATENCION PREHOSPITALARIA","dayType":"FESTIVO","shift":"T24","startTime":"06:00","endTime":"06:00","nightSurcharge":0,"sup50":0,"ext100":18},
-        {"jobTitle":"RESPONSABLE DE ATENCION PREHOSPITALARIA","dayType":"FESTIVO","shift":"T24 DIAN ANT","startTime":"06:00","endTime":"06:00","nightSurcharge":0,"sup50":0,"ext100":6},
         {"jobTitle":"SERVICIOS GENERALES","dayType":"NORMAL","shift":"M8","startTime":"06:00","endTime":"14:00","nightSurcharge":0,"sup50":0,"ext100":0},
         {"jobTitle":"SERVICIOS GENERALES","dayType":"NORMAL","shift":"M8","startTime":"08:00","endTime":"16:00","nightSurcharge":0,"sup50":0,"ext100":0},
-        {"jobTitle":"SERVICIOS GENERALES","dayType":"NORMAL","shift":"T8","startTime":"14:00","endTime":"22:00","nightSurcharge":3,"sup50":0,"ext100":0},
         {"jobTitle":"SERVICIOS GENERALES","dayType":"FESTIVO","shift":"M8","startTime":"06:00","endTime":"14:00","nightSurcharge":0,"sup50":0,"ext100":8},
         {"jobTitle":"SERVICIOS GENERALES","dayType":"FESTIVO","shift":"M8","startTime":"08:00","endTime":"16:00","nightSurcharge":0,"sup50":0,"ext100":8},
-        {"jobTitle":"SERVICIOS GENERALES","dayType":"FESTIVO","shift":"T8","startTime":"14:00","endTime":"22:00","nightSurcharge":0,"sup50":0,"ext100":8},
-        {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"NORMAL","shift":"D12","startTime":"06:00","endTime":"18:00","nightSurcharge":0,"sup50":4,"ext100":0},
         {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"NORMAL","shift":"M8","startTime":"06:00","endTime":"14:00","nightSurcharge":0,"sup50":0,"ext100":0},
-        {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"NORMAL","shift":"MYT","startTime":"06:00","endTime":"22:00","nightSurcharge":0,"sup50":4,"ext100":4},
-        {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"NORMAL","shift":"N12","startTime":"18:00","endTime":"06:00","nightSurcharge":7,"sup50":0,"ext100":4},
         {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"NORMAL","shift":"N8","startTime":"22:00","endTime":"06:00","nightSurcharge":8,"sup50":0,"ext100":0},
-        {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"NORMAL","shift":"NYM","startTime":"22:00","endTime":"14:00","nightSurcharge":8,"sup50":4,"ext100":4},
         {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"NORMAL","shift":"T8","startTime":"14:00","endTime":"22:00","nightSurcharge":3,"sup50":0,"ext100":0},
-        {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"NORMAL","shift":"TYN","startTime":"14:00","endTime":"06:00","nightSurcharge":3,"sup50":2,"ext100":6},
-        {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"FESTIVO","shift":"D12","startTime":"06:00","endTime":"18:00","nightSurcharge":0,"sup50":0,"ext100":12},
         {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"FESTIVO","shift":"M8","startTime":"06:00","endTime":"14:00","nightSurcharge":0,"sup50":0,"ext100":8},
-        {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"FESTIVO","shift":"MYT","startTime":"06:00","endTime":"22:00","nightSurcharge":0,"sup50":0,"ext100":16},
-        {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"FESTIVO","shift":"N12","startTime":"18:00","endTime":"06:00","nightSurcharge":2,"sup50":0,"ext100":10},
         {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"FESTIVO","shift":"N8","startTime":"22:00","endTime":"06:00","nightSurcharge":6,"sup50":0,"ext100":2},
-        {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"FESTIVO","shift":"NYM","startTime":"22:00","endTime":"14:00","nightSurcharge":6,"sup50":4,"ext100":6},
-        {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"FESTIVO","shift":"T8","startTime":"14:00","endTime":"22:00","nightSurcharge":0,"sup50":0,"ext100":8},
-        {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"FESTIVO","shift":"TYN","startTime":"14:00","endTime":"06:00","nightSurcharge":0,"sup50":2,"ext100":14}
+        {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"FESTIVO","shift":"T8","startTime":"14:00","endTime":"22:00","nightSurcharge":0,"sup50":0,"ext100":8}
     ]
 };
 
@@ -273,6 +245,17 @@ export async function seedDatabase(db: Firestore) {
 
     isSeeding = true;
     try {
+        const allowedShiftsByJobTitle = new Map<string, Set<string>>();
+        initialData.shiftPatterns.forEach(pattern => {
+            const shifts = new Set(pattern.cycle.filter((s): s is string => !!s));
+            allowedShiftsByJobTitle.set(pattern.jobTitle, shifts);
+        });
+
+        const filteredOvertimeRules = initialData.overtimeRules.filter(rule => {
+            const allowedShifts = allowedShiftsByJobTitle.get(rule.jobTitle);
+            return allowedShifts ? allowedShifts.has(rule.shift) : false;
+        });
+        
         await Promise.all([
             seedCollection(db, 'roles', initialData.roles, 'name'),
             seedCollection(db, 'empresas', initialData.empresas),
@@ -281,7 +264,7 @@ export async function seedDatabase(db: Firestore) {
             seedCollection(db, 'areas', initialData.areas),
             seedCollection(db, 'centrosCosto', initialData.centrosCosto),
             seedCollection(db, 'shiftPatterns', initialData.shiftPatterns, 'jobTitle'),
-            seedCollection(db, 'overtimeRules', initialData.overtimeRules)
+            seedCollection(db, 'overtimeRules', filteredOvertimeRules)
         ]);
         hasSeeded = true;
     } catch (error) {

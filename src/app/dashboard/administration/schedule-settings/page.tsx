@@ -366,15 +366,28 @@ function OvertimeRulesManager() {
         },
     });
 
-    const sortedRules = useMemo(() => {
+    const groupedRules = useMemo(() => {
         if (!overtimeRules) return [];
-        return [...overtimeRules].sort((a, b) => {
+        
+        const groups: { [key: string]: OvertimeRule[] } = {};
+        
+        const sorted = [...overtimeRules].sort((a, b) => {
             if (a.jobTitle < b.jobTitle) return -1;
             if (a.jobTitle > b.jobTitle) return 1;
-            if (a.dayType < b.dayType) return -1;
+            if (a.dayType < b.dayType) return -1; // NORMAL before FESTIVO
             if (a.dayType > b.dayType) return 1;
             return a.shift.localeCompare(b.shift);
         });
+
+        sorted.forEach(rule => {
+            const groupKey = `${rule.jobTitle} (${rule.dayType})`;
+            if (!groups[groupKey]) {
+                groups[groupKey] = [];
+            }
+            groups[groupKey].push(rule);
+        });
+
+        return Object.entries(groups);
     }, [overtimeRules]);
 
     const handleOpenForm = (rule: OvertimeRule | null) => {
@@ -507,31 +520,36 @@ function OvertimeRulesManager() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Cargo</TableHead>
                                 <TableHead>Jornada</TableHead>
                                 <TableHead>Convención</TableHead>
                                 <TableHead>Horarios</TableHead>
-                                <TableHead>Recargo Nocturno (25%)</TableHead>
-                                <TableHead>H. Suplementarias (50%)</TableHead>
-                                <TableHead>H. Extraordinarias (100%)</TableHead>
+                                <TableHead>Recargo Noct. (25%)</TableHead>
+                                <TableHead>H. Suplem. (50%)</TableHead>
+                                <TableHead>H. Extraord. (100%)</TableHead>
                                 <TableHead className="text-right">Acciones</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                           {sortedRules.map(rule => (
-                                <TableRow key={rule.id}>
-                                    <TableCell>{rule.jobTitle}</TableCell>
-                                    <TableCell><Badge variant={rule.dayType === 'NORMAL' ? 'secondary' : 'outline'}>{rule.dayType}</Badge></TableCell>
-                                    <TableCell className="font-semibold">{rule.shift}</TableCell>
-                                    <TableCell>{rule.startTime} - {rule.endTime}</TableCell>
-                                    <TableCell>{rule.nightSurcharge || ''}</TableCell>
-                                    <TableCell>{rule.sup50 || ''}</TableCell>
-                                    <TableCell>{rule.ext100 || ''}</TableCell>
-                                    <TableCell className="text-right">
-                                        <Button variant="ghost" size="icon" onClick={() => handleOpenForm(rule)}><Edit className="h-4 w-4" /></Button>
-                                        <Button variant="ghost" size="icon" onClick={() => setRuleToDelete(rule)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                                    </TableCell>
-                                </TableRow>
+                           {groupedRules.map(([groupName, rulesInGroup]) => (
+                                <React.Fragment key={groupName}>
+                                    <TableRow className="bg-muted hover:bg-muted">
+                                        <TableCell colSpan={7} className="font-semibold text-muted-foreground">{groupName}</TableCell>
+                                    </TableRow>
+                                    {rulesInGroup.map(rule => (
+                                        <TableRow key={rule.id}>
+                                            <TableCell><Badge variant={rule.dayType === 'NORMAL' ? 'secondary' : 'outline'}>{rule.dayType}</Badge></TableCell>
+                                            <TableCell className="font-semibold">{rule.shift}</TableCell>
+                                            <TableCell>{rule.startTime} - {rule.endTime}</TableCell>
+                                            <TableCell>{rule.nightSurcharge || ''}</TableCell>
+                                            <TableCell>{rule.sup50 || ''}</TableCell>
+                                            <TableCell>{rule.ext100 || ''}</TableCell>
+                                            <TableCell className="text-right">
+                                                <Button variant="ghost" size="icon" onClick={() => handleOpenForm(rule)}><Edit className="h-4 w-4" /></Button>
+                                                <Button variant="ghost" size="icon" onClick={() => setRuleToDelete(rule)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </React.Fragment>
                             ))}
                         </TableBody>
                     </Table>
