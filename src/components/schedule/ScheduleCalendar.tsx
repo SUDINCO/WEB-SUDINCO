@@ -443,14 +443,6 @@ export function ScheduleCalendar({
                         const shiftInfo = collaboratorSchedule?.get(dayKey);
                         const isPastDay = isBefore(day, today);
                         
-                        if (isPastDay) {
-                            return (
-                                <td key={day.toISOString()} className={cn("p-1 border-b text-center h-20 w-16 bg-gray-50")}>
-                                  <div className="rounded-md p-1 w-full h-full" />
-                                </td>
-                            );
-                        }
-                        
                         const isEditable = !isScheduleLocked && day >= today;
                         const isOnLactationThisDay = lactations.some(v => v.collaboratorId === collaborator.id && isWithinInterval(day, { start: v.startDate, end: v.endDate }));
                         
@@ -808,5 +800,3 @@ export function ScheduleCalendar({
     </TooltipProvider>
   );
 }
-
-    
