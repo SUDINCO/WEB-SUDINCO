@@ -1,5 +1,4 @@
-// This file was created based on the user's request to have an attendance summary page.
-// The logic is adapted from the user-provided example and integrated with real project data.
+
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
@@ -203,11 +202,11 @@ function AttendanceSummaryPageContent() {
 
   const handleExportToExcel = useCallback(() => {
     if (!attendanceSummary || attendanceSummary.length === 0) {
-        toast({
-            variant: "destructive",
-            title: "Sin datos",
-            description: "No hay datos para exportar con los filtros actuales.",
-        });
+        // toast({
+        //     variant: "destructive",
+        //     title: "Sin datos",
+        //     description: "No hay datos para exportar con los filtros actuales.",
+        // });
         return;
     }
     
@@ -466,7 +465,7 @@ function AttendanceSummaryPageContent() {
 export default function RrhhAttendancePageWrapper() {
   return (
     <ScheduleProvider>
-      <RrhhAttendancePage />
+      <AttendanceSummaryPageContent />
     </ScheduleProvider>
   );
 }
