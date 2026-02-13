@@ -77,20 +77,10 @@ import {
 import { es } from 'date-fns/locale';
 import { toast } from '@/hooks/use-toast';
 import { ScheduleProvider, useScheduleState } from '@/context/schedule-context';
-import type { Collaborator, ShiftPattern, Vacation, TemporaryTransfer, RoleChange, Absence, Lactation, ManualOverrides } from '@/lib/types';
+import type { Collaborator, ShiftPattern, Vacation, TemporaryTransfer, RoleChange, Lactation, ManualOverrides, UserProfile } from '@/lib/types';
 import { obtenerHorarioUnificado } from '@/lib/schedule-generator';
 import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
-
-type UserProfile = {
-  id: string;
-  email: string;
-  nombres: string;
-  apellidos: string;
-  cargo: string;
-  ubicacion?: string;
-  [key: string]: any;
-};
 
 type AttendanceRecord = {
     id: string;
