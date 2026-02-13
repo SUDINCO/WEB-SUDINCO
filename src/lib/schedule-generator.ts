@@ -474,7 +474,7 @@ export function obtenerHorarioUnificado(
   
   const { allCollaborators, shiftPatterns, vacations, transfers, lactations, roleChanges, manualOverrides, notifications, filters, isAutomatic, draftConditioning } = context;
 
-  const schedule = generarHorariosEstaticos(
+  let schedule = generarHorariosEstaticos(
     allCollaborators,
     days,
     shiftPatterns,
