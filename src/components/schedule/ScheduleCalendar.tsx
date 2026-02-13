@@ -20,7 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import type { Collaborator, TemporaryTransfer, Vacation, Lactation, AttendanceRecord, RoleChange, ManualOverride, ManualOverrides, Notification, NotificationChange, Absence } from '@/lib/types';
+import type { Collaborator, TemporaryTransfer, Vacation, Lactation, AttendanceRecord, RoleChange, ManualOverride, ManualOverrides, Notification, NotificationChange } from '@/lib/types';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Dialog,
@@ -72,7 +72,7 @@ interface ScheduleCalendarProps {
   isScheduleLocked?: boolean;
   transfers: TemporaryTransfer[];
   vacations: Vacation[];
-  absences: Absence[];
+  absences: Vacation[];
   lactations: Lactation[];
   roleChanges: RoleChange[];
   periodTitle: string;
@@ -453,7 +453,7 @@ export function ScheduleCalendar({
                         const attendanceRecord = attendanceForPeriod.get(attendanceKey);
                         
                         const renderAbsenceCell = (absenceType: string) => {
-                             const absence = absences.find(a => a.collaboratorId === collaborator.id && a.type === absenceType && isWithinInterval(day, { start: a.startDate, end: a.endDate }));
+                            const absence = absences.find(a => a.userId === collaborator.id && a.requestType === 'permiso' && isWithinInterval(day, { start: new Date(a.startDate), end: new Date(a.endDate) }));
                             return (
                                 <td key={day.toISOString()} className={cn("p-1 border-b text-center h-20 w-16", isToday(day) && "bg-primary/10")}>
                                     <Tooltip>
@@ -465,8 +465,8 @@ export function ScheduleCalendar({
                                         {absence && (
                                             <TooltipContent>
                                                 <div className="text-sm p-1">
-                                                    <p className="font-bold">{absence.description || `Ausencia (${absenceType})`}</p>
-                                                    <p>Período: <strong>{format(absence.startDate, 'dd/MM/yy')}</strong> al <strong>{format(absence.endDate, 'dd/MM/yy')}</strong></p>
+                                                    <p className="font-bold">{absence.reason || `Ausencia (${absenceType})`}</p>
+                                                    <p>Período: <strong>{format(new Date(absence.startDate), 'dd/MM/yy')}</strong> al <strong>{format(new Date(absence.endDate), 'dd/MM/yy')}</strong></p>
                                                 </div>
                                             </TooltipContent>
                                         )}
@@ -480,7 +480,7 @@ export function ScheduleCalendar({
                         }
 
                         if (shiftInfo === 'VAC') {
-                            const vacation = vacations.find(v => v.collaboratorId === collaborator.id && isWithinInterval(day, { start: v.startDate, end: v.endDate }));
+                            const vacation = vacations.find(v => v.userId === collaborator.id && v.requestType === 'vacaciones' && isWithinInterval(day, { start: new Date(v.startDate), end: new Date(v.endDate) }));
                             return (
                                 <td key={day.toISOString()} className={cn(
                                   "p-1 border-b text-center h-20 w-16", 
@@ -496,7 +496,7 @@ export function ScheduleCalendar({
                                             <TooltipContent>
                                                 <div className="text-sm p-1">
                                                     <p className="font-bold">De Vacaciones</p>
-                                                    <p>Período: <strong>{format(vacation.startDate, 'dd/MM/yy')}</strong> al <strong>{format(vacation.endDate, 'dd/MM/yy')}</strong></p>
+                                                    <p>Período: <strong>{format(new Date(vacation.startDate), 'dd/MM/yy')}</strong> al <strong>{format(new Date(vacation.endDate), 'dd/MM/yy')}</strong></p>
                                                 </div>
                                             </TooltipContent>
                                         )}

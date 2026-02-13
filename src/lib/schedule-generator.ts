@@ -18,7 +18,7 @@ import {
   isSaturday,
   subDays,
 } from 'date-fns';
-import type { Collaborator, Vacation, TemporaryTransfer, Lactation, AttendanceRecord, RoleChange, Holiday, OvertimeRule, Absence, ShiftPattern, Notification, ManualOverride, ManualOverrides } from '@/lib/types';
+import type { Collaborator, Vacation, TemporaryTransfer, Lactation, AttendanceRecord, RoleChange, Holiday, OvertimeRule, ShiftPattern, Notification, ManualOverride, ManualOverrides } from '@/lib/types';
 import { getEffectiveDetails } from './schedule-utils';
 import { allJobTitles as ALL_JOB_TITLES } from './data';
 
@@ -69,7 +69,6 @@ export function generarHorariosEstaticos(
   transfers: TemporaryTransfer[] = [],
   lactations: Lactation[] = [],
   roleChanges: RoleChange[] = [],
-  absences: Absence[] = [],
   manualOverrides: ManualOverrides = new Map()
 ): Map<string, Map<string, string | null>> {
   const schedule = new Map<string, Map<string, string | null>>();
@@ -100,6 +99,8 @@ export function generarHorariosEstaticos(
     dailyGroups.set(dayKey, groupsForDay);
   });
   
+  const absenceTypeDescriptions: Record<string, string> = { PM: 'Permiso Médico', LIC: 'Licencia', SUS: 'Suspensión', RET: 'Retiro', FI: 'Falta Injustificada'};
+
   days.forEach((day, dayIndex) => {
     const dayKey = format(day, 'yyyy-MM-dd');
     const groupsForThisDay = dailyGroups.get(dayKey);
@@ -112,15 +113,18 @@ export function generarHorariosEstaticos(
           return;
       }
       
-      const isOnVacation = vacations.some(v => v.collaboratorId === collaborator.id && isWithinInterval(day, { start: v.startDate, end: v.endDate }));
+      const isOnVacation = vacations.some(v => v.requestType === 'vacaciones' && v.userId === collaborator.id && isWithinInterval(day, { start: new Date(v.startDate), end: new Date(v.endDate) }));
       if (isOnVacation) {
         schedule.get(collaborator.id)!.set(dayKey, 'VAC');
         return;
       }
       
-      const activeAbsence = absences.find(a => a.collaboratorId === collaborator.id && isWithinInterval(day, { start: a.startDate, end: a.endDate }));
-      if (activeAbsence) {
-          schedule.get(collaborator.id)!.set(dayKey, activeAbsence.type);
+      const activeAbsenceRequest = vacations.find(v => v.requestType === 'permiso' && v.userId === collaborator.id && isWithinInterval(day, { start: new Date(v.startDate), end: new Date(v.endDate) }));
+      if (activeAbsenceRequest) {
+          const reason = activeAbsenceRequest.reason || '';
+          const absenceDescription = reason.split(':')[0].trim();
+          const absenceCode = Object.keys(absenceTypeDescriptions).find(key => absenceTypeDescriptions[key] === absenceDescription) || 'PERMISO';
+          schedule.get(collaborator.id)!.set(dayKey, absenceCode);
           return;
       }
       
@@ -451,7 +455,6 @@ type ScheduleContext = {
     transfers: TemporaryTransfer[];
     lactations: Lactation[];
     roleChanges: RoleChange[];
-    absences: Absence[];
     savedPeriodSettings: Map<string, any>;
     savedSchedules?: {[key: string]: any};
     manualOverrides: ManualOverrides;
@@ -469,9 +472,9 @@ export function obtenerHorarioUnificado(
   role: 'coordinator' | 'admin' | 'rrhh' | 'collaborator'
 ): Map<string, Map<string, string | null>> {
   
-  const { allCollaborators, shiftPatterns, vacations, transfers, lactations, roleChanges, absences, manualOverrides, notifications, filters, isAutomatic, draftConditioning } = context;
+  const { allCollaborators, shiftPatterns, vacations, transfers, lactations, roleChanges, manualOverrides, notifications, filters, isAutomatic, draftConditioning } = context;
 
-  let schedule = generarHorariosEstaticos(
+  const schedule = generarHorariosEstaticos(
     allCollaborators,
     days,
     shiftPatterns,
@@ -479,7 +482,7 @@ export function obtenerHorarioUnificado(
     transfers,
     lactations,
     roleChanges,
-    absences
+    manualOverrides
   );
   
   const location = filters?.location;

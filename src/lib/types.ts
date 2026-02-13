@@ -252,15 +252,6 @@ export interface Lactation {
     endDate: Date;
 }
 
-export interface Absence {
-    id: string;
-    collaboratorId: string;
-    type: 'PM' | 'LIC' | 'SUS' | 'RET' | 'FI'; // Permiso Médico, Licencia, Suspensión, Retiro, Falta Injustificada
-    startDate: Date;
-    endDate: Date;
-    description?: string;
-}
-
 export interface AttendanceRecord {
   id: string;
   collaborator: Collaborator;

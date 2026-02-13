@@ -16,7 +16,7 @@ import { es } from 'date-fns/locale';
 import { useCollection, useFirestore, useUser } from '@/firebase';
 import { collection, doc, setDoc, deleteDoc } from 'firebase/firestore';
 
-import type { Collaborator, Vacation, TemporaryTransfer, Lactation, Absence, ShiftPattern, ManualOverrides, SavedSchedule, RoleChange, UserProfile } from '@/lib/types';
+import type { Collaborator, Vacation, TemporaryTransfer, Lactation, ShiftPattern, ManualOverrides, SavedSchedule, RoleChange, UserProfile } from '@/lib/types';
 import { obtenerHorarioUnificado } from '@/lib/schedule-generator';
 
 import { Combobox } from '@/components/ui/combobox';
@@ -196,7 +196,6 @@ function SchedulePageContent() {
       vacations: (vacationRequests as Vacation[] | undefined) || [],
       transfers,
       lactations,
-      absences: (vacationRequests?.filter(r => r.requestType === 'permiso') as Absence[] | undefined) || [],
       roleChanges,
       manualOverrides,
       savedPeriodSettings: new Map(),
@@ -453,7 +452,7 @@ function SchedulePageContent() {
                   isScheduleLocked={isScheduleLocked}
                   transfers={transfers}
                   vacations={(vacationRequests as Vacation[] | undefined) || []}
-                  absences={(vacationRequests?.filter(r => r.requestType === 'permiso') as Absence[] | undefined) || []}
+                  absences={(vacationRequests?.filter(r => r.requestType === 'permiso') as Vacation[] | undefined) || []}
                   lactations={lactations}
                   roleChanges={roleChanges}
                   allCollaborators={collaborators as Collaborator[]}
@@ -528,4 +527,3 @@ export default function SchedulePage() {
         </ScheduleProvider>
     );
 }
-
