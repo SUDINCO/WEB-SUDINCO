@@ -83,24 +83,24 @@ export default function WorkLocationsPage() {
     defaultValues: { name: '', latitude: 0, longitude: 0, radius: 50 },
   });
 
-  const handleAddNew = () => {
+  const handleAddNew = useCallback(() => {
     setEditingLocation(null);
     form.reset({ name: '', latitude: mapCenter[0], longitude: mapCenter[1], radius: 50 });
     setViewMode('form');
-  };
+  }, [form, mapCenter]);
 
-  const handleEdit = (location: WorkLocation) => {
+  const handleEdit = useCallback((location: WorkLocation) => {
     setEditingLocation(location);
     form.reset(location);
     setViewMode('form');
     setMapCenter([location.latitude, location.longitude]);
     setMapZoom(16);
-  };
+  }, [form]);
 
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
     setViewMode('list');
     setEditingLocation(null);
-  };
+  }, []);
   
   const onSubmit = async (data: LocationFormData) => {
     if (!locationsCollectionRef) return;
@@ -135,7 +135,7 @@ export default function WorkLocationsPage() {
     }
   };
 
-  const handleGetCurrentLocation = () => {
+  const handleGetCurrentLocation = useCallback(() => {
     setIsGettingLocation(true);
     navigator.geolocation.getCurrentPosition(
       (position) => {
@@ -156,7 +156,7 @@ export default function WorkLocationsPage() {
       },
       { enableHighAccuracy: true }
     );
-  };
+  }, [form]);
   
   const handleMapDoubleClick = useCallback((latlng: { lat: number, lng: number }) => {
     if (viewMode === 'form' && !editingLocation) {
@@ -301,7 +301,7 @@ export default function WorkLocationsPage() {
             </Card>
           )}
         </div>
-        <div className="xl:col-span-2 min-h-[500px] xl:h-[75vh]">
+        <div className="xl:col-span-2 h-[75vh]">
           <Card className="h-full">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
