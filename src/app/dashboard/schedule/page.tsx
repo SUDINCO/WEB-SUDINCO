@@ -32,6 +32,7 @@ import { LactationManager } from '@/components/schedule/LactationManager';
 import { RoleChangeManager } from '@/components/schedule/RoleChangeManager';
 import { AbsenceManager } from '@/components/schedule/AbsenceManager';
 import { ScheduleSummary } from '@/components/schedule/ScheduleSummary';
+import { ScheduleDataSummaryDialog } from '@/components/schedule/ScheduleDataSummaryDialog';
 import { ScheduleProvider, useScheduleState } from '@/context/schedule-context';
 import {
     AlertDialog,
@@ -85,6 +86,7 @@ function SchedulePageContent() {
   const [isRoleChangeModalOpen, setIsRoleChangeModalOpen] = useState(false);
   const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
   const [scheduleToDelete, setScheduleToDelete] = useState<string | null>(null);
+  const [isDataSummaryOpen, setIsDataSummaryOpen] = useState(false);
 
 
   const firestore = useFirestore();
@@ -409,6 +411,10 @@ function SchedulePageContent() {
               />
               
               <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setIsDataSummaryOpen(true)}>
+                    <BookUser className="mr-2 h-4 w-4" />
+                    Resumen
+                  </Button>
                   <Button variant="outline" onClick={() => setIsSummaryModalOpen(true)}>
                     <ClipboardCheck className="mr-2 h-4 w-4" />
                     Aprobaciones
@@ -504,6 +510,14 @@ function SchedulePageContent() {
               onNextPeriod={() => setCurrentDate(addMonths(currentDate, 1))}
               savedSchedules={Object.values(savedSchedules)}
               onDeleteSchedule={setScheduleToDelete}
+          />
+          <ScheduleDataSummaryDialog
+              open={isDataSummaryOpen}
+              onOpenChange={setIsDataSummaryOpen}
+              schedule={schedule}
+              collaborators={filteredCollaborators}
+              days={days}
+              periodTitle={monthName}
           />
       </div>
     </>
