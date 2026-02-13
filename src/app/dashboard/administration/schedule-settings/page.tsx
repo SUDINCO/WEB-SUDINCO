@@ -510,7 +510,6 @@ function OvertimeRulesManager() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Cargo</TableHead>
                                 <TableHead>Jornada</TableHead>
                                 <TableHead>Convención</TableHead>
                                 <TableHead>Horarios</TableHead>
@@ -524,11 +523,10 @@ function OvertimeRulesManager() {
                             {sortedGroupKeys.map(key => (
                                 <React.Fragment key={key}>
                                     <TableRow className="bg-amber-100 hover:bg-amber-100">
-                                        <TableCell colSpan={8} className="font-bold text-amber-900">{key}</TableCell>
+                                        <TableCell colSpan={7} className="font-bold text-amber-900">{key}</TableCell>
                                     </TableRow>
                                     {groupedRules[key].map(rule => (
                                         <TableRow key={rule.id}>
-                                            <TableCell className="font-medium">{rule.jobTitle}</TableCell>
                                             <TableCell><Badge variant={rule.dayType === 'NORMAL' ? 'secondary' : 'outline'}>{rule.dayType}</Badge></TableCell>
                                             <TableCell className="font-semibold">{rule.shift}</TableCell>
                                             <TableCell>{rule.startTime} - {rule.endTime}</TableCell>
@@ -553,8 +551,8 @@ function OvertimeRulesManager() {
 
 function ScheduleSettingsPageContent() {
     const firestore = useFirestore();
-    const { data: initialPatterns, isLoading: patternsLoading } = useCollection<ShiftPattern>(useMemo(() => firestore ? collection(firestore, 'shiftPatterns') : null, [firestore]));
-    const { data: cargos, isLoading: cargosLoading } = useCollection<GenericOption>(useMemo(() => firestore ? collection(firestore, 'cargos') : null, [firestore]));
+    const { data: initialPatterns, isLoading: patternsLoading } = useCollection<ShiftPattern>(React.useMemo(() => firestore ? collection(firestore, 'shiftPatterns') : null, [firestore]));
+    const { data: cargos, isLoading: cargosLoading } = useCollection<GenericOption>(React.useMemo(() => firestore ? collection(firestore, 'cargos') : null, [firestore]));
     
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const { toast } = useToast();
