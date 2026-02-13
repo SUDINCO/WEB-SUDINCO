@@ -515,8 +515,10 @@ function SchedulePageContent() {
               open={isDataSummaryOpen}
               onOpenChange={setIsDataSummaryOpen}
               schedule={schedule}
+              savedSchedules={savedSchedules}
               collaborators={collaborators} // Pass all collaborators
               days={days}
+              currentDate={currentDate}
               periodTitle={monthName}
               holidays={holidays}
               overtimeRules={overtimeRules}
