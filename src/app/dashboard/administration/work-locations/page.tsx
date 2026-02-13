@@ -304,7 +304,7 @@ export default function WorkLocationsPage() {
             </CardContent>
           </Card>
         </div>
-        <div className="xl:col-span-2 min-h-[600px] xl:min-h-0">
+        <div className="xl:col-span-2 min-h-[700px]">
           <Card className="h-full">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
