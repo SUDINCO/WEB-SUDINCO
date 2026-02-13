@@ -1,11 +1,12 @@
 
+
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
 import { format, set, addMonths, eachDayOfInterval, subMonths, startOfDay, isSameDay, isWithinInterval, differenceInMinutes, isAfter } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useScheduleState } from '@/context/schedule-context';
-import type { AttendanceRecord, Collaborator, OvertimeRule, UserProfile, Vacation } from '@/lib/types';
+import type { AttendanceRecord, Collaborator, OvertimeRule, UserProfile, Vacation, TemporaryTransfer, RoleChange } from '@/lib/types';
 import { obtenerHorarioUnificado, getShiftDetailsFromRules } from '@/lib/schedule-generator';
 import { getEffectiveDetails } from '@/lib/schedule-utils';
 import { useCollection, useFirestore } from '@/firebase';
@@ -28,9 +29,6 @@ type ViewMode = 'period' | 'annual';
 function AttendanceSummaryPageContent() {
   const { 
     locations: allLocations,
-    vacations, 
-    transfers, 
-    roleChanges, 
     savedSchedules,
     shiftPatterns,
     overtimeRules,
@@ -40,6 +38,10 @@ function AttendanceSummaryPageContent() {
   const firestore = useFirestore();
   const { data: allUsers, isLoading: usersLoading } = useCollection<UserProfile>(useMemo(() => firestore ? collection(firestore, 'users') : null, [firestore]));
   const { data: attendanceData, isLoading: attendanceLoading } = useCollection<AttendanceRecord>(useMemo(() => firestore ? collection(firestore, 'attendance') : null, [firestore]));
+  const { data: vacations, isLoading: vacationsLoading } = useCollection<Vacation>(useMemo(() => firestore ? collection(firestore, 'vacationRequests') : null, [firestore]));
+  
+  const transfers: TemporaryTransfer[] = [];
+  const roleChanges: RoleChange[] = [];
 
   const [viewMode, setViewMode] = useState<ViewMode>('period');
   const [selectedPeriodDate, setSelectedPeriodDate] = useState(new Date());
@@ -91,7 +93,7 @@ function AttendanceSummaryPageContent() {
       daysInPeriod,
       {
         allCollaborators: collaborators,
-        vacations,
+        vacations: vacations || [],
         transfers,
         lactations: [],
         roleChanges,
@@ -127,12 +129,12 @@ function AttendanceSummaryPageContent() {
   }, [attendanceData, periodInterval]);
 
   const attendanceSummary = useMemo(() => {
-    if (filteredCollaboratorsForDisplay.length === 0) return [];
+    if (filteredCollaboratorsForDisplay.length === 0 || !vacations) return [];
     
     return filteredCollaboratorsForDisplay.map(c => {
         const collaboratorId = c.id;
         const collaboratorAttendance = attendanceRecordsForPeriod.filter(rec => rec.collaboratorId === collaboratorId);
-        const collaboratorAbsences = vacations.filter(req => req.userId === collaboratorId && req.status === 'approved');
+        const collaboratorAbsences = (vacations || []).filter(req => req.userId === collaboratorId && req.status === 'approved');
 
         let diasTrabajados = 0;
         let diasDeAusencia = 0;
