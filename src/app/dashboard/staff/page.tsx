@@ -82,6 +82,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import Image from 'next/image';
+import { normalizeText } from '@/lib/utils';
 
 
 type UserProfile = {
@@ -166,16 +167,6 @@ const formatDateForInput = (dateStr: string | undefined) => {
     } catch {
         return '';
     }
-};
-
-const normalizeText = (text: string | undefined | null): string => {
-    if (!text) return '';
-    return text
-      .normalize('NFD') 
-      .replace(/[\u0300-\u036f]/g, '') 
-      .toUpperCase() 
-      .replace(/\s+/g, ' ') 
-      .trim();
 };
 
 const normalizeEmail = (email: string | undefined | null): string => {

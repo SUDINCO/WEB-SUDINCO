@@ -43,6 +43,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { normalizeText } from '@/lib/utils';
 
 
 type Option = {
@@ -62,17 +63,6 @@ type ScheduleCollaborator = {
   originalJobTitle: string; 
   originalLocation: string;
 }
-
-const normalizeText = (text: string | undefined | null): string => {
-    if (!text) return '';
-    return text
-      .normalize('NFD') 
-      .replace(/[\u0300-\u036f]/g, '') 
-      .toUpperCase() 
-      .replace(/\s+/g, ' ') 
-      .trim();
-};
-
 
 function SchedulePageContent() {
   const { user } = useUser();
@@ -292,7 +282,7 @@ function SchedulePageContent() {
         await setDoc(doc(firestore, "savedSchedules", docId), dataToSave);
         toast({
             title: "Horario Guardado",
-            description: "El horario para este período y filtros ha sido guardado y bloqueado."
+            description: "El horario para este período ha sido guardado y bloqueado."
         });
         setIsScheduleLocked(true);
         setIsDirty(false);

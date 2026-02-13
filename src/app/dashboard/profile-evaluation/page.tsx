@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
@@ -68,7 +69,7 @@ import { es } from 'date-fns/locale';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Switch } from '@/components/ui/switch';
-import { cn } from '@/lib/utils';
+import { cn, normalizeText } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -159,16 +160,6 @@ const evaluationSchema = z.object({
   aspiracionSalarial: z.coerce.number().min(0, "La aspiración salarial no puede ser negativa.").default(0),
 });
 
-
-const normalizeText = (text: string | undefined | null): string => {
-    if (!text) return '';
-    return text
-      .normalize('NFD') 
-      .replace(/[\u0300-\u036f]/g, '') 
-      .toUpperCase() 
-      .replace(/\s+/g, ' ') 
-      .trim();
-};
 
 const NIVELES_ESTUDIOS = [
     "NO APLICA",

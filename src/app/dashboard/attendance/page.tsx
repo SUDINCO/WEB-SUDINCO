@@ -79,8 +79,10 @@ import { toast } from '@/hooks/use-toast';
 import { ScheduleProvider, useScheduleState } from '@/context/schedule-context';
 import type { Collaborator, ShiftPattern, Vacation, TemporaryTransfer, RoleChange, Lactation, ManualOverrides, UserProfile } from '@/lib/types';
 import { obtenerHorarioUnificado } from '@/lib/schedule-generator';
-import { cn } from '@/lib/utils';
+import { cn, normalizeText } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
+import { getEffectiveDetails } from '@/lib/schedule-utils';
+
 
 type AttendanceRecord = {
     id: string;
@@ -582,7 +584,7 @@ function AttendancePageContent() {
             const newRecord = {
                 collaboratorId: userProfile.id,
                 date: new Date(),
-                scheduledShift: schedule.get(userProfile.id)?.get(format(new Date(), 'yyyy-MM-dd')) || null,
+                scheduledShift: currentUserSchedule?.get(format(new Date(), 'yyyy-MM-dd')) || null,
                 entryTime: new Date(),
                 exitTime: null,
                 status: 'in-progress' as const,
@@ -614,9 +616,41 @@ function AttendancePageContent() {
 
 
   const currentUserSchedule = useMemo(() => {
-    if (!schedule || !userProfile) return undefined;
+    if (!userProfile || !savedSchedules) {
+        return schedule.get(userProfile?.id || '');
+    }
+
+    const today = new Date();
+    const periodDate = today.getDate() < 21 ? subMonths(today, 1) : today;
+    const periodIdentifier = format(periodDate, 'yyyy-MM');
+
+    const collaboratorRepresentation: Collaborator = {
+        id: userProfile.id,
+        name: `${userProfile.nombres} ${userProfile.apellidos}`,
+        originalJobTitle: userProfile.cargo,
+        originalLocation: userProfile.ubicacion || 'N/A',
+        entryDate: new Date(userProfile.fechaIngreso),
+        jobTitle: userProfile.cargo,
+        location: userProfile.ubicacion || 'N/A',
+    };
+    
+    const { location, jobTitle } = getEffectiveDetails(collaboratorRepresentation, today, [], []);
+    
+    const savedScheduleKey = `${periodIdentifier}_${normalizeText(location)}_${normalizeText(jobTitle)}`;
+    const savedScheduleData = savedSchedules[savedScheduleKey];
+    
+    if (savedScheduleData && savedScheduleData.schedule[userProfile.id]) {
+        const userDayMap = new Map<string, string | null>();
+        const userSavedSchedule = savedScheduleData.schedule[userProfile.id];
+        for (const dayKey in userSavedSchedule) {
+            userDayMap.set(dayKey, userSavedSchedule[dayKey]);
+        }
+        return userDayMap;
+    }
+    
     return schedule.get(userProfile.id);
-  }, [schedule, userProfile]);
+
+  }, [schedule, userProfile, savedSchedules]);
 
   const handleInfoClick = (date: Date, record?: AttendanceRecord, shift?: string | null) => {
       setSelectedDayInfo({ date, record, shift });

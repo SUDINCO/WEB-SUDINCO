@@ -55,6 +55,7 @@ import { collection, doc, addDoc, deleteDoc, writeBatch, getDocs } from 'firebas
 import { toast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import * as XLSX from 'xlsx';
+import { normalizeText } from '@/lib/utils';
 
 interface UserProfile {
   id: string;
@@ -100,16 +101,6 @@ const ruleSchema = z.object({
 });
 
 type RuleFormData = z.infer<typeof ruleSchema>;
-
-const normalizeText = (text: string | undefined | null): string => {
-    if (!text) return '';
-    return text
-      .normalize('NFD') 
-      .replace(/[\u0300-\u036f]/g, '') 
-      .toUpperCase() 
-      .replace(/\s+/g, ' ') 
-      .trim();
-};
 
 export default function LeaderAssignmentPage() {
   const [isRuleDialogOpen, setRuleDialogOpen] = useState(false);
