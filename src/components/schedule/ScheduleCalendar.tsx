@@ -699,15 +699,13 @@ export function ScheduleCalendar({
                       {days.map((day) => {
                         const dayKey = format(day, 'yyyy-MM-dd');
                         const count = dailyCounts[dayKey]?.[shift] || 0;
-                        const isPastDay = isBefore(day, today);
-                        
                         return (
                           <td
                             key={day.toISOString()}
                             className="p-1 border-b text-center h-12 w-16"
                           >
                             <div className="w-full h-full flex items-center justify-center font-semibold">
-                              { isPastDay ? '' : (count > 0 ? count : '')}
+                              {count > 0 ? count : ''}
                             </div>
                           </td>
                         );
