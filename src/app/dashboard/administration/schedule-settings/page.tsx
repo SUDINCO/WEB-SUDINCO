@@ -73,6 +73,7 @@ function ShiftEditorDialog({
   cargoData: CargoScheduleStatus | null;
 }) {
   const firestore = useFirestore();
+  const { toast } = useToast();
   const form = useForm<z.infer<typeof editorSchema>>({
     resolver: zodResolver(editorSchema),
     defaultValues: { shifts: [] },
