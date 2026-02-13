@@ -515,13 +515,22 @@ function SchedulePageContent() {
               open={isDataSummaryOpen}
               onOpenChange={setIsDataSummaryOpen}
               schedule={schedule}
-              collaborators={filteredCollaborators}
+              collaborators={collaborators} // Pass all collaborators
               days={days}
               periodTitle={monthName}
               holidays={holidays}
               overtimeRules={overtimeRules}
               transfers={transfers}
               roleChanges={roleChanges}
+              // Pass state and handlers for dialog to control
+              onPrevPeriod={() => setCurrentDate(subMonths(currentDate, 1))}
+              onNextPeriod={() => setCurrentDate(addMonths(currentDate, 1))}
+              locationOptions={ubicacionesOptions}
+              jobTitleOptions={cargosOptions}
+              selectedLocation={selectedUbicacion}
+              onLocationChange={setSelectedUbicacion}
+              selectedJobTitle={selectedCargo}
+              onJobTitleChange={setSelectedCargo}
           />
       </div>
     </>
