@@ -32,6 +32,7 @@ import {
   Bell,
   MessageSquare,
   LayoutGrid,
+  BarChart,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -160,6 +161,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
           title: "Nómina",
           sublinks: [
             { name: "Nómina", href: "/dashboard/staff", icon: Users, id: "staff" },
+            { name: "Resumen de Asistencia", href: "/dashboard/attendance-summary", icon: BarChart, id: "attendance-summary" },
           ]
         },
         {
