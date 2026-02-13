@@ -289,6 +289,7 @@ export interface OvertimeRule {
     nightSurcharge: number;
     sup50: number;
     ext100: number;
+    isPlaceholder?: boolean;
 }
 
 export interface ShiftPattern {

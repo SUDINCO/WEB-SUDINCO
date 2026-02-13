@@ -25,7 +25,7 @@ import { Combobox } from '@/components/ui/combobox';
 import type { ShiftPattern, GenericOption, OvertimeRule } from '@/lib/types';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ScheduleProvider, useScheduleState } from '@/context/schedule-context';
-import { normalizeText } from '@/lib/utils';
+import { cn, normalizeText } from '@/lib/utils';
 
 
 function PatternsTabContent({ initialPatterns }: { initialPatterns: ShiftPattern[] }) {
@@ -370,13 +370,14 @@ const overtimeRuleSchema = z.object({
 });
 
 function OvertimeRulesManager() {
-    const { overtimeRules, cargos } = useScheduleState();
+    const { overtimeRules, cargos, shiftPatterns } = useScheduleState();
     const { toast } = useToast();
     const firestore = useFirestore();
 
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingRule, setEditingRule] = useState<OvertimeRule | null>(null);
     const [ruleToDelete, setRuleToDelete] = useState<OvertimeRule | null>(null);
+    const [isEditingPlaceholder, setIsEditingPlaceholder] = useState(false);
 
     const form = useForm<z.infer<typeof overtimeRuleSchema>>({
         resolver: zodResolver(overtimeRuleSchema),
@@ -384,20 +385,73 @@ function OvertimeRulesManager() {
             jobTitle: '',
             dayType: 'NORMAL',
             shift: '',
-            startTime: '00:00',
-            endTime: '00:00',
+            startTime: '',
+            endTime: '',
             nightSurcharge: 0,
             sup50: 0,
             ext100: 0,
         },
     });
 
+    const allRules = React.useMemo(() => {
+        if (!shiftPatterns) return overtimeRules || [];
+        
+        const currentRules = overtimeRules || [];
+
+        const existingRulesSet = new Set(
+            currentRules.map(r => `${r.jobTitle}|${r.shift}|${r.dayType}`)
+        );
+
+        const generatedPlaceholders: OvertimeRule[] = [];
+
+        shiftPatterns.forEach(pattern => {
+            const uniqueShifts = [...new Set(pattern.cycle.filter((s): s is string => !!s && s !== 'LIB'))];
+
+            uniqueShifts.forEach(shift => {
+                if (!shift) return;
+
+                if (!existingRulesSet.has(`${pattern.jobTitle}|${shift}|NORMAL`)) {
+                    generatedPlaceholders.push({
+                        id: `placeholder-normal-${pattern.jobTitle}-${shift}`,
+                        jobTitle: pattern.jobTitle,
+                        dayType: 'NORMAL',
+                        shift: shift,
+                        startTime: '',
+                        endTime: '',
+                        nightSurcharge: 0,
+                        sup50: 0,
+                        ext100: 0,
+                        isPlaceholder: true,
+                    });
+                }
+
+                if (!existingRulesSet.has(`${pattern.jobTitle}|${shift}|FESTIVO`)) {
+                    generatedPlaceholders.push({
+                        id: `placeholder-festivo-${pattern.jobTitle}-${shift}`,
+                        jobTitle: pattern.jobTitle,
+                        dayType: 'FESTIVO',
+                        shift: shift,
+                        startTime: '',
+                        endTime: '',
+                        nightSurcharge: 0,
+                        sup50: 0,
+                        ext100: 0,
+                        isPlaceholder: true,
+                    });
+                }
+            });
+        });
+
+        return [...currentRules, ...generatedPlaceholders];
+    }, [shiftPatterns, overtimeRules]);
+
+
     const groupedRules = useMemo(() => {
-        if (!overtimeRules) return [];
+        if (!allRules) return [];
         
         const groups: { [key: string]: OvertimeRule[] } = {};
         
-        const sorted = [...overtimeRules].sort((a, b) => {
+        const sorted = [...allRules].sort((a, b) => {
             if (a.jobTitle < b.jobTitle) return -1;
             if (a.jobTitle > b.jobTitle) return 1;
             if (a.dayType < b.dayType) return -1; // NORMAL before FESTIVO
@@ -414,23 +468,37 @@ function OvertimeRulesManager() {
         });
 
         return Object.entries(groups).sort((a,b) => a[0].localeCompare(b[0]));
-    }, [overtimeRules]);
+    }, [allRules]);
 
     const handleOpenForm = (rule: OvertimeRule | null) => {
-        setEditingRule(rule);
-        if (rule) {
-            form.reset(rule);
-        } else {
+        if (rule?.isPlaceholder) {
+            setIsEditingPlaceholder(true);
+            setEditingRule(null);
             form.reset({
-                jobTitle: '',
-                dayType: 'NORMAL',
-                shift: '',
-                startTime: '00:00',
-                endTime: '00:00',
+                ...rule,
+                startTime: '',
+                endTime: '',
                 nightSurcharge: 0,
                 sup50: 0,
                 ext100: 0,
             });
+        } else {
+            setIsEditingPlaceholder(false);
+            setEditingRule(rule);
+            if (rule) {
+                form.reset(rule);
+            } else {
+                form.reset({
+                    jobTitle: '',
+                    dayType: 'NORMAL',
+                    shift: '',
+                    startTime: '',
+                    endTime: '',
+                    nightSurcharge: 0,
+                    sup50: 0,
+                    ext100: 0,
+                });
+            }
         }
         setIsFormOpen(true);
     };
@@ -455,7 +523,7 @@ function OvertimeRulesManager() {
     };
 
     const handleDeleteRule = async () => {
-        if (!ruleToDelete || !firestore) return;
+        if (!ruleToDelete || ruleToDelete.isPlaceholder || !firestore) return;
         try {
             await deleteDoc(doc(firestore, 'overtimeRules', ruleToDelete.id));
             toast({ title: "Regla eliminada" });
@@ -479,14 +547,14 @@ function OvertimeRulesManager() {
                              <FormField control={form.control} name="jobTitle" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Cargo</FormLabel>
-                                    <Combobox options={cargos.map(c => ({ label: c.name, value: c.name }))} {...field} />
+                                    <Combobox options={cargos.map(c => ({ label: c.name, value: c.name }))} {...field} disabled={isEditingPlaceholder} />
                                     <FormMessage />
                                 </FormItem>
                              )} />
                             <FormField control={form.control} name="dayType" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Jornada</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value}>
+                                    <Select onValueChange={field.onChange} value={field.value} disabled={isEditingPlaceholder}>
                                         <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                                         <SelectContent>
                                             <SelectItem value="NORMAL">NORMAL</SelectItem>
@@ -497,7 +565,7 @@ function OvertimeRulesManager() {
                                 </FormItem>
                             )} />
                              <FormField control={form.control} name="shift" render={({ field }) => (
-                                <FormItem><FormLabel>Convención de Turno</FormLabel><FormControl><Input placeholder="Ej: D12, N8, T24..." {...field} /></FormControl><FormMessage /></FormItem>
+                                <FormItem><FormLabel>Convención de Turno</FormLabel><FormControl><Input placeholder="Ej: D12, N8, T24..." {...field} disabled={isEditingPlaceholder} /></FormControl><FormMessage /></FormItem>
                              )} />
                             <div className="grid grid-cols-2 gap-4">
                                 <FormField control={form.control} name="startTime" render={({ field }) => (
@@ -564,7 +632,7 @@ function OvertimeRulesManager() {
                                         </TableCell>
                                     </TableRow>
                                     {rulesInGroup.map(rule => (
-                                        <TableRow key={rule.id}>
+                                        <TableRow key={rule.id} className={cn(rule.isPlaceholder && "opacity-60 italic")}>
                                             <TableCell className="border-r"><Badge variant={rule.dayType === 'NORMAL' ? 'secondary' : 'outline'}>{rule.dayType}</Badge></TableCell>
                                             <TableCell className="font-semibold border-r">{rule.shift}</TableCell>
                                             <TableCell className="text-center border-r">{rule.startTime} - {rule.endTime}</TableCell>
@@ -573,7 +641,7 @@ function OvertimeRulesManager() {
                                             <TableCell className="text-center border-r">{rule.ext100 || ''}</TableCell>
                                             <TableCell className="text-right">
                                                 <Button variant="ghost" size="icon" onClick={() => handleOpenForm(rule)}><Edit className="h-4 w-4" /></Button>
-                                                <Button variant="ghost" size="icon" onClick={() => setRuleToDelete(rule)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                                <Button variant="ghost" size="icon" onClick={() => setRuleToDelete(rule)} disabled={rule.isPlaceholder}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                                             </TableCell>
                                         </TableRow>
                                     ))}
