@@ -1,5 +1,4 @@
 
-
 import { collection, getDocs, writeBatch, Firestore, doc } from 'firebase/firestore';
 
 const initialData = {
@@ -170,11 +169,17 @@ const initialData = {
         {"jobTitle":"AUDITOR DE PEAJE","dayType":"FESTIVO","shift":"TA","startTime":"12:00","endTime":"20:00","nightSurcharge":0,"sup50":0,"ext100":8},
         {"jobTitle":"AUXILIAR DE MANTENIMIENTO","dayType":"NORMAL","shift":"M8","startTime":"06:00","endTime":"14:00","nightSurcharge":0,"sup50":0,"ext100":0},
         {"jobTitle":"AUXILIAR DE MANTENIMIENTO","dayType":"NORMAL","shift":"M8","startTime":"08:00","endTime":"16:00","nightSurcharge":0,"sup50":0,"ext100":0},
+        {"jobTitle":"AUXILIAR DE MANTENIMIENTO","dayType":"NORMAL","shift":"T8","startTime":"14:00","endTime":"22:00","nightSurcharge":3,"sup50":0,"ext100":0},
         {"jobTitle":"AUXILIAR DE MANTENIMIENTO","dayType":"FESTIVO","shift":"M8","startTime":"06:00","endTime":"14:00","nightSurcharge":0,"sup50":0,"ext100":8},
         {"jobTitle":"AUXILIAR DE MANTENIMIENTO","dayType":"FESTIVO","shift":"M8","startTime":"08:00","endTime":"16:00","nightSurcharge":0,"sup50":0,"ext100":8},
+        {"jobTitle":"AUXILIAR DE MANTENIMIENTO","dayType":"FESTIVO","shift":"T8","startTime":"14:00","endTime":"22:00","nightSurcharge":0,"sup50":0,"ext100":8},
+        {"jobTitle":"AUXILIAR DE RECAUDO","dayType":"NORMAL","shift":"D12","startTime":"06:00","endTime":"18:00","nightSurcharge":0,"sup50":4,"ext100":0},
         {"jobTitle":"AUXILIAR DE RECAUDO","dayType":"NORMAL","shift":"M8","startTime":"06:00","endTime":"14:00","nightSurcharge":0,"sup50":0,"ext100":0},
+        {"jobTitle":"AUXILIAR DE RECAUDO","dayType":"NORMAL","shift":"MYT","startTime":"06:00","endTime":"22:00","nightSurcharge":0,"sup50":4,"ext100":4},
         {"jobTitle":"AUXILIAR DE RECAUDO","dayType":"NORMAL","shift":"T8","startTime":"14:00","endTime":"22:00","nightSurcharge":3,"sup50":0,"ext100":0},
+        {"jobTitle":"AUXILIAR DE RECAUDO","dayType":"FESTIVO","shift":"D12","startTime":"06:00","endTime":"18:00","nightSurcharge":0,"sup50":0,"ext100":12},
         {"jobTitle":"AUXILIAR DE RECAUDO","dayType":"FESTIVO","shift":"M8","startTime":"06:00","endTime":"14:00","nightSurcharge":0,"sup50":0,"ext100":8},
+        {"jobTitle":"AUXILIAR DE RECAUDO","dayType":"FESTIVO","shift":"MYT","startTime":"06:00","endTime":"22:00","nightSurcharge":0,"sup50":0,"ext100":16},
         {"jobTitle":"AUXILIAR DE RECAUDO","dayType":"FESTIVO","shift":"T8","startTime":"14:00","endTime":"22:00","nightSurcharge":0,"sup50":0,"ext100":8},
         {"jobTitle":"CAJERO DE RECAUDO","dayType":"NORMAL","shift":"M8","startTime":"06:00","endTime":"14:00","nightSurcharge":0,"sup50":0,"ext100":0},
         {"jobTitle":"CAJERO DE RECAUDO","dayType":"NORMAL","shift":"N8","startTime":"22:00","endTime":"06:00","nightSurcharge":8,"sup50":0,"ext100":0},
@@ -188,8 +193,10 @@ const initialData = {
         {"jobTitle":"CONDUCTOR DE GRUA","dayType":"FESTIVO","shift":"N12","startTime":"18:00","endTime":"06:00","nightSurcharge":0,"sup50":0,"ext100":6},
         {"jobTitle":"OPERADOR DE VEHICULO DE EMERGENCIA","dayType":"NORMAL","shift":"T24","startTime":"06:00","endTime":"06:00","nightSurcharge":0,"sup50":0,"ext100":0},
         {"jobTitle":"OPERADOR DE VEHICULO DE EMERGENCIA","dayType":"FESTIVO","shift":"T24","startTime":"06:00","endTime":"06:00","nightSurcharge":0,"sup50":0,"ext100":18},
+        {"jobTitle":"OPERADOR DE VEHICULO DE EMERGENCIA","dayType":"FESTIVO","shift":"T24 DIAN ANT","startTime":"06:00","endTime":"06:00","nightSurcharge":0,"sup50":0,"ext100":6},
         {"jobTitle":"RESPONSABLE DE ATENCION PREHOSPITALARIA","dayType":"NORMAL","shift":"T24","startTime":"06:00","endTime":"06:00","nightSurcharge":0,"sup50":0,"ext100":0},
         {"jobTitle":"RESPONSABLE DE ATENCION PREHOSPITALARIA","dayType":"FESTIVO","shift":"T24","startTime":"06:00","endTime":"06:00","nightSurcharge":0,"sup50":0,"ext100":18},
+        {"jobTitle":"RESPONSABLE DE ATENCION PREHOSPITALARIA","dayType":"FESTIVO","shift":"T24 DIAN ANT","startTime":"06:00","endTime":"06:00","nightSurcharge":0,"sup50":0,"ext100":6},
         {"jobTitle":"SERVICIOS GENERALES","dayType":"NORMAL","shift":"M8","startTime":"06:00","endTime":"14:00","nightSurcharge":0,"sup50":0,"ext100":0},
         {"jobTitle":"SERVICIOS GENERALES","dayType":"NORMAL","shift":"M8","startTime":"08:00","endTime":"16:00","nightSurcharge":0,"sup50":0,"ext100":0},
         {"jobTitle":"SERVICIOS GENERALES","dayType":"FESTIVO","shift":"M8","startTime":"06:00","endTime":"14:00","nightSurcharge":0,"sup50":0,"ext100":8},
@@ -199,7 +206,7 @@ const initialData = {
         {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"NORMAL","shift":"T8","startTime":"14:00","endTime":"22:00","nightSurcharge":3,"sup50":0,"ext100":0},
         {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"FESTIVO","shift":"M8","startTime":"06:00","endTime":"14:00","nightSurcharge":0,"sup50":0,"ext100":8},
         {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"FESTIVO","shift":"N8","startTime":"22:00","endTime":"06:00","nightSurcharge":6,"sup50":0,"ext100":2},
-        {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"FESTIVO","shift":"T8","startTime":"14:00","endTime":"22:00","nightSurcharge":0,"sup50":0,"ext100":8}
+        {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"FESTIVO","shift":"T8","startTime":"14:00","endTime":"22:00","nightSurcharge":0,"sup50":0,"ext100":8},
     ]
 };
 
@@ -212,11 +219,12 @@ async function seedCollection(db: Firestore, collectionName: string, data: any[]
         const batch = writeBatch(db);
         data.forEach(item => {
             let docRef;
-            if (collectionName === 'overtimeRules') {
-                docRef = doc(collectionRef); // always generate new ID for overtimeRules
+            // Use specific key for roles and shiftPatterns for predictable IDs
+            if ((collectionName === 'roles' || collectionName === 'shiftPatterns') && keyField && item[keyField]) {
+                const docId = item[keyField].toUpperCase().replace(/\s+/g, '_');
+                docRef = doc(collectionRef, docId);
             } else {
-                const docId = keyField && item[keyField] ? item[keyField].toUpperCase().replace(/\s+/g, '_') : undefined;
-                docRef = docId ? doc(collectionRef, docId) : doc(collectionRef);
+                 docRef = doc(collectionRef);
             }
             
             const dataToSet = typeof item === 'string' ? { name: item.toUpperCase() } : 
@@ -243,6 +251,18 @@ export async function seedDatabase(db: Firestore) {
 
     isSeeding = true;
     try {
+        // Seed collections that only need to be filled once if empty
+        await Promise.all([
+            seedCollection(db, 'roles', initialData.roles, 'name'),
+            seedCollection(db, 'empresas', initialData.empresas),
+            seedCollection(db, 'cargos', initialData.cargos),
+            seedCollection(db, 'ubicaciones', initialData.ubicaciones),
+            seedCollection(db, 'areas', initialData.areas),
+            seedCollection(db, 'centrosCosto', initialData.centrosCosto),
+            seedCollection(db, 'shiftPatterns', initialData.shiftPatterns, 'jobTitle'),
+        ]);
+
+        // ---- Robust Logic for Overtime Rules ----
         const allowedShiftsByJobTitle = new Map<string, Set<string>>();
         initialData.shiftPatterns.forEach(pattern => {
             const shifts = new Set(pattern.cycle.filter((s): s is string => !!s && s !== 'LIB'));
@@ -254,24 +274,15 @@ export async function seedDatabase(db: Firestore) {
             return allowedShifts ? allowedShifts.has(rule.shift) : false;
         });
 
-        // Seed other collections if they are empty
-        await Promise.all([
-            seedCollection(db, 'roles', initialData.roles, 'name'),
-            seedCollection(db, 'empresas', initialData.empresas),
-            seedCollection(db, 'cargos', initialData.cargos),
-            seedCollection(db, 'ubicaciones', initialData.ubicaciones),
-            seedCollection(db, 'areas', initialData.areas),
-            seedCollection(db, 'centrosCosto', initialData.centrosCosto),
-            seedCollection(db, 'shiftPatterns', initialData.shiftPatterns, 'jobTitle'),
-        ]);
-
-        // Always re-seed overtimeRules to ensure data consistency
         const overtimeCollectionRef = collection(db, 'overtimeRules');
         const snapshot = await getDocs(overtimeCollectionRef);
         const batch = writeBatch(db);
-        snapshot.docs.forEach(doc => batch.delete(doc.ref)); // Delete all existing
+
+        // 1. Delete all existing rules
+        snapshot.docs.forEach(doc => batch.delete(doc.ref));
         
-        filteredOvertimeRules.forEach(rule => { // Add corrected ones
+        // 2. Add the correctly filtered rules
+        filteredOvertimeRules.forEach(rule => {
             const newDocRef = doc(overtimeCollectionRef);
             const dataToSet = {
                 ...rule,
@@ -281,6 +292,8 @@ export async function seedDatabase(db: Firestore) {
             };
             batch.set(newDocRef, dataToSet);
         });
+
+        // 3. Commit all changes
         await batch.commit();
         console.log(`'overtimeRules' has been re-seeded with ${filteredOvertimeRules.length} correct rules.`);
         
