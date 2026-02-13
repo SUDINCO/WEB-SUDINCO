@@ -16,7 +16,7 @@ import { es } from 'date-fns/locale';
 import { useCollection, useFirestore, useUser } from '@/firebase';
 import { collection, doc, setDoc, deleteDoc } from 'firebase/firestore';
 
-import type { Collaborator, Vacation, TemporaryTransfer, Lactation, Absence, ShiftPattern, ManualOverrides, SavedSchedule, RoleChange } from '@/lib/types';
+import type { Collaborator, Vacation, TemporaryTransfer, Lactation, Absence, ShiftPattern, ManualOverrides, SavedSchedule, RoleChange, UserProfile } from '@/lib/types';
 import { obtenerHorarioUnificado } from '@/lib/schedule-generator';
 
 import { Combobox } from '@/components/ui/combobox';
@@ -44,16 +44,6 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-
-type UserProfile = {
-  id: string;
-  email: string;
-  nombres: string;
-  apellidos: string;
-  cargo: string;
-  ubicacion?: string;
-  Status: 'active' | 'inactive';
-};
 
 type Option = {
   value: string;
