@@ -5,7 +5,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { format, set, addMonths, eachDayOfInterval, subMonths, startOfDay, isSameDay, isWithinInterval, differenceInMinutes, isAfter } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { useScheduleState } from '@/context/schedule-context';
+import { ScheduleProvider, useScheduleState } from '@/context/schedule-context';
 import type { AttendanceRecord, Collaborator, OvertimeRule, UserProfile, Vacation, TemporaryTransfer, RoleChange } from '@/lib/types';
 import { obtenerHorarioUnificado, getShiftDetailsFromRules } from '@/lib/schedule-generator';
 import { getEffectiveDetails } from '@/lib/schedule-utils';
