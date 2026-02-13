@@ -58,4 +58,3 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
     </UserProfileContext.Provider>
   );
 }
-
