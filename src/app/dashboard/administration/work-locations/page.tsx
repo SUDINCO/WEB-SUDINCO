@@ -76,8 +76,9 @@ export default function WorkLocationsPage() {
   const [locationToDelete, setLocationToDelete] = useState<WorkLocation | null>(null);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
 
+  // Default center on Guayaquil, Ecuador
   const [mapCenter, setMapCenter] = useState<[number, number]>([-2.14, -79.9]);
-  const [mapZoom, setMapZoom] = useState(13);
+  const [mapZoom, setMapZoom] = useState(12);
 
   const firestore = useFirestore();
   const locationsCollectionRef = useMemo(() => firestore ? collection(firestore, 'workLocations') : null, [firestore]);
@@ -157,9 +158,17 @@ export default function WorkLocationsPage() {
   };
   
   const handleMapDoubleClick = useCallback((latlng: { lat: number, lng: number }) => {
-      form.setValue('latitude', latlng.lat, { shouldValidate: true });
-      form.setValue('longitude', latlng.lng, { shouldValidate: true });
-      toast({ title: "Coordenadas establecidas", description: "Se han actualizado las coordenadas en el formulario." });
+    setEditingLocation(null);
+    form.reset({
+        name: '',
+        latitude: latlng.lat,
+        longitude: latlng.lng,
+        radius: 50,
+    });
+    setMapCenter([latlng.lat, latlng.lng]);
+    setMapZoom(16);
+    setIsFormOpen(true);
+    toast({ title: 'Nueva Ubicación', description: 'Coordenadas fijadas desde el mapa. Completa los detalles.'});
   }, [form]);
 
   const handleMarkerClick = useCallback((locationId: string) => {
@@ -185,11 +194,11 @@ export default function WorkLocationsPage() {
       </div>
 
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent className="sm:max-w-xl">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{editingLocation ? 'Editar Ubicación' : 'Añadir Nueva Ubicación'}</DialogTitle>
             <DialogDescription>
-              Define un área geográfica donde los empleados pueden registrar su asistencia. Haz doble clic en el mapa para fijar las coordenadas.
+              Define un área geográfica donde los empleados pueden registrar su asistencia.
             </DialogDescription>
           </DialogHeader>
           <Form {...form}>
@@ -213,20 +222,6 @@ export default function WorkLocationsPage() {
                 <FormItem><FormLabel>Radio (en metros)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
               )} />
               
-              <div className="space-y-2">
-                <Label>Vista Previa del Mapa</Label>
-                <div className="h-64 w-full rounded-md border bg-muted overflow-hidden">
-                    <LocationsMap 
-                      locations={locations || []}
-                      center={mapCenter}
-                      zoom={mapZoom}
-                      onMapDoubleClick={handleMapDoubleClick}
-                      onMarkerClick={handleMarkerClick}
-                      selectedLocationId={editingLocation?.id || null}
-                    />
-                </div>
-              </div>
-
               <DialogFooter className="pt-4">
                 <Button type="button" variant="ghost" onClick={() => setIsFormOpen(false)}>Cancelar</Button>
                 <Button type="submit" disabled={form.formState.isSubmitting}>
@@ -251,61 +246,88 @@ export default function WorkLocationsPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Ubicaciones Registradas</CardTitle>
-          <CardDescription>
-            Lista de todas las ubicaciones de trabajo y sus geocercas.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-                <TableHeader>
-                <TableRow>
-                    <TableHead>Nombre</TableHead>
-                    <TableHead>Latitud</TableHead>
-                    <TableHead>Longitud</TableHead>
-                    <TableHead>Radio (m)</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
-                </TableRow>
-                </TableHeader>
-                <TableBody>
-                {locationsLoading ? (
-                    Array.from({ length: 3 }).map((_, i) => (
-                    <TableRow key={`skel-${i}`}>
-                        <TableCell colSpan={5} className="p-4"><div className="h-8 bg-gray-200 rounded animate-pulse"></div></TableCell>
-                    </TableRow>
-                    ))
-                ) : locations && locations.length > 0 ? (
-                    locations.map((loc) => (
-                    <TableRow key={loc.id}>
-                        <TableCell className="font-medium">{loc.name}</TableCell>
-                        <TableCell>{loc.latitude.toFixed(6)}</TableCell>
-                        <TableCell>{loc.longitude.toFixed(6)}</TableCell>
-                        <TableCell>{loc.radius}</TableCell>
-                        <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" onClick={() => handleOpenForm(loc)}>
-                            <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => setLocationToDelete(loc)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                        </TableCell>
-                    </TableRow>
-                    ))
-                ) : (
+      <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
+        <div className="xl:col-span-3">
+          <Card>
+            <CardHeader>
+              <CardTitle>Ubicaciones Registradas</CardTitle>
+              <CardDescription>
+                Lista de todas las ubicaciones de trabajo y sus geocercas.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <Table>
+                    <TableHeader>
                     <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
-                        No hay ubicaciones registradas.
-                    </TableCell>
+                        <TableHead>Nombre</TableHead>
+                        <TableHead>Latitud</TableHead>
+                        <TableHead>Longitud</TableHead>
+                        <TableHead>Radio (m)</TableHead>
+                        <TableHead className="text-right">Acciones</TableHead>
                     </TableRow>
-                )}
-                </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+                    </TableHeader>
+                    <TableBody>
+                    {locationsLoading ? (
+                        Array.from({ length: 3 }).map((_, i) => (
+                        <TableRow key={`skel-${i}`}>
+                            <TableCell colSpan={5} className="p-4"><div className="h-8 bg-gray-200 rounded animate-pulse"></div></TableCell>
+                        </TableRow>
+                        ))
+                    ) : locations && locations.length > 0 ? (
+                        locations.map((loc) => (
+                        <TableRow key={loc.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleMarkerClick(loc.id)}>
+                            <TableCell className="font-medium">{loc.name}</TableCell>
+                            <TableCell>{loc.latitude.toFixed(6)}</TableCell>
+                            <TableCell>{loc.longitude.toFixed(6)}</TableCell>
+                            <TableCell>{loc.radius}</TableCell>
+                            <TableCell className="text-right">
+                            <Button variant="ghost" size="icon" onClick={(e) => {e.stopPropagation(); handleOpenForm(loc); }}>
+                                <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={(e) => {e.stopPropagation(); setLocationToDelete(loc); }}>
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                            </TableCell>
+                        </TableRow>
+                        ))
+                    ) : (
+                        <TableRow>
+                        <TableCell colSpan={5} className="h-24 text-center">
+                            No hay ubicaciones registradas.
+                        </TableCell>
+                        </TableRow>
+                    )}
+                    </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+        <div className="xl:col-span-2 min-h-[400px] xl:min-h-0">
+          <Card className="h-full">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Map className="h-5 w-5"/>
+                Mapa de Ubicaciones
+              </CardTitle>
+              <CardDescription>
+                Haz doble clic en el mapa para crear una nueva ubicación.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="h-[calc(100%-7rem)]">
+              <LocationsMap 
+                locations={locations || []}
+                center={mapCenter}
+                zoom={mapZoom}
+                onMapDoubleClick={handleMapDoubleClick}
+                onMarkerClick={handleMarkerClick}
+                selectedLocationId={editingLocation?.id || null}
+              />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }
