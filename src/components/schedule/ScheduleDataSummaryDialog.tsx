@@ -245,7 +245,11 @@ export function ScheduleDataSummaryDialog({
     const annualData = new Map<string, SummaryData>();
 
     yearSchedules.forEach(periodSchedule => {
-        const periodDaysKeys = Object.keys(Object.values(periodSchedule.schedule)[0] || {});
+        const allDayKeysInPeriod = new Set<string>();
+        Object.values(periodSchedule.schedule).forEach(dayMap => {
+          Object.keys(dayMap).forEach(dayKey => allDayKeysInPeriod.add(dayKey));
+        });
+        const periodDaysKeys = Array.from(allDayKeysInPeriod);
         if (periodDaysKeys.length === 0) return;
         const periodDays = periodDaysKeys.map(key => parseISO(key));
 
@@ -277,6 +281,7 @@ export function ScheduleDataSummaryDialog({
                 summary.extraHours.he50 += employee.extraHours.he50;
                 summary.extraHours.he100 += employee.extraHours.he100;
                 summary.compensationHours += employee.compensationHours;
+                summary.compensationDetails.push(...employee.compensationDetails);
             });
         });
     });
