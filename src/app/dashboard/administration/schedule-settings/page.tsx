@@ -378,6 +378,7 @@ function OvertimeRulesManager() {
     const [editingRule, setEditingRule] = useState<OvertimeRule | null>(null);
     const [ruleToDelete, setRuleToDelete] = useState<OvertimeRule | null>(null);
     const [isEditingPlaceholder, setIsEditingPlaceholder] = useState(false);
+    const [cargoFilter, setCargoFilter] = useState('todos');
 
     const form = useForm<z.infer<typeof overtimeRuleSchema>>({
         resolver: zodResolver(overtimeRuleSchema),
@@ -469,6 +470,13 @@ function OvertimeRulesManager() {
 
         return Object.entries(groups).sort((a,b) => a[0].localeCompare(b[0]));
     }, [allRules]);
+
+    const filteredGroupedRules = useMemo(() => {
+        if (cargoFilter === 'todos') {
+            return groupedRules;
+        }
+        return groupedRules.filter(([groupName, rulesInGroup]) => groupName === cargoFilter);
+    }, [groupedRules, cargoFilter]);
 
     const handleOpenForm = (rule: OvertimeRule | null) => {
         if (rule?.isPlaceholder) {
@@ -602,12 +610,21 @@ function OvertimeRulesManager() {
             </AlertDialog>
             <Card>
                 <CardHeader>
-                    <div className="flex justify-between items-center">
+                    <div className="flex justify-between items-center gap-4">
                         <div>
                             <CardTitle>Gestor de Reglas de Horas Extras</CardTitle>
                             <CardDescription>Añada, edite o elimine las reglas para el cálculo de horas suplementarias y recargos.</CardDescription>
                         </div>
-                        <Button onClick={() => handleOpenForm(null)}><PlusCircle className="mr-2 h-4 w-4" /> Añadir Nueva Regla</Button>
+                        <div className="flex items-center gap-2">
+                            <Combobox
+                                options={[{ label: 'Todos los cargos', value: 'todos' }, ...cargos.map(c => ({ label: c.name, value: c.name }))]}
+                                value={cargoFilter}
+                                onChange={setCargoFilter}
+                                placeholder="Filtrar por cargo..."
+                                className="w-[250px]"
+                            />
+                            <Button onClick={() => handleOpenForm(null)}><PlusCircle className="mr-2 h-4 w-4" /> Añadir Nueva Regla</Button>
+                        </div>
                     </div>
                 </CardHeader>
                 <CardContent>
@@ -624,7 +641,7 @@ function OvertimeRulesManager() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                           {groupedRules.map(([groupName, rulesInGroup]) => (
+                           {filteredGroupedRules.map(([groupName, rulesInGroup]) => (
                                 <React.Fragment key={groupName}>
                                     <TableRow className="bg-primary/10 hover:bg-primary/10">
                                         <TableCell colSpan={7} className="p-2 text-center font-bold text-primary">
@@ -661,6 +678,7 @@ function ScheduleSettingsPageContent() {
     const { data: cargos, isLoading: cargosLoading } = useCollection<GenericOption>(React.useMemo(() => firestore ? collection(firestore, 'cargos') : null, [firestore]));
     
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+    const [activeTab, setActiveTab] = useState('patterns');
     const { toast } = useToast();
 
     const addForm = useForm<z.infer<typeof newPatternSchema>>({
@@ -825,13 +843,15 @@ function ScheduleSettingsPageContent() {
             <div className="space-y-6">
                  <div className="flex items-center justify-between">
                     <h1 className="text-lg font-semibold md:text-2xl">Configuración de Horarios</h1>
-                    <Button onClick={() => setIsAddDialogOpen(true)}>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Añadir Patrón por Cargo
-                    </Button>
+                    {activeTab === 'patterns' && (
+                        <Button onClick={() => setIsAddDialogOpen(true)}>
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Añadir Patrón por Cargo
+                        </Button>
+                    )}
                 </div>
 
-                <Tabs defaultValue="patterns">
+                <Tabs value={activeTab} onValueChange={setActiveTab} defaultValue="patterns">
                     <TabsList className="grid w-full grid-cols-3">
                         <TabsTrigger value="patterns">Patrones de Turnos</TabsTrigger>
                         <TabsTrigger value="overtime">Horarios y Horas Extras</TabsTrigger>
@@ -861,3 +881,5 @@ export default function ScheduleSettingsPage() {
         </Suspense>
     );
 }
+
+    
