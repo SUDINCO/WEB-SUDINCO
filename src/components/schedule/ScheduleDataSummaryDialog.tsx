@@ -17,8 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { format, getDay, isWithinInterval, parseISO, subMonths, eachDayOfInterval, startOfYear, endOfYear, set } from 'date-fns';
+import { format, getDay, isWithinInterval, parseISO, subMonths, eachDayOfInterval, startOfYear, endOfYear, set, startOfMonth, endOfMonth } from 'date-fns';
 import type { Collaborator, Holiday, OvertimeRule, RoleChange, SavedSchedule, TemporaryTransfer } from '@/lib/types';
 import { getShiftDetailsFromRules } from '@/lib/schedule-generator';
 import { getEffectiveDetails } from '@/lib/schedule-utils';
@@ -78,6 +77,10 @@ function calculateScheduleSummary(
     allTransfers: TemporaryTransfer[],
     allRoleChanges: RoleChange[]
 ) {
+    if (collaboratorsToProcess.length === 0 || daysToProcess.length === 0) {
+        return { groupedData: [], uniqueShifts: [] };
+    }
+
     const collaboratorData = collaboratorsToProcess.map(collaborator => {
         const collaboratorSchedule = scheduleToProcess.get(collaborator.id);
         if (!collaboratorSchedule) return null;
@@ -284,12 +287,11 @@ export function ScheduleDataSummaryDialog({
   const yearTitle = React.useMemo(() => format(currentDate, 'yyyy'), [currentDate]);
 
   React.useEffect(() => {
-    if (open) {
-      setViewMode('period');
+    if (open && viewMode === 'annual') {
       setAnnualLocation('todos');
       setAnnualJobTitle('todos');
     }
-  }, [open]);
+  }, [open, viewMode]);
 
   const { groupedData: periodGroupedData, uniqueShifts: periodUniqueShifts } = React.useMemo(() => {
     if (collaborators.length === 0 || days.length === 0) {
@@ -324,19 +326,19 @@ export function ScheduleDataSummaryDialog({
 
 
   const { groupedData: annualGroupedData, uniqueShifts: annualUniqueShifts } = React.useMemo(() => {
-    if (collaborators.length === 0) {
-        return { groupedData: [], uniqueShifts: [] };
-    }
-
     const currentYear = format(currentDate, 'yyyy');
-    
     const yearSchedules = Object.values(savedSchedules).filter(s => s.id.startsWith(currentYear));
 
+    if (collaborators.length === 0 || yearSchedules.length === 0) {
+        return { groupedData: [], uniqueShifts: [] };
+    }
+    
     const annualData = new Map<string, SummaryData>();
 
     yearSchedules.forEach(periodSchedule => {
         const periodId = periodSchedule.id.split('_')[0];
         const [year, month] = periodId.split('-').map(Number);
+        
         if (!year || !month) return;
 
         const periodDate = set(new Date(), { year, month: month - 1, date: 1 });
@@ -344,7 +346,7 @@ export function ScheduleDataSummaryDialog({
         const start = new Date(prevMonthForPeriod.getFullYear(), prevMonthForPeriod.getMonth(), 21);
         const end = new Date(periodDate.getFullYear(), periodDate.getMonth(), 20);
         const periodDays = eachDayOfInterval({ start, end });
-
+        
         if (periodDays.length === 0) return;
 
         const periodScheduleMap = new Map<string, Map<string, string | null>>();
@@ -432,6 +434,21 @@ export function ScheduleDataSummaryDialog({
                     <TabsTrigger value="period">Resumen del Período</TabsTrigger>
                     <TabsTrigger value="annual">Resumen Anual</TabsTrigger>
                 </TabsList>
+                 <div className="flex items-center justify-center gap-2">
+                    {viewMode === 'period' ? (
+                        <>
+                         <Button variant="outline" size="icon" onClick={onPrevPeriod} aria-label="Periodo anterior">
+                            <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <span className="font-semibold text-center w-64 text-sm">{periodTitle}</span>
+                        <Button variant="outline" size="icon" onClick={onNextPeriod} aria-label="Periodo siguiente">
+                            <ChevronRight className="h-4 w-4" />
+                        </Button>
+                        </>
+                    ) : (
+                         <span className="font-semibold text-center w-64 text-sm">Resumen del Año {yearTitle}</span>
+                    )}
+                </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
@@ -461,30 +478,18 @@ export function ScheduleDataSummaryDialog({
             
             <div className="flex-grow min-h-0 pt-4">
                 <TabsContent value="period" className="m-0 h-full flex flex-col">
-                    <div className="flex items-center justify-center gap-2 mb-4 flex-shrink-0">
-                        <Button variant="outline" size="icon" onClick={onPrevPeriod} aria-label="Periodo anterior">
-                            <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                        <span className="font-semibold text-center w-64 text-sm">{periodTitle}</span>
-                        <Button variant="outline" size="icon" onClick={onNextPeriod} aria-label="Periodo siguiente">
-                            <ChevronRight className="h-4 w-4" />
-                        </Button>
-                    </div>
-                    <ScrollArea className="flex-grow">
+                    <div className="flex-grow overflow-y-auto">
                         <TooltipProvider>
                           <SummaryTable groupedData={periodGroupedData} uniqueShifts={periodUniqueShifts} />
                         </TooltipProvider>
-                    </ScrollArea>
+                    </div>
                 </TabsContent>
                 <TabsContent value="annual" className="m-0 h-full flex flex-col">
-                   <div className="flex items-center justify-center gap-2 mb-4 flex-shrink-0">
-                        <span className="font-semibold text-center w-64 text-sm">Resumen del Año {yearTitle}</span>
-                    </div>
-                   <ScrollArea className="flex-grow">
+                   <div className="flex-grow overflow-y-auto">
                         <TooltipProvider>
                           <SummaryTable groupedData={annualGroupedData} uniqueShifts={annualUniqueShifts} />
                         </TooltipProvider>
-                    </ScrollArea>
+                    </div>
                 </TabsContent>
             </div>
         </Tabs>
