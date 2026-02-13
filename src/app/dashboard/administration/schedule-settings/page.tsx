@@ -366,19 +366,16 @@ function OvertimeRulesManager() {
         },
     });
 
-    const groupedRules = useMemo(() => {
-        if (!overtimeRules) return {};
-        return overtimeRules.reduce((acc, rule) => {
-            const key = `${rule.jobTitle} (${rule.dayType})`;
-            if (!acc[key]) {
-                acc[key] = [];
-            }
-            acc[key].push(rule);
-            return acc;
-        }, {} as Record<string, OvertimeRule[]>);
+    const sortedRules = useMemo(() => {
+        if (!overtimeRules) return [];
+        return [...overtimeRules].sort((a, b) => {
+            if (a.jobTitle < b.jobTitle) return -1;
+            if (a.jobTitle > b.jobTitle) return 1;
+            if (a.dayType < b.dayType) return -1;
+            if (a.dayType > b.dayType) return 1;
+            return a.shift.localeCompare(b.shift);
+        });
     }, [overtimeRules]);
-
-    const sortedGroupKeys = useMemo(() => Object.keys(groupedRules).sort(), [groupedRules]);
 
     const handleOpenForm = (rule: OvertimeRule | null) => {
         setEditingRule(rule);
@@ -510,6 +507,7 @@ function OvertimeRulesManager() {
                     <Table>
                         <TableHeader>
                             <TableRow>
+                                <TableHead>Cargo</TableHead>
                                 <TableHead>Jornada</TableHead>
                                 <TableHead>Convención</TableHead>
                                 <TableHead>Horarios</TableHead>
@@ -520,26 +518,20 @@ function OvertimeRulesManager() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {sortedGroupKeys.map(key => (
-                                <React.Fragment key={key}>
-                                    <TableRow className="bg-amber-100 hover:bg-amber-100">
-                                        <TableCell colSpan={7} className="font-bold text-amber-900">{key}</TableCell>
-                                    </TableRow>
-                                    {groupedRules[key].map(rule => (
-                                        <TableRow key={rule.id}>
-                                            <TableCell><Badge variant={rule.dayType === 'NORMAL' ? 'secondary' : 'outline'}>{rule.dayType}</Badge></TableCell>
-                                            <TableCell className="font-semibold">{rule.shift}</TableCell>
-                                            <TableCell>{rule.startTime} - {rule.endTime}</TableCell>
-                                            <TableCell>{rule.nightSurcharge || ''}</TableCell>
-                                            <TableCell>{rule.sup50 || ''}</TableCell>
-                                            <TableCell>{rule.ext100 || ''}</TableCell>
-                                            <TableCell className="text-right">
-                                                <Button variant="ghost" size="icon" onClick={() => handleOpenForm(rule)}><Edit className="h-4 w-4" /></Button>
-                                                <Button variant="ghost" size="icon" onClick={() => setRuleToDelete(rule)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </React.Fragment>
+                           {sortedRules.map(rule => (
+                                <TableRow key={rule.id}>
+                                    <TableCell>{rule.jobTitle}</TableCell>
+                                    <TableCell><Badge variant={rule.dayType === 'NORMAL' ? 'secondary' : 'outline'}>{rule.dayType}</Badge></TableCell>
+                                    <TableCell className="font-semibold">{rule.shift}</TableCell>
+                                    <TableCell>{rule.startTime} - {rule.endTime}</TableCell>
+                                    <TableCell>{rule.nightSurcharge || ''}</TableCell>
+                                    <TableCell>{rule.sup50 || ''}</TableCell>
+                                    <TableCell>{rule.ext100 || ''}</TableCell>
+                                    <TableCell className="text-right">
+                                        <Button variant="ghost" size="icon" onClick={() => handleOpenForm(rule)}><Edit className="h-4 w-4" /></Button>
+                                        <Button variant="ghost" size="icon" onClick={() => setRuleToDelete(rule)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                    </TableCell>
+                                </TableRow>
                             ))}
                         </TableBody>
                     </Table>
