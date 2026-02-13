@@ -46,7 +46,6 @@ const permissionsMap = [
             title: "Nómina",
             tabs: [
                 { id: 'staff', name: 'Nómina' },
-                { id: 'attendance-summary', name: 'Resumen de Asistencia' },
             ]
         },
         {
