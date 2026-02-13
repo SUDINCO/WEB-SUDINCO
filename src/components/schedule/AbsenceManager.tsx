@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -21,7 +20,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '../ui/button';
 import { CalendarIcon, Plus, Trash2, ChevronsUpDown, Check } from 'lucide-react';
-import type { Collaborator, Absence, UserProfile, Vacation } from '@/lib/types';
+import type { Collaborator, UserProfile, Vacation } from '@/lib/types';
 import {
   Select,
   SelectContent,
@@ -49,8 +48,10 @@ import { Textarea } from '../ui/textarea';
 import { useFirestore } from '@/firebase';
 import { collection, addDoc, deleteDoc, doc } from 'firebase/firestore';
 
-const absenceTypes: Absence['type'][] = ['PM', 'LIC', 'SUS', 'RET', 'FI'];
-const absenceTypeDescriptions: Record<Absence['type'], string> = {
+type AbsenceType = 'PM' | 'LIC' | 'SUS' | 'RET' | 'FI';
+
+const absenceTypes: AbsenceType[] = ['PM', 'LIC', 'SUS', 'RET', 'FI'];
+const absenceTypeDescriptions: Record<AbsenceType, string> = {
     PM: 'Permiso Médico',
     LIC: 'Licencia',
     SUS: 'Suspensión',
@@ -74,7 +75,7 @@ export function AbsenceManager({ open, onOpenChange, requests, collaborators, al
   const [isJobTitlePopoverOpen, setIsJobTitlePopoverOpen] = React.useState(false);
   
   const [collaboratorId, setCollaboratorId] = React.useState<string | undefined>();
-  const [absenceType, setAbsenceType] = React.useState<Absence['type'] | undefined>();
+  const [absenceType, setAbsenceType] = React.useState<AbsenceType | undefined>();
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>({ from: new Date(), to: new Date() });
   const [description, setDescription] = React.useState('');
   const [isCollaboratorPopoverOpen, setIsCollaboratorPopoverOpen] = React.useState(false);
@@ -309,7 +310,7 @@ export function AbsenceManager({ open, onOpenChange, requests, collaborators, al
 
                     <div>
                         <Label>Tipo de Solicitud</Label>
-                        <Select value={absenceType} onValueChange={(v) => setAbsenceType(v as Absence['type'])}>
+                        <Select value={absenceType} onValueChange={(v) => setAbsenceType(v as AbsenceType)}>
                             <SelectTrigger>
                                 <SelectValue placeholder="Seleccionar tipo..." />
                             </SelectTrigger>
