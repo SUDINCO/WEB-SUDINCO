@@ -1,6 +1,7 @@
+
 "use client";
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -11,6 +12,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,14 +24,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import {
     AlertDialog,
     AlertDialogAction,
     AlertDialogCancel,
@@ -39,7 +33,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { PlusCircle, Trash2, Edit, MapPin, LocateFixed, LoaderCircle, Map } from 'lucide-react';
+import { PlusCircle, Trash2, Edit, MapPin, LocateFixed, LoaderCircle, Map, ArrowLeft } from 'lucide-react';
 import {
   Form,
   FormControl,
@@ -52,7 +46,6 @@ import { useCollection, useFirestore } from '@/firebase';
 import { collection, doc, addDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import type { WorkLocation } from '@/lib/types';
 
 const LocationsMap = dynamic(() => import('@/components/map/locations-map'), {
@@ -71,7 +64,7 @@ const locationSchema = z.object({
 type LocationFormData = z.infer<typeof locationSchema>;
 
 export default function WorkLocationsPage() {
-  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'form'>('list');
   const [editingLocation, setEditingLocation] = useState<WorkLocation | null>(null);
   const [locationToDelete, setLocationToDelete] = useState<WorkLocation | null>(null);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
@@ -90,17 +83,24 @@ export default function WorkLocationsPage() {
     defaultValues: { name: '', latitude: 0, longitude: 0, radius: 50 },
   });
 
-  const handleOpenForm = useCallback((location: WorkLocation | null) => {
+  const handleAddNew = () => {
+    setEditingLocation(null);
+    form.reset({ name: '', latitude: mapCenter[0], longitude: mapCenter[1], radius: 50 });
+    setViewMode('form');
+  };
+
+  const handleEdit = (location: WorkLocation) => {
     setEditingLocation(location);
-    if (location) {
-      form.reset(location);
-      setMapCenter([location.latitude, location.longitude]);
-      setMapZoom(16);
-    } else {
-      form.reset({ name: '', latitude: 0, longitude: 0, radius: 50 });
-    }
-    setIsFormOpen(true);
-  }, [form]);
+    form.reset(location);
+    setViewMode('form');
+    setMapCenter([location.latitude, location.longitude]);
+    setMapZoom(16);
+  };
+
+  const handleCancel = () => {
+    setViewMode('list');
+    setEditingLocation(null);
+  };
   
   const onSubmit = async (data: LocationFormData) => {
     if (!locationsCollectionRef) return;
@@ -114,7 +114,8 @@ export default function WorkLocationsPage() {
             await addDoc(locationsCollectionRef, data);
             toast({ title: "Ubicación Creada", description: `La ubicación "${data.name}" ha sido creada.` });
         }
-        setIsFormOpen(false);
+        setViewMode('list');
+        setEditingLocation(null);
     } catch (error) {
         console.error("Error saving location:", error);
         toast({ variant: 'destructive', title: 'Error', description: 'No se pudo guardar la ubicación.' });
@@ -158,81 +159,22 @@ export default function WorkLocationsPage() {
   };
   
   const handleMapDoubleClick = useCallback((latlng: { lat: number, lng: number }) => {
-    setEditingLocation(null);
-    form.reset({
-        name: '',
-        latitude: latlng.lat,
-        longitude: latlng.lng,
-        radius: 50,
-    });
-    setMapCenter([latlng.lat, latlng.lng]);
-    setMapZoom(16);
-    setIsFormOpen(true);
-    toast({ title: 'Nueva Ubicación', description: 'Coordenadas fijadas desde el mapa. Completa los detalles.'});
-  }, [form]);
+    if (viewMode === 'form' && !editingLocation) {
+        form.setValue('latitude', latlng.lat);
+        form.setValue('longitude', latlng.lng);
+        toast({ title: 'Coordenadas Fijadas', description: 'Se han establecido las coordenadas desde el mapa.'});
+    }
+  }, [form, viewMode, editingLocation]);
 
   const handleMarkerClick = useCallback((locationId: string) => {
       const location = locations?.find(l => l.id === locationId);
       if (location) {
-          handleOpenForm(location);
+          handleEdit(location);
       }
-  }, [locations, handleOpenForm]);
+  }, [locations]);
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div>
-            <h1 className="text-lg font-semibold md:text-2xl">Ubicaciones de Trabajo</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-                Define las geocercas donde los empleados pueden registrar su asistencia.
-            </p>
-        </div>
-        <Button onClick={() => handleOpenForm(null)} className="w-full md:w-auto">
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Añadir Ubicación
-        </Button>
-      </div>
-
-      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{editingLocation ? 'Editar Ubicación' : 'Añadir Nueva Ubicación'}</DialogTitle>
-            <DialogDescription>
-              Define un área geográfica donde los empleados pueden registrar su asistencia.
-            </DialogDescription>
-          </DialogHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
-              <FormField control={form.control} name="name" render={({ field }) => (
-                <FormItem><FormLabel>Nombre de la Ubicación</FormLabel><FormControl><Input placeholder="Ej: Oficina Principal" {...field} /></FormControl><FormMessage /></FormItem>
-              )} />
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FormField control={form.control} name="latitude" render={({ field }) => (
-                  <FormItem><FormLabel>Latitud</FormLabel><FormControl><Input type="number" step="any" {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField control={form.control} name="longitude" render={({ field }) => (
-                  <FormItem><FormLabel>Longitud</FormLabel><FormControl><Input type="number" step="any" {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-              </div>
-              <Button type="button" variant="outline" onClick={handleGetCurrentLocation} disabled={isGettingLocation} className="w-full sm:w-auto">
-                {isGettingLocation ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <LocateFixed className="mr-2 h-4 w-4" />}
-                Obtener Coordenadas Actuales
-              </Button>
-              <FormField control={form.control} name="radius" render={({ field }) => (
-                <FormItem><FormLabel>Radio (en metros)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
-              )} />
-              
-              <DialogFooter className="pt-4">
-                <Button type="button" variant="ghost" onClick={() => setIsFormOpen(false)}>Cancelar</Button>
-                <Button type="submit" disabled={form.formState.isSubmitting}>
-                  {form.formState.isSubmitting ? 'Guardando...' : 'Guardar Ubicación'}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-      
       <AlertDialog open={!!locationToDelete} onOpenChange={() => setLocationToDelete(null)}>
         <AlertDialogContent>
             <AlertDialogHeader>
@@ -248,74 +190,126 @@ export default function WorkLocationsPage() {
 
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
         <div className="xl:col-span-3">
-          <Card>
-            <CardHeader>
-              <CardTitle>Ubicaciones Registradas</CardTitle>
-              <CardDescription>
-                Lista de todas las ubicaciones de trabajo y sus geocercas.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                    <TableHeader>
-                    <TableRow>
-                        <TableHead>Nombre</TableHead>
-                        <TableHead>Latitud</TableHead>
-                        <TableHead>Longitud</TableHead>
-                        <TableHead>Radio (m)</TableHead>
-                        <TableHead className="text-right">Acciones</TableHead>
-                    </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                    {locationsLoading ? (
-                        Array.from({ length: 3 }).map((_, i) => (
-                        <TableRow key={`skel-${i}`}>
-                            <TableCell colSpan={5} className="p-4"><div className="h-8 bg-gray-200 rounded animate-pulse"></div></TableCell>
-                        </TableRow>
-                        ))
-                    ) : locations && locations.length > 0 ? (
-                        locations.map((loc) => (
-                        <TableRow key={loc.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleMarkerClick(loc.id)}>
-                            <TableCell className="font-medium">{loc.name}</TableCell>
-                            <TableCell>{loc.latitude.toFixed(6)}</TableCell>
-                            <TableCell>{loc.longitude.toFixed(6)}</TableCell>
-                            <TableCell>{loc.radius}</TableCell>
-                            <TableCell className="text-right">
-                            <Button variant="ghost" size="icon" onClick={(e) => {e.stopPropagation(); handleOpenForm(loc); }}>
-                                <Edit className="h-4 w-4" />
+          {viewMode === 'list' ? (
+            <Card>
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                    <div>
+                        <CardTitle>Ubicaciones Registradas</CardTitle>
+                        <CardDescription>Lista de todas las geocercas para el registro de asistencia.</CardDescription>
+                    </div>
+                    <Button onClick={handleAddNew}>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Añadir Ubicación
+                    </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                      <TableHeader>
+                      <TableRow>
+                          <TableHead>Nombre</TableHead>
+                          <TableHead>Latitud</TableHead>
+                          <TableHead>Longitud</TableHead>
+                          <TableHead>Radio (m)</TableHead>
+                          <TableHead className="text-right">Acciones</TableHead>
+                      </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                      {locationsLoading ? (
+                          Array.from({ length: 3 }).map((_, i) => (
+                          <TableRow key={`skel-${i}`}>
+                              <TableCell colSpan={5} className="p-4"><div className="h-8 bg-gray-200 rounded animate-pulse"></div></TableCell>
+                          </TableRow>
+                          ))
+                      ) : locations && locations.length > 0 ? (
+                          locations.map((loc) => (
+                          <TableRow key={loc.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleEdit(loc)}>
+                              <TableCell className="font-medium">{loc.name}</TableCell>
+                              <TableCell>{loc.latitude.toFixed(6)}</TableCell>
+                              <TableCell>{loc.longitude.toFixed(6)}</TableCell>
+                              <TableCell>{loc.radius}</TableCell>
+                              <TableCell className="text-right">
+                                <Button variant="ghost" size="icon" onClick={(e) => {e.stopPropagation(); handleEdit(loc); }}>
+                                    <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" onClick={(e) => {e.stopPropagation(); setLocationToDelete(loc); }}>
+                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </TableCell>
+                          </TableRow>
+                          ))
+                      ) : (
+                          <TableRow>
+                          <TableCell colSpan={5} className="h-24 text-center">
+                              No hay ubicaciones registradas.
+                          </TableCell>
+                          </TableRow>
+                      )}
+                      </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+             <Card>
+                <CardHeader>
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <CardTitle>{editingLocation ? 'Editar Ubicación' : 'Nueva Ubicación'}</CardTitle>
+                            <CardDescription>
+                            {editingLocation ? `Modificando "${editingLocation.name}"` : 'Define la nueva geocerca. Haz doble clic en el mapa para fijar coordenadas.'}
+                            </CardDescription>
+                        </div>
+                         <Button variant="outline" size="sm" onClick={handleCancel}>
+                            <ArrowLeft className="mr-2 h-4 w-4" />
+                            Volver a la lista
+                         </Button>
+                    </div>
+                </CardHeader>
+                <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)}>
+                        <CardContent className="space-y-4">
+                            <FormField control={form.control} name="name" render={({ field }) => (
+                                <FormItem><FormLabel>Nombre de la Ubicación</FormLabel><FormControl><Input placeholder="Ej: Oficina Principal" {...field} /></FormControl><FormMessage /></FormItem>
+                            )} />
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <FormField control={form.control} name="latitude" render={({ field }) => (
+                                <FormItem><FormLabel>Latitud</FormLabel><FormControl><Input type="number" step="any" {...field} /></FormControl><FormMessage /></FormItem>
+                                )} />
+                                <FormField control={form.control} name="longitude" render={({ field }) => (
+                                <FormItem><FormLabel>Longitud</FormLabel><FormControl><Input type="number" step="any" {...field} /></FormControl><FormMessage /></FormItem>
+                                )} />
+                            </div>
+                             <Button type="button" variant="outline" onClick={handleGetCurrentLocation} disabled={isGettingLocation}>
+                                {isGettingLocation ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <LocateFixed className="mr-2 h-4 w-4" />}
+                                Obtener Coordenadas Actuales
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={(e) => {e.stopPropagation(); setLocationToDelete(loc); }}>
-                                <Trash2 className="h-4 w-4 text-destructive" />
+                            <FormField control={form.control} name="radius" render={({ field }) => (
+                                <FormItem><FormLabel>Radio (en metros)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
+                            )} />
+                        </CardContent>
+                        <CardFooter className="flex justify-end gap-2">
+                            <Button type="button" variant="ghost" onClick={handleCancel}>Cancelar</Button>
+                            <Button type="submit" disabled={form.formState.isSubmitting}>
+                                {form.formState.isSubmitting ? 'Guardando...' : 'Guardar Ubicación'}
                             </Button>
-                            </TableCell>
-                        </TableRow>
-                        ))
-                    ) : (
-                        <TableRow>
-                        <TableCell colSpan={5} className="h-24 text-center">
-                            No hay ubicaciones registradas.
-                        </TableCell>
-                        </TableRow>
-                    )}
-                    </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
+                        </CardFooter>
+                    </form>
+                </Form>
+            </Card>
+          )}
         </div>
-        <div className="xl:col-span-2 min-h-[700px]">
+        <div className="xl:col-span-2 min-h-[500px] xl:min-h-0 xl:h-auto">
           <Card className="h-full">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Map className="h-5 w-5"/>
                 Mapa de Ubicaciones
               </CardTitle>
-              <CardDescription>
-                Haz doble clic en el mapa para crear una nueva ubicación.
-              </CardDescription>
             </CardHeader>
-            <CardContent className="h-[calc(100%-7rem)]">
+            <CardContent className="h-[calc(100%-4rem)]">
               <LocationsMap 
                 locations={locations || []}
                 center={mapCenter}
@@ -331,3 +325,4 @@ export default function WorkLocationsPage() {
     </div>
   );
 }
+
