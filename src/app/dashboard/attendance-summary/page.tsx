@@ -132,7 +132,7 @@ function AttendanceSummaryPageContent() {
     
     return filteredCollaboratorsForDisplay.map(c => {
         const collaboratorId = c.id;
-        const collaboratorAttendance = attendanceRecordsForPeriod.filter(rec => rec.collaboratorId === collaboratorId);
+        const collaboratorAttendance = attendanceRecordsForPeriod.filter(rec => (rec as any).collaboratorId === collaboratorId);
         const collaboratorAbsences = (vacations || []).filter(req => req.userId === collaboratorId && req.status === 'approved');
 
         let diasTrabajados = 0;
