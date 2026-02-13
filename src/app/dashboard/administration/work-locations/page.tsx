@@ -301,7 +301,7 @@ export default function WorkLocationsPage() {
             </Card>
           )}
         </div>
-        <div className="xl:col-span-2 min-h-[500px] xl:min-h-0 xl:h-auto">
+        <div className="xl:col-span-2 min-h-[500px] xl:h-[75vh]">
           <Card className="h-full">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -325,4 +325,3 @@ export default function WorkLocationsPage() {
     </div>
   );
 }
-
