@@ -337,9 +337,11 @@ export function ScheduleDataSummaryDialog({
 
     yearSchedules.forEach(periodSchedule => {
         const periodId = periodSchedule.id.split('_')[0];
-        const [year, month] = periodId.split('-').map(Number);
+        const [yearStr, monthStr] = periodId.split('-');
+        const year = parseInt(yearStr, 10);
+        const month = parseInt(monthStr, 10);
         
-        if (!year || !month) return;
+        if (isNaN(year) || isNaN(month)) return;
 
         const periodDate = set(new Date(), { year, month: month - 1, date: 1 });
         const prevMonthForPeriod = subMonths(periodDate, 1);
@@ -477,19 +479,15 @@ export function ScheduleDataSummaryDialog({
             </div>
             
             <div className="flex-grow min-h-0 pt-4">
-                <TabsContent value="period" className="m-0 h-full flex flex-col">
-                    <div className="flex-grow overflow-y-auto">
-                        <TooltipProvider>
-                          <SummaryTable groupedData={periodGroupedData} uniqueShifts={periodUniqueShifts} />
-                        </TooltipProvider>
-                    </div>
+                <TabsContent value="period" className="m-0 h-full overflow-y-auto">
+                    <TooltipProvider>
+                      <SummaryTable groupedData={periodGroupedData} uniqueShifts={periodUniqueShifts} />
+                    </TooltipProvider>
                 </TabsContent>
-                <TabsContent value="annual" className="m-0 h-full flex flex-col">
-                   <div className="flex-grow overflow-y-auto">
-                        <TooltipProvider>
-                          <SummaryTable groupedData={annualGroupedData} uniqueShifts={annualUniqueShifts} />
-                        </TooltipProvider>
-                    </div>
+                <TabsContent value="annual" className="m-0 h-full overflow-y-auto">
+                   <TooltipProvider>
+                      <SummaryTable groupedData={annualGroupedData} uniqueShifts={annualUniqueShifts} />
+                    </TooltipProvider>
                 </TabsContent>
             </div>
         </Tabs>
