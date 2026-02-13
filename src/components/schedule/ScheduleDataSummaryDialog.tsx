@@ -116,7 +116,9 @@ function calculateScheduleSummary(
                 const shift = collaboratorSchedule.get(dayKey);
                 if (shift) {
                     const { jobTitle } = getEffectiveDetails(collaborator, day, allTransfers, allRoleChanges);
-                    const shiftDetails = getShiftDetailsFromRules(shift, jobTitle, allOvertimeRules);
+                    const dayIsHoliday = allHolidays.some(h => isWithinInterval(day, { start: h.startDate, end: h.endDate }));
+                    const jornada = dayIsHoliday ? "FESTIVO" : "NORMAL"; 
+                    const shiftDetails = getShiftDetailsFromRules(shift, jobTitle, jornada, allOvertimeRules);
                     if (shiftDetails) {
                         compensationHours += shiftDetails.hours;
                         compensationDetails.push({ day, shift });
