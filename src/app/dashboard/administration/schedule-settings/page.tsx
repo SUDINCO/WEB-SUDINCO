@@ -380,7 +380,7 @@ function OvertimeRulesManager() {
         });
 
         sorted.forEach(rule => {
-            const groupKey = `${rule.jobTitle} (${rule.dayType})`;
+            const groupKey = rule.jobTitle;
             if (!groups[groupKey]) {
                 groups[groupKey] = [];
             }
@@ -532,8 +532,10 @@ function OvertimeRulesManager() {
                         <TableBody>
                            {groupedRules.map(([groupName, rulesInGroup]) => (
                                 <React.Fragment key={groupName}>
-                                    <TableRow className="bg-muted hover:bg-muted">
-                                        <TableCell colSpan={7} className="font-semibold text-muted-foreground">{groupName}</TableCell>
+                                    <TableRow className="bg-muted/50 hover:bg-muted/50">
+                                        <TableCell colSpan={7} className="p-2 text-center font-bold text-foreground">
+                                            {groupName}
+                                        </TableCell>
                                     </TableRow>
                                     {rulesInGroup.map(rule => (
                                         <TableRow key={rule.id}>
