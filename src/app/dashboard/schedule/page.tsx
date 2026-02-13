@@ -73,6 +73,17 @@ type ScheduleCollaborator = {
   originalLocation: string;
 }
 
+const normalizeText = (text: string | undefined | null): string => {
+    if (!text) return '';
+    return text
+      .normalize('NFD') 
+      .replace(/[\u0300-\u036f]/g, '') 
+      .toUpperCase() 
+      .replace(/\s+/g, ' ') 
+      .trim();
+};
+
+
 function SchedulePageContent() {
   const { user } = useUser();
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -149,11 +160,11 @@ function SchedulePageContent() {
     return users.filter(u => u.Status === 'active').map(u => ({
         id: u.id,
         name: `${u.nombres} ${u.apellidos}`,
-        jobTitle: u.cargo,
-        location: u.ubicacion || 'N/A',
+        jobTitle: normalizeText(u.cargo),
+        location: normalizeText(u.ubicacion || 'N/A'),
         entryDate: new Date(), // Placeholder
-        originalJobTitle: u.cargo,
-        originalLocation: u.ubicacion || 'N/A',
+        originalJobTitle: normalizeText(u.cargo),
+        originalLocation: normalizeText(u.ubicacion || 'N/A'),
     }));
   }, [users]);
   
@@ -217,15 +228,15 @@ function SchedulePageContent() {
     if (!users) return { cargos: [], ubicaciones: [], trabajadores: [] };
     const activeUsers = users.filter(u => u.Status === 'active');
     
-    const uniqueCargos = [...new Set(activeUsers.map(u => u.cargo).filter((c): c is string => typeof c === 'string'))].sort();
+    const uniqueCargos = [...new Set(activeUsers.map(u => normalizeText(u.cargo)).filter(Boolean))].sort();
     const cargosConStatus = uniqueCargos.map(cargo => {
-        const isSaved = selectedUbicacion !== 'todos' && !!savedSchedules[`${periodIdentifier}_${selectedUbicacion}_${cargo}`];
+        const isSaved = selectedUbicacion !== 'todos' && !!savedSchedules[`${periodIdentifier}_${normalizeText(selectedUbicacion)}_${normalizeText(cargo)}`];
         return { label: cargo, value: cargo, isSaved };
     });
 
-    const uniqueUbicaciones = [...new Set(activeUsers.map(u => u.ubicacion).filter((u): u is string => typeof u === 'string'))].sort();
+    const uniqueUbicaciones = [...new Set(activeUsers.map(u => normalizeText(u.ubicacion)).filter(Boolean))].sort();
     const ubicacionesConStatus = uniqueUbicaciones.map(ubicacion => {
-        const isSaved = selectedCargo !== 'todos' && !!savedSchedules[`${periodIdentifier}_${ubicacion}_${selectedCargo}`];
+        const isSaved = selectedCargo !== 'todos' && !!savedSchedules[`${periodIdentifier}_${normalizeText(ubicacion)}_${normalizeText(selectedCargo)}`];
         return { label: ubicacion, value: ubicacion, isSaved };
     });
 
