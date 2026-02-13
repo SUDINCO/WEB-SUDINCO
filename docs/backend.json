@@ -542,31 +542,21 @@
       },
       "required": ["jobTitle", "scheduleType", "cycle"]
     },
-    "WorkShift": {
-      "title": "Work Shift",
-      "type": "object",
-      "description": "Defines a specific work shift with its start and end times, associated with a job title.",
-      "properties": {
-        "jobTitle": {
-          "type": "string",
-          "description": "The job title this shift applies to."
+    "OvertimeRule": {
+        "title": "Overtime Rule",
+        "type": "object",
+        "description": "Defines rules for overtime, supplemental hours, and night surcharges for a specific shift.",
+        "properties": {
+            "jobTitle": { "type": "string", "description": "The job title this rule applies to." },
+            "dayType": { "type": "string", "enum": ["NORMAL", "FESTIVO"], "description": "The type of day (Normal or Holiday)." },
+            "shift": { "type": "string", "description": "The shift convention name (e.g., 'D12', 'N8')." },
+            "startTime": { "type": "string", "format": "time" },
+            "endTime": { "type": "string", "format": "time" },
+            "nightSurcharge": { "type": "number", "description": "Total hours with 25% night surcharge." },
+            "sup50": { "type": "number", "description": "Total hours with 50% supplemental rate." },
+            "ext100": { "type": "number", "description": "Total hours with 100% extraordinary rate." }
         },
-        "name": {
-          "type": "string",
-          "description": "The name of the shift (e.g., 'Turno Diurno', 'Guardia Nocturna')."
-        },
-        "startTime": {
-          "type": "string",
-          "format": "time",
-          "description": "The start time of the shift (e.g., '06:00')."
-        },
-        "endTime": {
-          "type": "string",
-          "format": "time",
-          "description": "The end time of the shift (e.g., '18:00')."
-        }
-      },
-      "required": ["jobTitle", "name", "startTime", "endTime"]
+        "required": ["jobTitle", "dayType", "shift", "startTime", "endTime", "nightSurcharge", "sup50", "ext100"]
     },
     "SavedSchedule": {
       "title": "Saved Schedule",
@@ -794,9 +784,9 @@
       "schema": { "$ref": "#/entities/ShiftPattern" },
       "description": "Stores the work schedule patterns for each job title."
     },
-    "/workShifts/{shiftId}": {
-      "schema": { "$ref": "#/entities/WorkShift" },
-      "description": "Stores all defined work shifts for different job titles."
+    "/overtimeRules/{ruleId}": {
+        "schema": { "$ref": "#/entities/OvertimeRule" },
+        "description": "Stores overtime rules for different shifts and job titles."
     },
     "/savedSchedules/{periodId}": {
       "schema": { "$ref": "#/entities/SavedSchedule" },

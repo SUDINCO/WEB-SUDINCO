@@ -280,11 +280,12 @@ export interface Holiday {
 }
 
 export interface OvertimeRule {
+    id: string;
     jobTitle: string;
     dayType: "NORMAL" | "FESTIVO";
     shift: string;
-    startTime?: string; // HH:mm
-    endTime?: string;   // HH:mm
+    startTime: string;
+    endTime: string;
     nightSurcharge: number;
     sup50: number;
     ext100: number;

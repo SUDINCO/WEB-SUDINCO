@@ -266,13 +266,17 @@ export function applyConditioningRebalance(
 }
 
 
-export const getShiftDetailsFromRules = (shift: string, effectiveJobTitle: string, overtimeRules: OvertimeRule[]): { start: { h: number; m: number }; hours: number } | null => {
-    const ruleWithTime = overtimeRules.find(r => r.jobTitle === effectiveJobTitle && r.shift === shift && r.startTime && r.endTime);
+export const getShiftDetailsFromRules = (shift: string, effectiveJobTitle: string, dayType: "NORMAL" | "FESTIVO", overtimeRules: OvertimeRule[]): { start: { h: number; m: number }; hours: number } | null => {
+    const rule = overtimeRules.find(r => 
+        r.jobTitle === effectiveJobTitle && 
+        r.shift === shift && 
+        r.dayType === dayType
+    );
 
-    if (ruleWithTime && ruleWithTime.startTime && ruleWithTime.endTime) {
+    if (rule && rule.startTime && rule.endTime) {
         try {
-            const start = parse(ruleWithTime.startTime, 'HH:mm', new Date());
-            const end = parse(ruleWithTime.endTime, 'HH:mm', new Date());
+            const start = parse(rule.startTime, 'HH:mm', new Date());
+            const end = parse(rule.endTime, 'HH:mm', new Date());
             
             let diff = differenceInMinutes(end, start);
             if (diff < 0) diff += 24 * 60; // Handles overnight shifts
@@ -358,7 +362,8 @@ export function generateAttendanceRecords(
         }
 
       } else if (scheduledShift) {
-        const shiftDetails = getShiftDetailsFromRules(scheduledShift, effectiveJobTitle, overtimeRules);
+        const dayType = dayIsHoliday ? "FESTIVO" : "NORMAL";
+        const shiftDetails = getShiftDetailsFromRules(scheduledShift, effectiveJobTitle, dayType, overtimeRules);
         
         if (!shiftDetails) {
           record.observations = `Turno sin horario definido en reglas: ${scheduledShift}`;

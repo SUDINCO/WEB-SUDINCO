@@ -1,13 +1,13 @@
 
 "use client";
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, Suspense } from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 
 import { useCollection, useFirestore } from '@/firebase';
-import { collection, doc, setDoc, writeBatch, deleteDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, writeBatch, deleteDoc, addDoc } from 'firebase/firestore';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -18,288 +18,14 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Edit, Save, XCircle, PlusCircle, CheckCircle, Clock, Trash2 } from 'lucide-react';
+import { Edit, Save, XCircle, PlusCircle, CheckCircle, Clock, Trash2, LoaderCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Combobox } from '@/components/ui/combobox';
-import type { ShiftPattern, GenericOption } from '@/lib/types';
+import type { ShiftPattern, GenericOption, OvertimeRule } from '@/lib/types';
 import { ScrollArea } from '@/components/ui/scroll-area';
-
-interface WorkShift {
-  id: string;
-  jobTitle: string;
-  name: string;
-  startTime: string;
-  endTime: string;
-}
-
-interface CargoScheduleStatus {
-  jobTitle: string;
-  pattern: string[];
-  isComplete: boolean;
-  definedShifts: WorkShift[];
-}
-
-const patternsFormSchema = z.object({
-  patterns: z.array(z.object({
-    jobTitle: z.string(),
-    scheduleType: z.enum(['ROTATING', 'MONDAY_TO_FRIDAY']),
-    cycle: z.array(z.string().nullable()).min(1, "El ciclo debe tener al menos un turno."),
-  })),
-});
-
-const newPatternSchema = z.object({
-  jobTitle: z.string().min(1, "Debe seleccionar un cargo."),
-  scheduleType: z.enum(['ROTATING', 'MONDAY_TO_FRIDAY']),
-  cycle: z.array(z.object({ value: z.string().nullable() })).min(1, "El ciclo debe tener al menos un turno."),
-});
-
-const editorSchema = z.object({
-  shifts: z.array(z.object({
-    id: z.string().optional(),
-    name: z.string(),
-    startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Formato inválido (HH:mm)."),
-    endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Formato inválido (HH:mm)."),
-  }))
-});
-
-
-function ShiftEditorDialog({
-  isOpen,
-  onOpenChange,
-  cargoData,
-}: {
-  isOpen: boolean;
-  onOpenChange: (isOpen: boolean) => void;
-  cargoData: CargoScheduleStatus | null;
-}) {
-  const firestore = useFirestore();
-  const { toast } = useToast();
-  const form = useForm<z.infer<typeof editorSchema>>({
-    resolver: zodResolver(editorSchema),
-    defaultValues: { shifts: [] },
-  });
-
-  const { control, handleSubmit, reset } = form;
-  const { fields } = useFieldArray({ control, name: 'shifts' });
-
-  useEffect(() => {
-    if (isOpen && cargoData) {
-      const shiftsForForm = cargoData.pattern
-        .filter(name => name !== 'LIB')
-        .map(shiftName => {
-          const existingShift = cargoData.definedShifts.find(s => s.name === shiftName);
-          return {
-            id: existingShift?.id,
-            name: shiftName,
-            startTime: existingShift?.startTime || '00:00',
-            endTime: existingShift?.endTime || '00:00',
-          };
-        });
-      reset({ shifts: shiftsForForm });
-    }
-  }, [isOpen, cargoData, reset]);
-
-  const onSubmit = async (data: z.infer<typeof editorSchema>) => {
-    if (!firestore || !cargoData) return;
-    
-    const batch = writeBatch(firestore);
-    const shiftsCollectionRef = collection(firestore, 'workShifts');
-
-    data.shifts.forEach(shift => {
-      const dataToSave = {
-        jobTitle: cargoData.jobTitle,
-        name: shift.name,
-        startTime: shift.startTime,
-        endTime: shift.endTime,
-      };
-
-      if (shift.id) { // Update existing
-        const docRef = doc(shiftsCollectionRef, shift.id);
-        batch.update(docRef, dataToSave);
-      } else { // Create new
-        const docRef = doc(shiftsCollectionRef);
-        batch.set(docRef, dataToSave);
-      }
-    });
-
-    try {
-      await batch.commit();
-      toast({ title: "Horarios Guardados", description: `Se han guardado los horarios para ${cargoData.jobTitle}.`});
-      onOpenChange(false);
-    } catch (error) {
-      console.error("Error saving shifts:", error);
-      toast({ variant: 'destructive', title: 'Error', description: 'No se pudieron guardar los horarios.' });
-    }
-  };
-  
-  if (!cargoData) return null;
-
-  return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl">
-        <DialogHeader>
-          <DialogTitle>Gestionar Horarios para: {cargoData.jobTitle}</DialogTitle>
-          <DialogDescription>
-            Define las horas de inicio y fin para cada turno del patrón.
-          </DialogDescription>
-        </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={handleSubmit(onSubmit)}>
-            <ScrollArea className="max-h-[60vh] pr-4">
-              <div className="space-y-4 py-4">
-                {fields.map((field, index) => (
-                  <Card key={field.id}>
-                    <CardHeader className="p-4">
-                      <CardTitle className="text-base">Turno: {field.name}</CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-4 pt-0">
-                      <div className="grid grid-cols-2 gap-4">
-                        <FormField
-                          control={control}
-                          name={`shifts.${index}.startTime`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Hora Inicio</FormLabel>
-                              <FormControl><Input type="time" {...field} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                         <FormField
-                          control={control}
-                          name={`shifts.${index}.endTime`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Hora Fin</FormLabel>
-                              <FormControl><Input type="time" {...field} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </ScrollArea>
-            <DialogFooter className="pt-4 border-t">
-              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
-              <Button type="submit">Guardar Cambios</Button>
-            </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-
-function ShiftsTabContent() {
-  const [cargoToEdit, setCargoToEdit] = useState<CargoScheduleStatus | null>(null);
-  const [isEditorOpen, setIsEditorOpen] = useState(false);
-
-  const firestore = useFirestore();
-  const { data: allPatterns, isLoading: patternsLoading } = useCollection<ShiftPattern>(useMemo(() => firestore ? collection(firestore, 'shiftPatterns') : null, [firestore]));
-  const { data: allShifts, isLoading: shiftsLoading } = useCollection<WorkShift>(useMemo(() => firestore ? collection(firestore, 'workShifts') : null, [firestore]));
-  
-  const scheduleSummary = useMemo<CargoScheduleStatus[]>(() => {
-    if (!allPatterns || !allShifts) return [];
-
-    return allPatterns.map(pattern => {
-        const uniqueShiftsInPattern = Array.from(new Set(pattern.cycle.filter(s => s && s !== 'LIB')));
-        const definedShiftsForCargo = allShifts.filter(s => s.jobTitle === pattern.jobTitle);
-        
-        const definedShiftNames = new Set(definedShiftsForCargo.map(s => s.name));
-        
-        const isComplete = uniqueShiftsInPattern.every(shiftName => definedShiftNames.has(shiftName!));
-        
-        return {
-            jobTitle: pattern.jobTitle,
-            pattern: Array.from(new Set(pattern.cycle.filter(Boolean) as string[])),
-            isComplete,
-            definedShifts: definedShiftsForCargo,
-        };
-    }).sort((a, b) => a.jobTitle.localeCompare(b.jobTitle));
-  }, [allPatterns, allShifts]);
-
-  const handleEditClick = (cargoData: CargoScheduleStatus) => {
-    setCargoToEdit(cargoData);
-    setIsEditorOpen(true);
-  };
-
-  const isLoading = patternsLoading || shiftsLoading;
-
-  return (
-    <>
-      <ShiftEditorDialog
-        isOpen={isEditorOpen}
-        onOpenChange={setIsEditorOpen}
-        cargoData={cargoToEdit}
-      />
-        <Card>
-          <CardHeader>
-            <CardTitle>Definición de Horarios</CardTitle>
-            <CardDescription>
-                Define los horarios de inicio y fin para las abreviaturas de turnos de cada cargo.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[250px]">Cargo</TableHead>
-                  <TableHead>Patrón de Turnos</TableHead>
-                  <TableHead className="w-[150px]">Estado</TableHead>
-                  <TableHead className="text-right w-[180px]">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={`skel-${i}`}>
-                      <TableCell colSpan={4} className="h-12"><div className="bg-gray-200 rounded animate-pulse h-8 w-full"></div></TableCell>
-                    </TableRow>
-                  ))
-                ) : scheduleSummary.length > 0 ? (
-                  scheduleSummary.map((item) => (
-                    <TableRow key={item.jobTitle}>
-                      <TableCell className="font-medium">{item.jobTitle}</TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {item.pattern.map(shift => (
-                            <Badge key={shift} variant="secondary">{shift}</Badge>
-                          ))}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {item.isComplete ? (
-                          <Badge className="bg-green-100 text-green-800"><CheckCircle className="mr-1 h-3 w-3" /> Completo</Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-amber-700 border-amber-300"><Clock className="mr-1 h-3 w-3" /> Pendiente</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="outline" onClick={() => handleEditClick(item)}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Gestionar Horarios
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={4} className="h-24 text-center">
-                      No hay cargos con patrones de turnos definidos.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-    </>
-  );
-}
+import { ScheduleProvider, useScheduleState } from '@/context/schedule-context';
+import { normalizeText } from '@/lib/utils';
 
 
 function PatternsTabContent({ initialPatterns }: { initialPatterns: ShiftPattern[] }) {
@@ -407,123 +133,154 @@ function PatternsTabContent({ initialPatterns }: { initialPatterns: ShiftPattern
 
     return (
         <>
-        <Card>
-            <CardHeader>
-                <CardTitle>Patrones de Turnos por Cargo</CardTitle>
-                <CardDescription>
-                    Estos patrones definen la secuencia de turnos y la jornada que el generador de horarios asignará a cada colaborador.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)}>
-                        <div className="border rounded-lg overflow-x-auto">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow className="bg-muted">
-                                        <TableHead className="min-w-[200px]">Cargo</TableHead>
-                                        <TableHead className="w-[200px]">Jornada</TableHead>
-                                        <TableHead className="w-full">Patrón de Turnos (Ciclo)</TableHead>
-                                        <TableHead className="text-center w-[120px]">Acciones</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {fields.map((field, index) => {
-                                        const isEditing = editingId === field.jobTitle;
-                                        return (
-                                            <TableRow key={field.formId}>
-                                                <TableCell className="font-medium align-top pt-5">{field.jobTitle}</TableCell>
-                                                <TableCell className="align-top pt-3">
-                                                    {isEditing ? (
-                                                        <FormField
-                                                            control={form.control}
-                                                            name={`patterns.${index}.scheduleType`}
-                                                            render={({ field }) => (
-                                                                <FormItem>
-                                                                    <Select onValueChange={field.onChange} value={field.value}>
-                                                                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                                                                        <SelectContent>
-                                                                            <SelectItem value="ROTATING">Semana Completa (Rotativo)</SelectItem>
-                                                                            <SelectItem value="MONDAY_TO_FRIDAY">Lunes a Viernes</SelectItem>
-                                                                        </SelectContent>
-                                                                    </Select>
-                                                                    <FormMessage />
-                                                                </FormItem>
-                                                            )}
-                                                        />
-                                                    ) : (
-                                                        <span className="text-sm font-medium text-muted-foreground">
-                                                            {field.scheduleType === 'MONDAY_TO_FRIDAY' ? 'Lunes a Viernes' : 'Semana Completa'}
-                                                        </span>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell className="align-top pt-2 w-full">
-                                                    {isEditing ? (
-                                                        <Controller
-                                                            name={`patterns.${index}.cycle`}
-                                                            control={form.control}
-                                                            render={({ field: { onChange, value } }) => (
-                                                                <div className="flex flex-wrap items-center gap-1 p-1 w-full">
-                                                                    {(value as (string | null)[]).map((shift, i) => (
-                                                                        <Input
-                                                                            key={i}
-                                                                            value={shift ?? ''}
-                                                                            placeholder="LIB"
-                                                                            onChange={(e) => {
-                                                                                const newCycle = [...value];
-                                                                                newCycle[i] = e.target.value.toUpperCase();
-                                                                                onChange(newCycle);
-                                                                            }}
-                                                                            className="w-16 h-8 text-center"
-                                                                        />
-                                                                    ))}
-                                                                </div>
-                                                            )}
-                                                        />
-                                                    ) : (
-                                                        <div className="flex flex-wrap items-center gap-1">
-                                                            {(field.cycle || []).filter(s => s !== null).map((shift, i) => (
-                                                                <Badge key={i} variant={shift === 'LIB' ? 'outline' : 'default'} className="text-xs">
-                                                                    {shift}
-                                                                </Badge>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell className="text-center align-top pt-2">
-                                                    {isEditing ? (
-                                                        <div className="flex gap-2 justify-center">
-                                                            <Button type="button" variant="ghost" size="icon" onClick={() => handleSaveRow(index)}>
-                                                                <Save className="h-4 w-4 text-green-600" />
-                                                            </Button>
-                                                            <Button type="button" variant="ghost" size="icon" onClick={() => handleCancelEdit(index)}>
-                                                                <XCircle className="h-4 w-4" />
-                                                            </Button>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="flex gap-2 justify-center">
-                                                            <Button type="button" variant="ghost" size="icon" onClick={() => handleEdit(index)}>
-                                                                <Edit className="h-4 w-4" />
-                                                            </Button>
-                                                            <Button variant="ghost" size="icon" onClick={() => setDeletingId(field.jobTitle)}>
-                                                                <Trash2 className="h-4 w-4 text-destructive" />
-                                                            </Button>
-                                                        </div>
-                                                    )}
-                                                </TableCell>
-                                            </TableRow>
-                                        );
-                                    })}
-                                </TableBody>
-                            </Table>
-                        </div>
-                    </form>
-                </Form>
-            </CardContent>
-        </Card>
+         <AlertDialog open={!!deletingId} onOpenChange={() => setDeletingId(null)}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Esta acción no se puede deshacer. Se eliminará permanentemente el patrón de turno.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Patrones de Turnos por Cargo</CardTitle>
+                    <CardDescription>
+                        Estos patrones definen la secuencia de turnos y la jornada que el generador de horarios asignará a cada colaborador.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Form {...form}>
+                        <form onSubmit={form.handleSubmit(onSubmit)}>
+                            <div className="border rounded-lg overflow-x-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow className="bg-muted">
+                                            <TableHead className="min-w-[200px]">Cargo</TableHead>
+                                            <TableHead className="w-[200px]">Jornada</TableHead>
+                                            <TableHead className="w-full">Patrón de Turnos (Ciclo)</TableHead>
+                                            <TableHead className="text-center w-[120px]">Acciones</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {fields.map((field, index) => {
+                                            const isEditing = editingId === field.jobTitle;
+                                            return (
+                                                <TableRow key={field.formId}>
+                                                    <TableCell className="font-medium align-top pt-5">{field.jobTitle}</TableCell>
+                                                    <TableCell className="align-top pt-3">
+                                                        {isEditing ? (
+                                                            <FormField
+                                                                control={form.control}
+                                                                name={`patterns.${index}.scheduleType`}
+                                                                render={({ field }) => (
+                                                                    <FormItem>
+                                                                        <Select onValueChange={field.onChange} value={field.value}>
+                                                                            <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                                                            <SelectContent>
+                                                                                <SelectItem value="ROTATING">Semana Completa (Rotativo)</SelectItem>
+                                                                                <SelectItem value="MONDAY_TO_FRIDAY">Lunes a Viernes</SelectItem>
+                                                                            </SelectContent>
+                                                                        </Select>
+                                                                        <FormMessage />
+                                                                    </FormItem>
+                                                                )}
+                                                            />
+                                                        ) : (
+                                                            <span className="text-sm font-medium text-muted-foreground">
+                                                                {field.scheduleType === 'MONDAY_TO_FRIDAY' ? 'Lunes a Viernes' : 'Semana Completa'}
+                                                            </span>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="align-top pt-2 w-full">
+                                                        {isEditing ? (
+                                                            <Controller
+                                                                name={`patterns.${index}.cycle`}
+                                                                control={form.control}
+                                                                render={({ field: { onChange, value } }) => (
+                                                                    <div className="flex flex-wrap items-center gap-1 p-1 w-full">
+                                                                        {(value as (string | null)[]).map((shift, i) => (
+                                                                            <Input
+                                                                                key={i}
+                                                                                value={shift ?? ''}
+                                                                                placeholder="LIB"
+                                                                                onChange={(e) => {
+                                                                                    const newCycle = [...value];
+                                                                                    newCycle[i] = e.target.value.toUpperCase();
+                                                                                    onChange(newCycle);
+                                                                                }}
+                                                                                className="w-16 h-8 text-center"
+                                                                            />
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+                                                            />
+                                                        ) : (
+                                                            <div className="flex flex-wrap items-center gap-1">
+                                                                {(field.cycle || []).filter(s => s !== null).map((shift, i) => (
+                                                                    <Badge key={i} variant={shift === 'LIB' ? 'outline' : 'default'} className="text-xs">
+                                                                        {shift}
+                                                                    </Badge>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="text-center align-top pt-2">
+                                                        {isEditing ? (
+                                                            <div className="flex gap-2 justify-center">
+                                                                <Button type="button" variant="ghost" size="icon" onClick={() => handleSaveRow(index)}>
+                                                                    <Save className="h-4 w-4 text-green-600" />
+                                                                </Button>
+                                                                <Button type="button" variant="ghost" size="icon" onClick={() => handleCancelEdit(index)}>
+                                                                    <XCircle className="h-4 w-4" />
+                                                                </Button>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="flex gap-2 justify-center">
+                                                                <Button type="button" variant="ghost" size="icon" onClick={() => handleEdit(index)}>
+                                                                    <Edit className="h-4 w-4" />
+                                                                </Button>
+                                                                <Button variant="ghost" size="icon" onClick={() => setDeletingId(field.jobTitle)}>
+                                                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                                                </Button>
+                                                            </div>
+                                                        )}
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </form>
+                    </Form>
+                </CardContent>
+            </Card>
         </>
     );
 }
+
+const patternsFormSchema = z.object({
+  patterns: z.array(z.object({
+    jobTitle: z.string(),
+    scheduleType: z.enum(['ROTATING', 'MONDAY_TO_FRIDAY']),
+    cycle: z.array(z.string().nullable()).min(1, "El ciclo debe tener al menos un turno."),
+  })),
+});
+
+const newPatternSchema = z.object({
+  jobTitle: z.string().min(1, "Debe seleccionar un cargo."),
+  scheduleType: z.enum(['ROTATING', 'MONDAY_TO_FRIDAY']),
+  cycle: z.array(z.object({ value: z.string().nullable() })).min(1, "El ciclo no puede estar vacío.").refine(arr => arr.some(item => item.value && item.value.trim() !== ''), {
+    message: "El ciclo debe tener al menos un turno definido."
+  }),
+});
+
 
 function RulesTabContent() {
     return (
@@ -575,7 +332,226 @@ function RulesTabContent() {
     );
 }
 
-export default function ScheduleSettingsPage() {
+const overtimeRuleSchema = z.object({
+  jobTitle: z.string().min(1, "El cargo es obligatorio"),
+  dayType: z.enum(["NORMAL", "FESTIVO"]),
+  shift: z.string().min(1, "La convención del turno es obligatoria"),
+  startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Formato de hora inválido (HH:mm)"),
+  endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Formato de hora inválido (HH:mm)"),
+  nightSurcharge: z.coerce.number().min(0).default(0),
+  sup50: z.coerce.number().min(0).default(0),
+  ext100: z.coerce.number().min(0).default(0),
+});
+
+function OvertimeRulesManager() {
+    const { overtimeRules, cargos } = useScheduleState();
+    const { toast } = useToast();
+    const firestore = useFirestore();
+
+    const [isFormOpen, setIsFormOpen] = useState(false);
+    const [editingRule, setEditingRule] = useState<OvertimeRule | null>(null);
+    const [ruleToDelete, setRuleToDelete] = useState<OvertimeRule | null>(null);
+
+    const form = useForm<z.infer<typeof overtimeRuleSchema>>({
+        resolver: zodResolver(overtimeRuleSchema),
+        defaultValues: {
+            jobTitle: '',
+            dayType: 'NORMAL',
+            shift: '',
+            startTime: '00:00',
+            endTime: '00:00',
+            nightSurcharge: 0,
+            sup50: 0,
+            ext100: 0,
+        },
+    });
+
+    const groupedRules = useMemo(() => {
+        if (!overtimeRules) return {};
+        return overtimeRules.reduce((acc, rule) => {
+            const key = `${rule.jobTitle} (${rule.dayType})`;
+            if (!acc[key]) {
+                acc[key] = [];
+            }
+            acc[key].push(rule);
+            return acc;
+        }, {} as Record<string, OvertimeRule[]>);
+    }, [overtimeRules]);
+
+    const sortedGroupKeys = useMemo(() => Object.keys(groupedRules).sort(), [groupedRules]);
+
+    const handleOpenForm = (rule: OvertimeRule | null) => {
+        setEditingRule(rule);
+        if (rule) {
+            form.reset(rule);
+        } else {
+            form.reset({
+                jobTitle: '',
+                dayType: 'NORMAL',
+                shift: '',
+                startTime: '00:00',
+                endTime: '00:00',
+                nightSurcharge: 0,
+                sup50: 0,
+                ext100: 0,
+            });
+        }
+        setIsFormOpen(true);
+    };
+
+    const onSubmit = async (data: z.infer<typeof overtimeRuleSchema>) => {
+        if (!firestore) return;
+
+        try {
+            if (editingRule) {
+                const ruleRef = doc(firestore, 'overtimeRules', editingRule.id);
+                await setDoc(ruleRef, data, { merge: true });
+                toast({ title: "Regla actualizada", description: `La regla para ${data.jobTitle} - ${data.shift} ha sido actualizada.` });
+            } else {
+                await addDoc(collection(firestore, 'overtimeRules'), data);
+                toast({ title: "Regla creada", description: `Nueva regla para ${data.jobTitle} - ${data.shift} ha sido creada.` });
+            }
+            setIsFormOpen(false);
+        } catch (error) {
+            console.error("Error saving overtime rule:", error);
+            toast({ variant: 'destructive', title: "Error", description: "No se pudo guardar la regla." });
+        }
+    };
+
+    const handleDeleteRule = async () => {
+        if (!ruleToDelete || !firestore) return;
+        try {
+            await deleteDoc(doc(firestore, 'overtimeRules', ruleToDelete.id));
+            toast({ title: "Regla eliminada" });
+        } catch (error) {
+            console.error("Error deleting rule:", error);
+            toast({ variant: 'destructive', title: "Error al eliminar" });
+        } finally {
+            setRuleToDelete(null);
+        }
+    };
+
+    return (
+        <>
+            <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>{editingRule ? 'Editar Regla' : 'Añadir Nueva Regla'}</DialogTitle>
+                    </DialogHeader>
+                    <Form {...form}>
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+                             <FormField control={form.control} name="jobTitle" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Cargo</FormLabel>
+                                    <Combobox options={cargos.map(c => ({ label: c.name, value: c.name }))} {...field} />
+                                    <FormMessage />
+                                </FormItem>
+                             )} />
+                            <FormField control={form.control} name="dayType" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Jornada</FormLabel>
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                        <SelectContent>
+                                            <SelectItem value="NORMAL">NORMAL</SelectItem>
+                                            <SelectItem value="FESTIVO">FESTIVO</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                             <FormField control={form.control} name="shift" render={({ field }) => (
+                                <FormItem><FormLabel>Convención de Turno</FormLabel><FormControl><Input placeholder="Ej: D12, N8, T24..." {...field} /></FormControl><FormMessage /></FormItem>
+                             )} />
+                            <div className="grid grid-cols-2 gap-4">
+                                <FormField control={form.control} name="startTime" render={({ field }) => (
+                                    <FormItem><FormLabel>Hora Inicio</FormLabel><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>
+                                )} />
+                                <FormField control={form.control} name="endTime" render={({ field }) => (
+                                    <FormItem><FormLabel>Hora Fin</FormLabel><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>
+                                )} />
+                            </div>
+                            <div className="grid grid-cols-3 gap-4">
+                                 <FormField control={form.control} name="nightSurcharge" render={({ field }) => (
+                                    <FormItem><FormLabel>Recargo Noct. (25%)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
+                                 )} />
+                                 <FormField control={form.control} name="sup50" render={({ field }) => (
+                                    <FormItem><FormLabel>H. Suplem. (50%)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
+                                 )} />
+                                 <FormField control={form.control} name="ext100" render={({ field }) => (
+                                    <FormItem><FormLabel>H. Extraord. (100%)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
+                                 )} />
+                            </div>
+                            <DialogFooter>
+                                <Button type="button" variant="ghost" onClick={() => setIsFormOpen(false)}>Cancelar</Button>
+                                <Button type="submit">Guardar Regla</Button>
+                            </DialogFooter>
+                        </form>
+                    </Form>
+                </DialogContent>
+            </Dialog>
+            <AlertDialog open={!!ruleToDelete} onOpenChange={() => setRuleToDelete(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader><AlertDialogTitle>¿Estás seguro?</AlertDialogTitle><AlertDialogDescription>Esta acción eliminará la regla permanentemente.</AlertDialogDescription></AlertDialogHeader>
+                    <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={handleDeleteRule}>Eliminar</AlertDialogAction></AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+            <Card>
+                <CardHeader>
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <CardTitle>Gestor de Reglas de Horas Extras</CardTitle>
+                            <CardDescription>Añada, edite o elimine las reglas para el cálculo de horas suplementarias y recargos.</CardDescription>
+                        </div>
+                        <Button onClick={() => handleOpenForm(null)}><PlusCircle className="mr-2 h-4 w-4" /> Añadir Nueva Regla</Button>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Cargo</TableHead>
+                                <TableHead>Jornada</TableHead>
+                                <TableHead>Convención</TableHead>
+                                <TableHead>Horarios</TableHead>
+                                <TableHead>Recargo Nocturno (25%)</TableHead>
+                                <TableHead>H. Suplementarias (50%)</TableHead>
+                                <TableHead>H. Extraordinarias (100%)</TableHead>
+                                <TableHead className="text-right">Acciones</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {sortedGroupKeys.map(key => (
+                                <React.Fragment key={key}>
+                                    <TableRow className="bg-amber-100 hover:bg-amber-100">
+                                        <TableCell colSpan={8} className="font-bold text-amber-900">{key}</TableCell>
+                                    </TableRow>
+                                    {groupedRules[key].map(rule => (
+                                        <TableRow key={rule.id}>
+                                            <TableCell className="font-medium">{rule.jobTitle}</TableCell>
+                                            <TableCell><Badge variant={rule.dayType === 'NORMAL' ? 'secondary' : 'outline'}>{rule.dayType}</Badge></TableCell>
+                                            <TableCell className="font-semibold">{rule.shift}</TableCell>
+                                            <TableCell>{rule.startTime} - {rule.endTime}</TableCell>
+                                            <TableCell>{rule.nightSurcharge || ''}</TableCell>
+                                            <TableCell>{rule.sup50 || ''}</TableCell>
+                                            <TableCell>{rule.ext100 || ''}</TableCell>
+                                            <TableCell className="text-right">
+                                                <Button variant="ghost" size="icon" onClick={() => handleOpenForm(rule)}><Edit className="h-4 w-4" /></Button>
+                                                <Button variant="ghost" size="icon" onClick={() => setRuleToDelete(rule)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </React.Fragment>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+        </>
+    );
+}
+
+function ScheduleSettingsPageContent() {
     const firestore = useFirestore();
     const { data: initialPatterns, isLoading: patternsLoading } = useCollection<ShiftPattern>(useMemo(() => firestore ? collection(firestore, 'shiftPatterns') : null, [firestore]));
     const { data: cargos, isLoading: cargosLoading } = useCollection<GenericOption>(useMemo(() => firestore ? collection(firestore, 'cargos') : null, [firestore]));
@@ -608,8 +584,8 @@ export default function ScheduleSettingsPage() {
         if (!firestore) return;
 
         const cleanedPattern = {
-            ...data,
             jobTitle: data.jobTitle.trim().toUpperCase(),
+            scheduleType: data.scheduleType,
             cycle: data.cycle
                 .map(item => item.value)
                 .filter((s): s is string => !!s && s.trim() !== '')
@@ -660,7 +636,7 @@ export default function ScheduleSettingsPage() {
     };
 
     if (patternsLoading || cargosLoading) {
-        return <div>Cargando configuración de horarios...</div>;
+        return <div className="flex h-full w-full items-center justify-center"><LoaderCircle className="h-8 w-8 animate-spin text-primary" /></div>;
     }
 
     return (
@@ -754,14 +730,14 @@ export default function ScheduleSettingsPage() {
                 <Tabs defaultValue="patterns">
                     <TabsList className="grid w-full grid-cols-3">
                         <TabsTrigger value="patterns">Patrones de Turnos</TabsTrigger>
-                        <TabsTrigger value="shifts">Definición de Horarios</TabsTrigger>
+                        <TabsTrigger value="overtime">Horarios y Horas Extras</TabsTrigger>
                         <TabsTrigger value="rules">Reglas del Sistema</TabsTrigger>
                     </TabsList>
                     <TabsContent value="patterns" className="mt-6">
                         {initialPatterns && <PatternsTabContent initialPatterns={initialPatterns} />}
                     </TabsContent>
-                    <TabsContent value="shifts" className="mt-6">
-                        <ShiftsTabContent />
+                    <TabsContent value="overtime" className="mt-6">
+                       <OvertimeRulesManager />
                     </TabsContent>
                     <TabsContent value="rules" className="mt-6">
                         <RulesTabContent />
@@ -769,5 +745,15 @@ export default function ScheduleSettingsPage() {
                 </Tabs>
             </div>
         </>
+    );
+}
+
+export default function ScheduleSettingsPage() {
+    return (
+        <Suspense fallback={<div className="flex h-full w-full items-center justify-center"><LoaderCircle className="h-8 w-8 animate-spin text-primary" /></div>}>
+            <ScheduleProvider>
+                <ScheduleSettingsPageContent />
+            </ScheduleProvider>
+        </Suspense>
     );
 }

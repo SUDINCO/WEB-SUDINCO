@@ -140,7 +140,7 @@ service cloud.firestore {
     match /shiftPatterns/{jobTitle} {
       allow read, write: if isMasterOrAdmin();
     }
-    match /workShifts/{shiftId} {
+    match /overtimeRules/{ruleId} {
       allow read: if isSignedIn();
       allow write: if isMasterOrAdmin();
     }
@@ -179,5 +179,3 @@ service cloud.firestore {
     }
   }
 }
-
-    
