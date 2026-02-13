@@ -18,7 +18,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { format, getDay, isWithinInterval, parseISO, subMonths, eachDayOfInterval } from 'date-fns';
+import { format, getDay, isWithinInterval, parseISO, subMonths, eachDayOfInterval, startOfYear, endOfYear, set } from 'date-fns';
 import type { Collaborator, Holiday, OvertimeRule, RoleChange, SavedSchedule, TemporaryTransfer } from '@/lib/types';
 import { getShiftDetailsFromRules } from '@/lib/schedule-generator';
 import { getEffectiveDetails } from '@/lib/schedule-utils';
@@ -171,6 +171,88 @@ function calculateScheduleSummary(
     return { groupedData: grouped, uniqueShifts: sortedShifts };
 }
 
+const SummaryTable = ({ groupedData, uniqueShifts }: { groupedData: any[], uniqueShifts: string[] }) => {
+    const weekDaysLabels = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB'];
+    
+    return (
+      <Table>
+          <TableHeader className="sticky top-0 bg-background z-20">
+              <TableRow>
+                  <TableHead rowSpan={2} className="sticky left-0 bg-background z-30 p-2 min-w-[200px] border-r">TRABAJADORES</TableHead>
+                  <TableHead colSpan={uniqueShifts.length + 1} className="text-center p-1 border-x">TURNO</TableHead>
+                  <TableHead colSpan={7} className="text-center p-1 border-x">CONTADOR DE DÍAS LIBRES</TableHead>
+                  <TableHead colSpan={5} className="text-center p-1 border-x">TOTALES</TableHead>
+              </TableRow>
+              <TableRow>
+                  {uniqueShifts.map(shift => <TableHead key={shift} className="p-1 text-center w-10 border-x">{shift}</TableHead>)}
+                  <TableHead className="p-1 text-center w-10 border-x font-bold">LIB</TableHead>
+                  {weekDaysLabels.map(day => <TableHead key={day} className="p-1 text-center w-10 border-x">{day}</TableHead>)}
+                  <TableHead className="p-1 text-center w-16 border-x">H.E. 25%</TableHead>
+                  <TableHead className="p-1 text-center w-16 border-x">H.E. 50%</TableHead>
+                  <TableHead className="p-1 text-center w-16 border-x">H.E. 100%</TableHead>
+                  <TableHead className="p-1 text-center w-16 border-x">H. Comp.</TableHead>
+                  <TableHead className="p-1 text-center w-16 border-x">Multas (%)</TableHead>
+              </TableRow>
+          </TableHeader>
+          <TableBody>
+              {groupedData.length > 0 ? (
+                  groupedData.map(group => (
+                      <React.Fragment key={group.jobTitle}>
+                          <TableRow className="bg-amber-400 hover:bg-amber-400">
+                              <TableCell colSpan={uniqueShifts.length + 14} className="font-bold text-center text-black p-1 sticky left-0 bg-amber-400 z-10">
+                                  {group.jobTitle}
+                              </TableCell>
+                          </TableRow>
+                          {group.employees.map((employee: SummaryData) => {
+                              const totalFreeDays = employee.freeDaysByWeekday.reduce((a, b) => a + b, 0);
+                              return (
+                                  <TableRow key={employee.id}>
+                                      <TableCell className="font-medium sticky left-0 bg-background z-10 border-r">{employee.name}</TableCell>
+                                      {uniqueShifts.map(shift => <TableCell key={shift} className="text-center">{employee.shiftCounts.get(shift) || ''}</TableCell>)}
+                                      <TableCell className="text-center font-bold border-x">{totalFreeDays || ''}</TableCell>
+                                      {employee.freeDaysByWeekday.map((count, index) => <TableCell key={index} className="text-center border-x">{count > 0 ? count : ''}</TableCell>).slice(1).concat(
+                                          <TableCell key={0} className="text-center border-x">{employee.freeDaysByWeekday[0] > 0 ? employee.freeDaysByWeekday[0] : ''}</TableCell>
+                                      )}
+                                      <TableCell className="text-center">{employee.extraHours.he25 > 0 ? employee.extraHours.he25.toFixed(2) : ''}</TableCell>
+                                      <TableCell className="text-center">{employee.extraHours.he50 > 0 ? employee.extraHours.he50.toFixed(2) : ''}</TableCell>
+                                      <TableCell className="text-center">{employee.extraHours.he100 > 0 ? employee.extraHours.he100.toFixed(2) : ''}</TableCell>
+                                      <TableCell className="text-center font-bold text-blue-600">
+                                          {employee.compensationHours > 0 && (
+                                              <Tooltip>
+                                                  <TooltipTrigger asChild>
+                                                      <span className="flex items-center justify-center gap-1 cursor-help">
+                                                          {employee.compensationHours.toFixed(2)}
+                                                          <Info className="h-3 w-3"/>
+                                                      </span>
+                                                  </TooltipTrigger>
+                                                  <TooltipContent>
+                                                      <div className="text-xs p-1">
+                                                          <p className="font-bold mb-1">Días Compensados:</p>
+                                                          <ul className="space-y-0.5">
+                                                              {employee.compensationDetails.map(d => <li key={d.day.toISOString()}>{format(d.day, 'dd/MM')}: {d.shift}</li>)}
+                                                          </ul>
+                                                      </div>
+                                                  </TooltipContent>
+                                              </Tooltip>
+                                          )}
+                                      </TableCell>
+                                      <TableCell className="text-center"></TableCell>
+                                  </TableRow>
+                              )
+                          })}
+                      </React.Fragment>
+                  ))
+              ) : (
+                  <TableRow>
+                      <TableCell colSpan={uniqueShifts.length + 14} className="h-48 text-center text-muted-foreground">
+                          No hay datos aprobados para mostrar con los filtros seleccionados.
+                      </TableCell>
+                  </TableRow>
+              )}
+          </TableBody>
+      </Table>
+    )
+}
 
 export function ScheduleDataSummaryDialog({ 
     open, 
@@ -188,26 +270,38 @@ export function ScheduleDataSummaryDialog({
     onNextPeriod,
     locationOptions,
     jobTitleOptions,
-    selectedLocation,
-    onLocationChange,
-    selectedJobTitle,
-    onJobTitleChange,
+    selectedLocation: periodLocation,
+    onLocationChange: onPeriodLocationChange,
+    selectedJobTitle: periodJobTitle,
+    onJobTitleChange: onPeriodJobTitleChange,
 }: ScheduleDataSummaryDialogProps) {
 
   const [viewMode, setViewMode] = React.useState<'period' | 'annual'>('period');
+  const [annualLocation, setAnnualLocation] = React.useState('todos');
+  const [annualJobTitle, setAnnualJobTitle] = React.useState('todos');
+
   const periodIdentifier = React.useMemo(() => format(currentDate, 'yyyy-MM'), [currentDate]);
   const yearTitle = React.useMemo(() => format(currentDate, 'yyyy'), [currentDate]);
 
+  React.useEffect(() => {
+    if (open) {
+      // Reset view to period and clear annual filters when dialog opens
+      setViewMode('period');
+      setAnnualLocation('todos');
+      setAnnualJobTitle('todos');
+    }
+  }, [open]);
+
   const { groupedData: periodGroupedData, uniqueShifts: periodUniqueShifts } = React.useMemo(() => {
-    if (viewMode !== 'period' || collaborators.length === 0 || days.length === 0) {
+    if (collaborators.length === 0 || days.length === 0) {
       return { groupedData: [], uniqueShifts: [] };
     }
 
     const periodSchedules = Object.values(savedSchedules).filter(s => s.id.startsWith(periodIdentifier));
     
     const relevantSchedules = periodSchedules.filter(s => 
-        (selectedLocation === 'todos' || s.location === selectedLocation) &&
-        (selectedJobTitle === 'todos' || s.jobTitle === selectedJobTitle)
+        (periodLocation === 'todos' || s.location === periodLocation) &&
+        (periodJobTitle === 'todos' || s.jobTitle === periodJobTitle)
     );
 
     const relevantCollaboratorIds = new Set<string>();
@@ -227,28 +321,30 @@ export function ScheduleDataSummaryDialog({
     const relevantCollaborators = collaborators.filter(c => relevantCollaboratorIds.has(c.id));
 
     return calculateScheduleSummary(relevantCollaborators, unifiedSchedule, days, holidays, overtimeRules, transfers, roleChanges);
-  }, [viewMode, periodIdentifier, savedSchedules, selectedLocation, selectedJobTitle, collaborators, days, holidays, overtimeRules, transfers, roleChanges]);
+  }, [periodIdentifier, periodLocation, periodJobTitle, savedSchedules, collaborators, days, holidays, overtimeRules, transfers, roleChanges]);
 
 
   const { groupedData: annualGroupedData, uniqueShifts: annualUniqueShifts } = React.useMemo(() => {
-    if (viewMode !== 'annual' || collaborators.length === 0) {
+    if (collaborators.length === 0) {
         return { groupedData: [], uniqueShifts: [] };
     }
 
     const currentYear = format(currentDate, 'yyyy');
+    
     const yearSchedules = Object.values(savedSchedules).filter(s => 
         s.id.startsWith(currentYear) &&
-        (selectedLocation === 'todos' || s.location === selectedLocation) &&
-        (selectedJobTitle === 'todos' || s.jobTitle === selectedJobTitle)
+        (annualLocation === 'todos' || s.location === annualLocation) &&
+        (annualJobTitle === 'todos' || s.jobTitle === annualJobTitle)
     );
 
     const annualData = new Map<string, SummaryData>();
 
     yearSchedules.forEach(periodSchedule => {
-        const [year, month] = periodSchedule.id.split('_')[0].split('-').map(Number);
+        const periodId = periodSchedule.id.split('_')[0];
+        const [year, month] = periodId.split('-').map(Number);
         if (!year || !month) return;
 
-        const periodDate = new Date(year, month - 1, 1);
+        const periodDate = set(new Date(), { year, month: month - 1, date: 1 });
         const prevMonthForPeriod = subMonths(periodDate, 1);
         const start = new Date(prevMonthForPeriod.getFullYear(), prevMonthForPeriod.getMonth(), 21);
         const end = new Date(periodDate.getFullYear(), periodDate.getMonth(), 20);
@@ -261,8 +357,10 @@ export function ScheduleDataSummaryDialog({
             periodScheduleMap.set(collabId, new Map(Object.entries(dayMap)));
         });
 
-        const periodCollaborators = collaborators.filter(c => periodSchedule.schedule[c.id]);
+        const periodCollaborators = collaborators.filter(c => Object.keys(periodSchedule.schedule).includes(c.id));
         
+        if (periodCollaborators.length === 0) return;
+
         const periodSummary = calculateScheduleSummary(periodCollaborators, periodScheduleMap, periodDays, holidays, overtimeRules, transfers, roleChanges);
 
         periodSummary.groupedData.forEach(group => {
@@ -308,89 +406,8 @@ export function ScheduleDataSummaryDialog({
 
     return { groupedData: grouped, uniqueShifts: sortedShifts };
 
-  }, [viewMode, currentDate, savedSchedules, selectedLocation, selectedJobTitle, collaborators, holidays, overtimeRules, transfers, roleChanges]);
+  }, [currentDate, savedSchedules, annualLocation, annualJobTitle, collaborators, holidays, overtimeRules, transfers, roleChanges]);
 
-
-  const weekDaysLabels = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB'];
-
-  const SummaryTable = ({ groupedData, uniqueShifts }: { groupedData: any[], uniqueShifts: string[] }) => (
-    <Table>
-        <TableHeader className="sticky top-0 bg-background z-20">
-            <TableRow>
-                <TableHead rowSpan={2} className="sticky left-0 bg-background z-30 p-2 min-w-[200px] border-r">TRABAJADORES</TableHead>
-                <TableHead colSpan={uniqueShifts.length + 1} className="text-center p-1 border-x">TURNO</TableHead>
-                <TableHead colSpan={7} className="text-center p-1 border-x">CONTADOR DE DÍAS LIBRES</TableHead>
-                <TableHead colSpan={5} className="text-center p-1 border-x">TOTALES</TableHead>
-            </TableRow>
-            <TableRow>
-                {uniqueShifts.map(shift => <TableHead key={shift} className="p-1 text-center w-10 border-x">{shift}</TableHead>)}
-                <TableHead className="p-1 text-center w-10 border-x font-bold">LIB</TableHead>
-                {weekDaysLabels.map(day => <TableHead key={day} className="p-1 text-center w-10 border-x">{day}</TableHead>)}
-                <TableHead className="p-1 text-center w-16 border-x">H.E. 25%</TableHead>
-                <TableHead className="p-1 text-center w-16 border-x">H.E. 50%</TableHead>
-                <TableHead className="p-1 text-center w-16 border-x">H.E. 100%</TableHead>
-                <TableHead className="p-1 text-center w-16 border-x">H. Comp.</TableHead>
-                <TableHead className="p-1 text-center w-16 border-x">Multas (%)</TableHead>
-            </TableRow>
-        </TableHeader>
-        <TableBody>
-            {groupedData.length > 0 ? (
-                groupedData.map(group => (
-                    <React.Fragment key={group.jobTitle}>
-                        <TableRow className="bg-amber-400 hover:bg-amber-400">
-                            <TableCell colSpan={uniqueShifts.length + 14} className="font-bold text-center text-black p-1 sticky left-0 bg-amber-400 z-10">
-                                {group.jobTitle}
-                            </TableCell>
-                        </TableRow>
-                        {group.employees.map((employee: SummaryData) => {
-                            const totalFreeDays = employee.freeDaysByWeekday.reduce((a, b) => a + b, 0);
-                            return (
-                                <TableRow key={employee.id}>
-                                    <TableCell className="font-medium sticky left-0 bg-background z-10 border-r">{employee.name}</TableCell>
-                                    {uniqueShifts.map(shift => <TableCell key={shift} className="text-center">{employee.shiftCounts.get(shift) || ''}</TableCell>)}
-                                    <TableCell className="text-center font-bold border-x">{totalFreeDays || ''}</TableCell>
-                                    {employee.freeDaysByWeekday.map((count, index) => <TableCell key={index} className="text-center border-x">{count > 0 ? count : ''}</TableCell>).slice(1).concat(
-                                        <TableCell key={0} className="text-center border-x">{employee.freeDaysByWeekday[0] > 0 ? employee.freeDaysByWeekday[0] : ''}</TableCell>
-                                    )}
-                                    <TableCell className="text-center">{employee.extraHours.he25 > 0 ? employee.extraHours.he25.toFixed(2) : ''}</TableCell>
-                                    <TableCell className="text-center">{employee.extraHours.he50 > 0 ? employee.extraHours.he50.toFixed(2) : ''}</TableCell>
-                                    <TableCell className="text-center">{employee.extraHours.he100 > 0 ? employee.extraHours.he100.toFixed(2) : ''}</TableCell>
-                                    <TableCell className="text-center font-bold text-blue-600">
-                                        {employee.compensationHours > 0 && (
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <span className="flex items-center justify-center gap-1 cursor-help">
-                                                        {employee.compensationHours.toFixed(2)}
-                                                        <Info className="h-3 w-3"/>
-                                                    </span>
-                                                </TooltipTrigger>
-                                                <TooltipContent>
-                                                    <div className="text-xs p-1">
-                                                        <p className="font-bold mb-1">Días Compensados:</p>
-                                                        <ul className="space-y-0.5">
-                                                            {employee.compensationDetails.map(d => <li key={d.day.toISOString()}>{format(d.day, 'dd/MM')}: {d.shift}</li>)}
-                                                        </ul>
-                                                    </div>
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        )}
-                                    </TableCell>
-                                    <TableCell className="text-center"></TableCell>
-                                </TableRow>
-                            )
-                        })}
-                    </React.Fragment>
-                ))
-            ) : (
-                <TableRow>
-                    <TableCell colSpan={uniqueShifts.length + 14} className="h-48 text-center text-muted-foreground">
-                        No hay datos aprobados para mostrar con los filtros seleccionados.
-                    </TableCell>
-                </TableRow>
-            )}
-        </TableBody>
-    </Table>
-  )
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -415,8 +432,8 @@ export function ScheduleDataSummaryDialog({
                     <Label>Ubicación</Label>
                     <Combobox
                         options={locationOptions}
-                        value={selectedLocation}
-                        onChange={onLocationChange}
+                        value={viewMode === 'period' ? periodLocation : annualLocation}
+                        onChange={viewMode === 'period' ? onPeriodLocationChange : setAnnualLocation}
                         placeholder="Filtrar por ubicación..."
                         searchPlaceholder="Buscar ubicación..."
                         notFoundMessage="No se encontró la ubicación."
@@ -424,10 +441,10 @@ export function ScheduleDataSummaryDialog({
                 </div>
                 <div className="grid w-full items-center gap-1.5">
                     <Label>Cargo</Label>
-                    <Combobox
+                     <Combobox
                         options={jobTitleOptions}
-                        value={selectedJobTitle}
-                        onChange={onJobTitleChange}
+                        value={viewMode === 'period' ? periodJobTitle : annualJobTitle}
+                        onChange={viewMode === 'period' ? onPeriodJobTitleChange : setAnnualJobTitle}
                         placeholder="Filtrar por cargo..."
                         searchPlaceholder="Buscar cargo..."
                         notFoundMessage="No se encontró el cargo."
