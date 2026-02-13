@@ -108,7 +108,7 @@ export function AbsenceManager({ open, onOpenChange, requests, collaborators, al
       toast({
         variant: 'destructive',
         title: 'Líder no asignado',
-        description: `La colaboradora ${selectedCollaborator.nombres} no tiene un líder asignado.`,
+        description: `La colaboradora ${selectedCollaborator?.nombres ?? ''} no tiene un líder asignado.`,
       });
       return;
     }
