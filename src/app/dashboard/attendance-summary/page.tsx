@@ -202,11 +202,6 @@ function AttendanceSummaryPageContent() {
 
   const handleExportToExcel = useCallback(() => {
     if (!attendanceSummary || attendanceSummary.length === 0) {
-        // toast({
-        //     variant: "destructive",
-        //     title: "Sin datos",
-        //     description: "No hay datos para exportar con los filtros actuales.",
-        // });
         return;
     }
     
