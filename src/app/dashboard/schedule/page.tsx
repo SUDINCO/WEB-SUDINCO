@@ -94,7 +94,7 @@ function SchedulePageContent() {
   const { data: vacationRequests, isLoading: vacationsLoading } = useCollection<Vacation>(useMemo(() => firestore ? collection(firestore, 'vacationRequests') : null, [firestore]));
 
   // Using context for shared schedule data
-  const { shiftPatterns, savedSchedules, loading: contextLoading } = useScheduleState();
+  const { shiftPatterns, savedSchedules, loading: contextLoading, holidays, overtimeRules } = useScheduleState();
 
 
   // For now, these are empty arrays. We will fetch them later.
@@ -518,6 +518,10 @@ function SchedulePageContent() {
               collaborators={filteredCollaborators}
               days={days}
               periodTitle={monthName}
+              holidays={holidays}
+              overtimeRules={overtimeRules}
+              transfers={transfers}
+              roleChanges={roleChanges}
           />
       </div>
     </>
