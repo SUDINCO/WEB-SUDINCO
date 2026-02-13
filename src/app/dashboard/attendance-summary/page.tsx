@@ -97,7 +97,6 @@ function AttendanceSummaryPageContent() {
         transfers,
         lactations: [],
         roleChanges,
-        absences: [],
         savedPeriodSettings: new Map(),
         manualOverrides: new Map(),
         notifications: [],
