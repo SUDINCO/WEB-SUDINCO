@@ -39,6 +39,7 @@ interface ComboboxProps {
   notFoundMessage?: string
   className?: string;
   allowCreate?: boolean;
+  disabled?: boolean;
 }
 
 const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
@@ -52,6 +53,7 @@ const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
       notFoundMessage = "No option found.",
       className,
       allowCreate = false,
+      disabled = false,
       ...props
     },
     ref
@@ -80,7 +82,7 @@ const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
     );
 
     return (
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover open={open} onOpenChange={disabled ? undefined : setOpen}>
         <PopoverTrigger asChild>
           <Button
             variant="outline"
@@ -88,6 +90,7 @@ const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
             aria-expanded={open}
             className={cn("w-full justify-between h-auto", !value && "text-muted-foreground", className)}
             ref={ref}
+            disabled={disabled}
             {...props}
           >
             <div className="flex flex-col items-start text-left">
