@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import dynamic from 'next/dynamic';
 import {
   Card,
   CardContent,
@@ -52,14 +53,13 @@ import { collection, doc, addDoc, deleteDoc, updateDoc } from 'firebase/firestor
 import { toast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import type { WorkLocation } from '@/lib/types';
 
-interface WorkLocation {
-  id: string;
-  name: string;
-  latitude: number;
-  longitude: number;
-  radius: number;
-}
+const LocationsMap = useMemo(() => dynamic(() => import('@/components/map/locations-map'), {
+    ssr: false,
+    loading: () => <div className="h-full w-full bg-muted flex items-center justify-center"><LoaderCircle className="h-6 w-6 animate-spin" /> <p className="ml-2">Cargando mapa...</p></div>
+}), []);
+
 
 const locationSchema = z.object({
   name: z.string().min(1, 'El nombre es obligatorio.'),
@@ -76,6 +76,9 @@ export default function WorkLocationsPage() {
   const [locationToDelete, setLocationToDelete] = useState<WorkLocation | null>(null);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
 
+  const [mapCenter, setMapCenter] = useState<[number, number]>([-2.14, -79.9]);
+  const [mapZoom, setMapZoom] = useState(13);
+
   const firestore = useFirestore();
   const locationsCollectionRef = useMemo(() => firestore ? collection(firestore, 'workLocations') : null, [firestore]);
   
@@ -85,49 +88,18 @@ export default function WorkLocationsPage() {
     resolver: zodResolver(locationSchema),
     defaultValues: { name: '', latitude: 0, longitude: 0, radius: 50 },
   });
-  
-  const watchedLatitude = form.watch('latitude');
-  const watchedLongitude = form.watch('longitude');
-  const watchedRadius = form.watch('radius');
 
-  const mapPreviewUrl = useMemo(() => {
-    const lat = Number(watchedLatitude);
-    const lon = Number(watchedLongitude);
-    const radius = Number(watchedRadius);
-
-    if (isNaN(lat) || isNaN(lon)) {
-        return `https://www.openstreetmap.org/export/embed.html?bbox=-180,-90,180,90&layer=mapnik`;
-    }
-
-    if (lat === 0 && lon === 0) {
-      return `https://www.openstreetmap.org/export/embed.html?bbox=-180,-90,180,90&layer=mapnik`;
-    }
-
-    // Calculation to convert radius in meters to a lat/lon bounding box
-    const R = 6371e3; // Earth's radius in meters
-    const latDelta = (radius / R) * (180 / Math.PI);
-    const lonDelta = (radius / (R * Math.cos(lat * Math.PI / 180))) * (180 / Math.PI);
-
-    const minLat = lat - latDelta;
-    const maxLat = lat + latDelta;
-    const minLon = lon - lonDelta;
-    const maxLon = lon + lonDelta;
-
-    const bbox = `${minLon.toFixed(6)},${minLat.toFixed(6)},${maxLon.toFixed(6)},${maxLat.toFixed(6)}`;
-    
-    return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat},${lon}`;
-  }, [watchedLatitude, watchedLongitude, watchedRadius]);
-
-
-  const handleOpenForm = (location: WorkLocation | null) => {
+  const handleOpenForm = useCallback((location: WorkLocation | null) => {
     setEditingLocation(location);
     if (location) {
       form.reset(location);
+      setMapCenter([location.latitude, location.longitude]);
+      setMapZoom(16);
     } else {
       form.reset({ name: '', latitude: 0, longitude: 0, radius: 50 });
     }
     setIsFormOpen(true);
-  };
+  }, [form]);
   
   const onSubmit = async (data: LocationFormData) => {
     if (!locationsCollectionRef) return;
@@ -167,17 +139,35 @@ export default function WorkLocationsPage() {
       (position) => {
         form.setValue('latitude', position.coords.latitude);
         form.setValue('longitude', position.coords.longitude);
+        setMapCenter([position.coords.latitude, position.coords.longitude]);
+        setMapZoom(17);
         setIsGettingLocation(false);
-        toast({ title: "Ubicación obtenida", description: "Las coordenadas actuales se han llenado en el formulario." });
+        toast({ title: "Ubicación obtenida", description: "Las coordenadas actuales se han llenado en el formulario y el mapa se ha centrado." });
       },
       (error) => {
         console.error("Error getting location:", error);
-        toast({ variant: 'destructive', title: 'Error de Ubicación', description: error.message });
+        let description = 'No se pudo obtener la ubicación. Revisa los permisos en tu navegador.';
+        if (error.code === 1) description = 'Permiso de ubicación denegado.';
+        if (error.message.includes('disabled')) description = 'La geolocalización está deshabilitada en este documento. Intenta en una pestaña nueva.';
+        toast({ variant: 'destructive', title: 'Error de Ubicación', description });
         setIsGettingLocation(false);
       },
       { enableHighAccuracy: true }
     );
   };
+  
+  const handleMapDoubleClick = useCallback((latlng: { lat: number, lng: number }) => {
+      form.setValue('latitude', latlng.lat, { shouldValidate: true });
+      form.setValue('longitude', latlng.lng, { shouldValidate: true });
+      toast({ title: "Coordenadas establecidas", description: "Se han actualizado las coordenadas en el formulario." });
+  }, [form]);
+
+  const handleMarkerClick = useCallback((locationId: string) => {
+      const location = locations?.find(l => l.id === locationId);
+      if (location) {
+          handleOpenForm(location);
+      }
+  }, [locations, handleOpenForm]);
 
   return (
     <div className="space-y-6">
@@ -199,7 +189,7 @@ export default function WorkLocationsPage() {
           <DialogHeader>
             <DialogTitle>{editingLocation ? 'Editar Ubicación' : 'Añadir Nueva Ubicación'}</DialogTitle>
             <DialogDescription>
-              Define un área geográfica donde los empleados pueden registrar su asistencia.
+              Define un área geográfica donde los empleados pueden registrar su asistencia. Haz doble clic en el mapa para fijar las coordenadas.
             </DialogDescription>
           </DialogHeader>
           <Form {...form}>
@@ -226,15 +216,14 @@ export default function WorkLocationsPage() {
               <div className="space-y-2">
                 <Label>Vista Previa del Mapa</Label>
                 <div className="h-64 w-full rounded-md border bg-muted overflow-hidden">
-                    <iframe
-                        key={mapPreviewUrl} // Use key to force re-render when URL changes
-                        width="100%"
-                        height="100%"
-                        style={{ border: 0 }}
-                        loading="lazy"
-                        allowFullScreen
-                        src={mapPreviewUrl}
-                    ></iframe>
+                    <LocationsMap 
+                      locations={locations || []}
+                      center={mapCenter}
+                      zoom={mapZoom}
+                      onMapDoubleClick={handleMapDoubleClick}
+                      onMarkerClick={handleMarkerClick}
+                      selectedLocationId={editingLocation?.id || null}
+                    />
                 </div>
               </div>
 
