@@ -196,6 +196,7 @@ export function ScheduleDataSummaryDialog({
 
   const [viewMode, setViewMode] = React.useState<'period' | 'annual'>('period');
   const periodIdentifier = React.useMemo(() => format(currentDate, 'yyyy-MM'), [currentDate]);
+  const yearTitle = React.useMemo(() => format(currentDate, 'yyyy'), [currentDate]);
 
   const { groupedData: periodGroupedData, uniqueShifts: periodUniqueShifts } = React.useMemo(() => {
     if (viewMode !== 'period' || collaborators.length === 0 || days.length === 0) {
@@ -394,21 +395,11 @@ export function ScheduleDataSummaryDialog({
         </DialogHeader>
 
         <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'period' | 'annual')} className="flex flex-col flex-grow min-h-0">
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4 border-y py-4">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4 border-b pb-4">
                 <TabsList>
                     <TabsTrigger value="period">Resumen del Período</TabsTrigger>
                     <TabsTrigger value="annual">Resumen Anual</TabsTrigger>
                 </TabsList>
-                
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="icon" onClick={onPrevPeriod} aria-label="Periodo anterior">
-                        <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <span className="font-semibold text-center w-64 text-sm">{periodTitle}</span>
-                    <Button variant="outline" size="icon" onClick={onNextPeriod} aria-label="Periodo siguiente">
-                        <ChevronRight className="h-4 w-4" />
-                    </Button>
-                </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
@@ -437,15 +428,27 @@ export function ScheduleDataSummaryDialog({
             </div>
             
             <div className="flex-grow min-h-0 pt-4">
-                <TabsContent value="period" className="m-0 h-full">
-                    <ScrollArea className="h-full">
+                <TabsContent value="period" className="m-0 h-full flex flex-col">
+                    <div className="flex items-center justify-center gap-2 mb-4 flex-shrink-0">
+                        <Button variant="outline" size="icon" onClick={onPrevPeriod} aria-label="Periodo anterior">
+                            <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <span className="font-semibold text-center w-64 text-sm">{periodTitle}</span>
+                        <Button variant="outline" size="icon" onClick={onNextPeriod} aria-label="Periodo siguiente">
+                            <ChevronRight className="h-4 w-4" />
+                        </Button>
+                    </div>
+                    <ScrollArea className="flex-grow">
                         <TooltipProvider>
                           <SummaryTable groupedData={periodGroupedData} uniqueShifts={periodUniqueShifts} />
                         </TooltipProvider>
                     </ScrollArea>
                 </TabsContent>
-                <TabsContent value="annual" className="m-0 h-full">
-                   <ScrollArea className="h-full">
+                <TabsContent value="annual" className="m-0 h-full flex flex-col">
+                   <div className="flex items-center justify-center gap-2 mb-4 flex-shrink-0">
+                        <span className="font-semibold text-center w-64 text-sm">Resumen del Año {yearTitle}</span>
+                    </div>
+                   <ScrollArea className="flex-grow">
                         <TooltipProvider>
                           <SummaryTable groupedData={annualGroupedData} uniqueShifts={annualUniqueShifts} />
                         </TooltipProvider>
