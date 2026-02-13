@@ -181,7 +181,6 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
       module: "Asignaciones",
       icon: ClipboardCheck,
       sublinks: [
-        { name: "Horarios de Trabajo", href: "/dashboard/asignaciones/horarios", icon: Clock, id: "work-schedules" },
         { name: "Ubicaciones de Trabajo", href: "/dashboard/administration/work-locations", icon: MapPin, id: "work-locations" },
       ]
     },
@@ -193,7 +192,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         { name: "Evaluación de Desempeño", href: "/dashboard/performance-evaluation", icon: ClipboardCheck, id: "performance-evaluation" },
         { name: "Roles y Permisos", href: "/dashboard/administration/roles", icon: FileText, id: "roles" },
         { name: "Asignación de Líderes", href: "/dashboard/administration/leader-assignment", icon: UserCog, id: "leader-assignment" },
-        { name: "Configuración de Patrones de Turno", href: "/dashboard/administration/schedule-settings", icon: SlidersHorizontal, id: "schedule-settings" },
+        { name: "Configuración de Horarios", href: "/dashboard/administration/schedule-settings", icon: SlidersHorizontal, id: "schedule-settings" },
       ]
     }
   ], []);
