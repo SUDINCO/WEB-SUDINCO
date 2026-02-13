@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 
 import { useCollection, useFirestore } from '@/firebase';
-import { collection, doc, setDoc, writeBatch, deleteDoc, addDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, writeBatch, deleteDoc, addDoc, query, where, getDocs } from 'firebase/firestore';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -90,12 +90,38 @@ function PatternsTabContent({ initialPatterns }: { initialPatterns: ShiftPattern
     const handleDelete = async () => {
         if (!deletingId || !firestore) return;
 
+        const batch = writeBatch(firestore);
+
         try {
-            await deleteDoc(doc(firestore, "shiftPatterns", deletingId));
-            toast({ title: "Patrón eliminado" });
+            // 1. Delete the shift pattern
+            const patternRef = doc(firestore, "shiftPatterns", deletingId);
+            batch.delete(patternRef);
+
+            // 2. Find and delete associated overtime rules
+            const rulesQuery = query(collection(firestore, "overtimeRules"), where("jobTitle", "==", deletingId));
+            const rulesSnapshot = await getDocs(rulesQuery);
+            
+            let deletedRulesCount = 0;
+            rulesSnapshot.forEach((ruleDoc) => {
+                batch.delete(ruleDoc.ref);
+                deletedRulesCount++;
+            });
+
+            // 3. Commit the batch
+            await batch.commit();
+
+            toast({ 
+                title: "Patrón Eliminado",
+                description: `Se eliminó el patrón para "${deletingId}" y ${deletedRulesCount} reglas de horas extras asociadas.`
+            });
+
         } catch (error) {
-            console.error("Error deleting pattern:", error);
-            toast({ variant: 'destructive', title: "Error al eliminar" });
+            console.error("Error deleting pattern and associated rules:", error);
+            toast({ 
+                variant: 'destructive', 
+                title: "Error al eliminar",
+                description: "No se pudo eliminar el patrón y sus reglas."
+            });
         } finally {
             setDeletingId(null);
         }
@@ -138,7 +164,7 @@ function PatternsTabContent({ initialPatterns }: { initialPatterns: ShiftPattern
               <AlertDialogHeader>
                 <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Esta acción no se puede deshacer. Se eliminará permanentemente el patrón de turno.
+                  Esta acción no se puede deshacer. Se eliminará permanentemente el patrón de turno y todas sus reglas de horas extras asociadas.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -387,7 +413,7 @@ function OvertimeRulesManager() {
             groups[groupKey].push(rule);
         });
 
-        return Object.entries(groups);
+        return Object.entries(groups).sort((a,b) => a[0].localeCompare(b[0]));
     }, [overtimeRules]);
 
     const handleOpenForm = (rule: OvertimeRule | null) => {
@@ -503,7 +529,7 @@ function OvertimeRulesManager() {
             <AlertDialog open={!!ruleToDelete} onOpenChange={() => setRuleToDelete(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader><AlertDialogTitle>¿Estás seguro?</AlertDialogTitle><AlertDialogDescription>Esta acción eliminará la regla permanentemente.</AlertDialogDescription></AlertDialogHeader>
-                    <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={handleDeleteRule}>Eliminar</AlertDialogAction></AlertDialogFooter>
+                    <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={handleDeleteRule} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction></AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
             <Card>
@@ -520,31 +546,31 @@ function OvertimeRulesManager() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Jornada</TableHead>
-                                <TableHead>Convención</TableHead>
-                                <TableHead>Horarios</TableHead>
-                                <TableHead>Recargo Noct. (25%)</TableHead>
-                                <TableHead>H. Suplem. (50%)</TableHead>
-                                <TableHead>H. Extraord. (100%)</TableHead>
+                                <TableHead className="border-r">Jornada</TableHead>
+                                <TableHead className="border-r">Convención</TableHead>
+                                <TableHead className="border-r">Horarios</TableHead>
+                                <TableHead className="border-r text-center">Recargo Noct. (25%)</TableHead>
+                                <TableHead className="border-r text-center">H. Suplem. (50%)</TableHead>
+                                <TableHead className="border-r text-center">H. Extraord. (100%)</TableHead>
                                 <TableHead className="text-right">Acciones</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                            {groupedRules.map(([groupName, rulesInGroup]) => (
                                 <React.Fragment key={groupName}>
-                                    <TableRow className="bg-muted/50 hover:bg-muted/50">
-                                        <TableCell colSpan={7} className="p-2 text-center font-bold text-foreground">
+                                    <TableRow className="bg-primary/10 hover:bg-primary/10">
+                                        <TableCell colSpan={7} className="p-2 text-center font-bold text-primary">
                                             {groupName}
                                         </TableCell>
                                     </TableRow>
                                     {rulesInGroup.map(rule => (
                                         <TableRow key={rule.id}>
-                                            <TableCell><Badge variant={rule.dayType === 'NORMAL' ? 'secondary' : 'outline'}>{rule.dayType}</Badge></TableCell>
-                                            <TableCell className="font-semibold">{rule.shift}</TableCell>
-                                            <TableCell>{rule.startTime} - {rule.endTime}</TableCell>
-                                            <TableCell>{rule.nightSurcharge || ''}</TableCell>
-                                            <TableCell>{rule.sup50 || ''}</TableCell>
-                                            <TableCell>{rule.ext100 || ''}</TableCell>
+                                            <TableCell className="border-r"><Badge variant={rule.dayType === 'NORMAL' ? 'secondary' : 'outline'}>{rule.dayType}</Badge></TableCell>
+                                            <TableCell className="font-semibold border-r">{rule.shift}</TableCell>
+                                            <TableCell className="text-center border-r">{rule.startTime} - {rule.endTime}</TableCell>
+                                            <TableCell className="text-center border-r">{rule.nightSurcharge || ''}</TableCell>
+                                            <TableCell className="text-center border-r">{rule.sup50 || ''}</TableCell>
+                                            <TableCell className="text-center border-r">{rule.ext100 || ''}</TableCell>
                                             <TableCell className="text-right">
                                                 <Button variant="ghost" size="icon" onClick={() => handleOpenForm(rule)}><Edit className="h-4 w-4" /></Button>
                                                 <Button variant="ghost" size="icon" onClick={() => setRuleToDelete(rule)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
