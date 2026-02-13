@@ -212,11 +212,20 @@ export interface Collaborator {
 }
 
 export interface Vacation {
-  id: string;
-  collaboratorId: string;
-  startDate: Date;
-  endDate: Date;
-  status: 'approved' | 'pending' | 'rejected';
+    id: string;
+    userId: string;
+    userName: string;
+    userCedula: string;
+    userArea: string;
+    userCargo: string;
+    leaderEmail: string;
+    requestType: 'vacaciones' | 'permiso';
+    reason?: string;
+    startDate: string;
+    endDate: string;
+    totalDays: number;
+    status: 'pending' | 'approved' | 'rejected';
+    requestDate: string;
 }
 
 export interface TemporaryTransfer {
@@ -358,3 +367,4 @@ export interface Role {
     [key: string]: boolean;
   };
 }
+

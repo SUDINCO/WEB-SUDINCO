@@ -21,7 +21,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '../ui/button';
 import { CalendarIcon, Plus, Trash2, ChevronsUpDown, Check } from 'lucide-react';
-import type { Collaborator, Absence } from '@/lib/types';
+import type { Collaborator, Absence, UserProfile, Vacation } from '@/lib/types';
 import {
   Select,
   SelectContent,
@@ -46,6 +46,8 @@ import {
 } from "@/components/ui/command"
 import { Calendar } from '@/components/ui/calendar';
 import { Textarea } from '../ui/textarea';
+import { useFirestore } from '@/firebase';
+import { collection, addDoc, deleteDoc, doc } from 'firebase/firestore';
 
 const absenceTypes: Absence['type'][] = ['PM', 'LIC', 'SUS', 'RET', 'FI'];
 const absenceTypeDescriptions: Record<Absence['type'], string> = {
@@ -59,13 +61,14 @@ const absenceTypeDescriptions: Record<Absence['type'], string> = {
 interface AbsenceManagerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  absences: Absence[];
-  onAbsencesChange: (absences: Absence[]) => void;
+  requests: Vacation[];
   collaborators: Collaborator[];
+  allUsers: UserProfile[];
 }
 
-export function AbsenceManager({ open, onOpenChange, absences, onAbsencesChange, collaborators }: AbsenceManagerProps) {
+export function AbsenceManager({ open, onOpenChange, requests, collaborators, allUsers }: AbsenceManagerProps) {
   const { toast } = useToast();
+  const firestore = useFirestore();
   
   const [selectedJobTitle, setSelectedJobTitle] = React.useState<string>('todos');
   const [isJobTitlePopoverOpen, setIsJobTitlePopoverOpen] = React.useState(false);
@@ -88,11 +91,11 @@ export function AbsenceManager({ open, onOpenChange, absences, onAbsencesChange,
 
 
   const selectedCollaborator = React.useMemo(() => {
-    return collaborators.find(c => c.id === collaboratorId);
-  }, [collaboratorId, collaborators]);
+    return allUsers.find(c => c.id === collaboratorId);
+  }, [collaboratorId, allUsers]);
 
-  const handleAddAbsence = () => {
-    if (!collaboratorId || !absenceType || !dateRange?.from) {
+  const handleAddAbsence = async () => {
+    if (!collaboratorId || !absenceType || !dateRange?.from || !firestore) {
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -101,36 +104,73 @@ export function AbsenceManager({ open, onOpenChange, absences, onAbsencesChange,
       return;
     }
 
-    const newAbsence: Absence = {
-      id: Date.now().toString(),
-      collaboratorId,
-      type: absenceType,
-      startDate: startOfDay(dateRange.from),
-      endDate: endOfDay(dateRange.to || dateRange.from),
-      description: description || absenceTypeDescriptions[absenceType],
+    if (!selectedCollaborator?.liderArea) {
+      toast({
+        variant: 'destructive',
+        title: 'Líder no asignado',
+        description: `La colaboradora ${selectedCollaborator.nombres} no tiene un líder asignado.`,
+      });
+      return;
+    }
+    
+    const endDate = dateRange.to || dateRange.from;
+    const totalDays = differenceInDays(endDate, dateRange.from) + 1;
+    
+    const reason = `${absenceTypeDescriptions[absenceType]}: ${description || 'Sin descripción.'}`;
+
+    const newRequest = {
+        userId: selectedCollaborator.id,
+        userName: `${selectedCollaborator.nombres} ${selectedCollaborator.apellidos}`,
+        userCedula: selectedCollaborator.cedula,
+        userArea: selectedCollaborator.departamento,
+        userCargo: selectedCollaborator.cargo,
+        leaderEmail: selectedCollaborator.liderArea,
+        requestType: 'permiso',
+        reason: reason,
+        startDate: format(dateRange.from, 'yyyy-MM-dd'),
+        endDate: format(endDate, 'yyyy-MM-dd'),
+        totalDays: totalDays,
+        status: 'approved' as const,
+        requestDate: new Date().toISOString(),
     };
 
-    onAbsencesChange([...absences, newAbsence]);
-    
-    setCollaboratorId(undefined);
-    setAbsenceType(undefined);
-    setDateRange({ from: new Date(), to: new Date() });
-    setDescription('');
-    setSelectedJobTitle('todos');
-
-
-    toast({
-      title: 'Solicitud Registrada',
-      description: 'La ausencia ha sido programada y se reflejará en el cronograma.',
-    });
+    try {
+      await addDoc(collection(firestore, 'vacationRequests'), newRequest);
+      toast({
+        title: 'Solicitud Registrada',
+        description: 'La ausencia ha sido programada y se reflejará en el cronograma.',
+      });
+      setCollaboratorId(undefined);
+      setAbsenceType(undefined);
+      setDateRange({ from: new Date(), to: new Date() });
+      setDescription('');
+      setSelectedJobTitle('todos');
+    } catch(error) {
+      console.error("Error adding absence:", error);
+      toast({
+        variant: 'destructive',
+        title: 'Error al guardar',
+        description: 'No se pudo registrar la ausencia.',
+      });
+    }
   };
 
-  const handleDeleteAbsence = (id: string) => {
-    onAbsencesChange(absences.filter(a => a.id !== id));
-    toast({
-      title: 'Solicitud Eliminada',
-      description: 'El registro de ausencia ha sido eliminado.',
-    });
+  const handleDeleteAbsence = async (id: string) => {
+    if(!firestore) return;
+    try {
+      await deleteDoc(doc(firestore, 'vacationRequests', id));
+      toast({
+        title: 'Solicitud Eliminada',
+        description: 'El registro de ausencia ha sido eliminado.',
+      });
+    } catch(error) {
+      console.error("Error deleting absence:", error);
+      toast({
+        variant: 'destructive',
+        title: 'Error al Eliminar',
+        description: 'No se pudo eliminar el registro.',
+      });
+    }
   };
   
   const handleJobTitleSelect = (jobTitle: string) => {
@@ -144,14 +184,15 @@ export function AbsenceManager({ open, onOpenChange, absences, onAbsencesChange,
   };
 
   const filteredAbsences = React.useMemo(() => {
-    return absences.filter(absence => {
-        const collaborator = collaborators.find(c => c.id === absence.collaboratorId);
+    return requests.filter(request => {
+        if(request.requestType !== 'permiso') return false;
+        const collaborator = allUsers.find(c => c.id === request.userId);
         if (!collaborator) return false;
         
-        const jobTitleMatch = selectedJobTitle === 'todos' || collaborator.jobTitle === selectedJobTitle;
+        const jobTitleMatch = selectedJobTitle === 'todos' || collaborator.cargo === selectedJobTitle;
         return jobTitleMatch;
-    }).sort((a,b) => a.startDate.getTime() - b.startDate.getTime());
-  }, [absences, selectedJobTitle, collaborators]);
+    }).sort((a,b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+  }, [requests, selectedJobTitle, allUsers]);
 
 
   return (
@@ -203,7 +244,7 @@ export function AbsenceManager({ open, onOpenChange, absences, onAbsencesChange,
                                     />
                                     Todos los cargos
                                   </CommandItem>
-                                  {collaborators.map(c => c.jobTitle).filter((v, i, a) => a.indexOf(v) === i).sort().map((title) => (
+                                  {allUsers.map(c => c.cargo).filter((v, i, a) => a.indexOf(v) === i).sort().map((title) => (
                                     <CommandItem
                                       key={title}
                                       value={title}
@@ -235,7 +276,7 @@ export function AbsenceManager({ open, onOpenChange, absences, onAbsencesChange,
                               className="w-full justify-between"
                             >
                               {selectedCollaborator
-                                ? selectedCollaborator.name
+                                ? `${selectedCollaborator.nombres} ${selectedCollaborator.apellidos}`
                                 : "Seleccionar colaborador..."}
                               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
@@ -345,7 +386,7 @@ export function AbsenceManager({ open, onOpenChange, absences, onAbsencesChange,
                                 <TableRow>
                                     <TableHead>Colaborador</TableHead>
                                     <TableHead>Ubicación</TableHead>
-                                    <TableHead>Tipo</TableHead>
+                                    <TableHead>Motivo</TableHead>
                                     <TableHead>Período</TableHead>
                                     <TableHead>Días</TableHead>
                                     <TableHead className="text-right">Acción</TableHead>
@@ -360,15 +401,15 @@ export function AbsenceManager({ open, onOpenChange, absences, onAbsencesChange,
                                     </TableRow>
                                 ) : (
                                     filteredAbsences.map(absence => {
-                                      const collaborator = collaborators.find(c => c.id === absence.collaboratorId);
-                                      const totalDays = differenceInDays(absence.endDate, absence.startDate) + 1;
+                                      const collaborator = allUsers.find(c => c.id === absence.userId);
+                                      const totalDays = absence.totalDays;
                                       
                                       return (
                                         <TableRow key={absence.id}>
-                                            <TableCell className="font-medium">{collaborator?.name || 'Desconocido'}</TableCell>
-                                            <TableCell>{collaborator?.location || 'N/A'}</TableCell>
-                                            <TableCell className="font-semibold">{absence.type}</TableCell>
-                                            <TableCell>{format(absence.startDate, 'dd/MM/yy')} - {format(absence.endDate, 'dd/MM/yy')}</TableCell>
+                                            <TableCell className="font-medium">{collaborator?.nombres} {collaborator?.apellidos || 'Desconocido'}</TableCell>
+                                            <TableCell>{collaborator?.ubicacion || 'N/A'}</TableCell>
+                                            <TableCell className="font-semibold">{absence.reason?.split(':')[0]}</TableCell>
+                                            <TableCell>{format(new Date(absence.startDate), 'dd/MM/yy')} - {format(new Date(absence.endDate), 'dd/MM/yy')}</TableCell>
                                             <TableCell className="text-center">{totalDays}</TableCell>
                                             <TableCell className="text-right">
                                                 <Button variant="ghost" size="icon" onClick={() => handleDeleteAbsence(absence.id)}>

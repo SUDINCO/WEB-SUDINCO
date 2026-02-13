@@ -21,7 +21,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '../ui/button';
 import { CalendarIcon, Plus, Trash2, Check, ChevronsUpDown } from 'lucide-react';
-import type { Collaborator, Vacation } from '@/lib/types';
+import type { Collaborator, Vacation, UserProfile } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { addDays, format, differenceInDays, startOfDay, endOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -38,16 +38,20 @@ import {
   CommandList,
 } from "@/components/ui/command"
 import { Calendar } from '@/components/ui/calendar';
+import { useFirestore } from '@/firebase';
+import { collection, addDoc, deleteDoc, doc } from 'firebase/firestore';
 
 interface VacationManagerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   vacations: Vacation[];
-  onVacationsChange: (vacations: Vacation[]) => void;
   collaborators: Collaborator[];
+  allUsers: UserProfile[];
 }
 
-export function VacationManager({ open, onOpenChange, vacations, onVacationsChange, collaborators }: VacationManagerProps) {
+export function VacationManager({ open, onOpenChange, vacations, collaborators, allUsers }: VacationManagerProps) {
+  const firestore = useFirestore();
+  const { toast } = useToast();
 
   const [selectedLocation, setSelectedLocation] = React.useState<string>('todos');
   const [isLocationPopoverOpen, setIsLocationPopoverOpen] = React.useState(false);
@@ -60,8 +64,6 @@ export function VacationManager({ open, onOpenChange, vacations, onVacationsChan
     to: addDays(new Date(), 6),
   });
   const [isCollaboratorPopoverOpen, setIsCollaboratorPopoverOpen] = React.useState(false);
-
-  const { toast } = useToast();
 
   const allLocations = [...new Set(collaborators.map(c => c.location))];
   const allJobTitles = [...new Set(collaborators.map(c => c.jobTitle))];
@@ -79,12 +81,12 @@ export function VacationManager({ open, onOpenChange, vacations, onVacationsChan
 
 
   const selectedCollaborator = React.useMemo(() => {
-    if (!collaborators) return undefined;
-    return collaborators.find(c => c.id === newVacationCollaboratorId);
-  }, [newVacationCollaboratorId, collaborators]);
+    if (!allUsers) return undefined;
+    return allUsers.find(c => c.id === newVacationCollaboratorId);
+  }, [newVacationCollaboratorId, allUsers]);
 
-  const handleAddVacation = () => {
-    if (!newVacationCollaboratorId || !newVacationDateRange?.from || !newVacationDateRange?.to) {
+  const handleAddVacation = async () => {
+    if (!newVacationCollaboratorId || !newVacationDateRange?.from || !newVacationDateRange?.to || !firestore) {
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -93,35 +95,69 @@ export function VacationManager({ open, onOpenChange, vacations, onVacationsChan
       return;
     }
 
-    const newVacation: Vacation = {
-      id: Date.now().toString(),
-      collaboratorId: newVacationCollaboratorId,
-      startDate: startOfDay(newVacationDateRange.from),
-      endDate: endOfDay(newVacationDateRange.to),
-      status: 'approved',
+    if (!selectedCollaborator?.liderArea) {
+      toast({
+        variant: 'destructive',
+        title: 'Líder no asignado',
+        description: 'Falta de asignación de líder. Póngase en contacto con el área de recursos humanos.',
+      });
+      return;
+    }
+
+    const totalDays = differenceInDays(newVacationDateRange.to, newVacationDateRange.from) + 1;
+    
+    const newRequest = {
+        userId: selectedCollaborator.id,
+        userName: `${selectedCollaborator.nombres} ${selectedCollaborator.apellidos}`,
+        userCedula: selectedCollaborator.cedula,
+        userArea: selectedCollaborator.departamento,
+        userCargo: selectedCollaborator.cargo,
+        leaderEmail: selectedCollaborator.liderArea,
+        requestType: 'vacaciones',
+        reason: 'Vacaciones programadas por administrador',
+        startDate: format(newVacationDateRange.from, 'yyyy-MM-dd'),
+        endDate: format(newVacationDateRange.to, 'yyyy-MM-dd'),
+        totalDays: totalDays,
+        status: 'approved' as const,
+        requestDate: new Date().toISOString(),
     };
 
-    onVacationsChange([...vacations, newVacation]);
-    
-    setNewVacationCollaboratorId(undefined);
-    setNewVacationDateRange({ from: new Date(), to: addDays(new Date(), 6) });
-    
-    setSelectedJobTitle('todos');
-    setSelectedLocation('todas');
-    
-
-    toast({
-        title: 'Vacaciones Agregadas',
-        description: 'El período de vacaciones ha sido programado exitosamente.',
-    });
+    try {
+      await addDoc(collection(firestore, 'vacationRequests'), newRequest);
+      toast({
+          title: 'Vacaciones Agregadas',
+          description: 'El período de vacaciones ha sido programado exitosamente.',
+      });
+      setNewVacationCollaboratorId(undefined);
+      setNewVacationDateRange({ from: new Date(), to: addDays(new Date(), 6) });
+      setSelectedJobTitle('todos');
+      setSelectedLocation('todos');
+    } catch(error) {
+       console.error("Error adding vacation:", error);
+       toast({
+          variant: 'destructive',
+          title: 'Error al Guardar',
+          description: 'No se pudieron registrar las vacaciones.',
+      });
+    }
   };
 
-  const handleDeleteVacation = (id: string) => {
-    onVacationsChange(vacations.filter(t => t.id !== id));
-    toast({
-        title: 'Vacaciones Eliminadas',
-        description: 'El período de vacaciones ha sido cancelado.',
-    });
+  const handleDeleteVacation = async (id: string) => {
+    if(!firestore) return;
+    try {
+      await deleteDoc(doc(firestore, 'vacationRequests', id));
+      toast({
+          title: 'Solicitud Eliminada',
+          description: 'El período de vacaciones ha sido cancelado.',
+      });
+    } catch(error) {
+       console.error("Error deleting vacation:", error);
+       toast({
+          variant: 'destructive',
+          title: 'Error al Eliminar',
+          description: 'No se pudo eliminar el registro.',
+      });
+    }
   };
   
   const handleLocationSelect = (location: string) => {
@@ -138,20 +174,20 @@ export function VacationManager({ open, onOpenChange, vacations, onVacationsChan
   };
 
   const handleShowAll = () => {
-    setSelectedLocation('todas');
+    setSelectedLocation('todos');
     setSelectedJobTitle('todos');
   };
   
   const filteredVacations = React.useMemo(() => {
     return vacations.filter(vacation => {
-        const collaborator = collaborators.find(c => c.id === vacation.collaboratorId);
+        const collaborator = allUsers.find(c => c.id === vacation.userId);
         if (!collaborator) return false;
         
-        const locationMatch = selectedLocation === 'todos' || collaborator.location === selectedLocation;
-        const jobTitleMatch = selectedJobTitle === 'todos' || collaborator.jobTitle === selectedJobTitle;
+        const locationMatch = selectedLocation === 'todos' || collaborator.ubicacion === selectedLocation;
+        const jobTitleMatch = selectedJobTitle === 'todos' || collaborator.cargo === selectedJobTitle;
         return locationMatch && jobTitleMatch;
-    }).sort((a,b) => a.startDate.getTime() - b.startDate.getTime());
-  }, [vacations, selectedLocation, selectedJobTitle, collaborators]);
+    }).sort((a,b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+  }, [vacations, selectedLocation, selectedJobTitle, allUsers]);
 
 
   return (
@@ -291,7 +327,7 @@ export function VacationManager({ open, onOpenChange, vacations, onVacationsChan
                               className="w-full justify-between"
                             >
                               {selectedCollaborator
-                                ? selectedCollaborator.name
+                                ? `${selectedCollaborator.nombres} ${selectedCollaborator.apellidos}`
                                 : "Seleccionar colaborador..."}
                               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
@@ -402,15 +438,15 @@ export function VacationManager({ open, onOpenChange, vacations, onVacationsChan
                                     </TableRow>
                                 ) : (
                                     filteredVacations.map(v => {
-                                      const collaborator = collaborators.find(c => c.id === v.collaboratorId);
-                                      const totalDays = differenceInDays(v.endDate, v.startDate) + 1;
+                                      const collaborator = allUsers.find(c => c.id === v.userId);
+                                      const totalDays = v.totalDays;
                                       
                                       return (
                                         <TableRow key={v.id}>
-                                            <TableCell className="font-medium">{collaborator?.name || 'Desconocido'}</TableCell>
-                                            <TableCell>{collaborator?.jobTitle || 'N/A'}</TableCell>
-                                            <TableCell>{collaborator?.location || 'N/A'}</TableCell>
-                                            <TableCell>{format(v.startDate, 'dd/MM/yy')} - {format(v.endDate, 'dd/MM/yy')}</TableCell>
+                                            <TableCell className="font-medium">{collaborator?.nombres} {collaborator?.apellidos || 'Desconocido'}</TableCell>
+                                            <TableCell>{collaborator?.cargo || 'N/A'}</TableCell>
+                                            <TableCell>{collaborator?.ubicacion || 'N/A'}</TableCell>
+                                            <TableCell>{format(new Date(v.startDate), 'dd/MM/yy')} - {format(new Date(v.endDate), 'dd/MM/yy')}</TableCell>
                                             <TableCell className="text-center">{totalDays}</TableCell>
                                             <TableCell className="text-right">
                                                 <Button variant="ghost" size="icon" onClick={() => handleDeleteVacation(v.id)}>

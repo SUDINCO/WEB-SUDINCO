@@ -98,7 +98,7 @@ function SchedulePageContent() {
 
   const firestore = useFirestore();
   const { data: users, isLoading: usersLoading } = useCollection<UserProfile>(useMemo(() => firestore ? collection(firestore, 'users') : null, [firestore]));
-  const { data: vacations, isLoading: vacationsLoading } = useCollection<Vacation>(useMemo(() => firestore ? collection(firestore, 'vacationRequests') : null, [firestore]));
+  const { data: vacationRequests, isLoading: vacationsLoading } = useCollection<Vacation>(useMemo(() => firestore ? collection(firestore, 'vacationRequests') : null, [firestore]));
 
   // Using context for shared schedule data
   const { shiftPatterns, savedSchedules, loading: contextLoading } = useScheduleState();
@@ -107,7 +107,6 @@ function SchedulePageContent() {
   // For now, these are empty arrays. We will fetch them later.
   const [transfers, setTransfers] = useState<TemporaryTransfer[]>([]);
   const [lactations, setLactations] = useState<Lactation[]>([]);
-  const [absences, setAbsences] = useState<Absence[]>([]);
   const [roleChanges, setRoleChanges] = useState<RoleChange[]>([]);
   
   const { days, monthName, periodIdentifier } = useMemo(() => {
@@ -193,10 +192,10 @@ function SchedulePageContent() {
     }
 
     const context = {
-      vacations: (vacations as Vacation[] | undefined) || [],
+      vacations: (vacationRequests as Vacation[] | undefined) || [],
       transfers,
       lactations,
-      absences,
+      absences: (vacationRequests?.filter(r => r.requestType === 'permiso') as Absence[] | undefined) || [],
       roleChanges,
       manualOverrides,
       savedPeriodSettings: new Map(),
@@ -212,7 +211,7 @@ function SchedulePageContent() {
       allCollaborators: collaborators as Collaborator[]
     };
     return obtenerHorarioUnificado(days, context, 'coordinator');
-  }, [collaborators, days, vacations, transfers, lactations, absences, roleChanges, manualOverrides, shiftPatterns, contextLoading, isAutomatic, draftConditioning, selectedUbicacion, selectedCargo, selectedTrabajador, savedSchedules, periodIdentifier]);
+  }, [collaborators, days, vacationRequests, transfers, lactations, roleChanges, manualOverrides, shiftPatterns, contextLoading, isAutomatic, draftConditioning, selectedUbicacion, selectedCargo, selectedTrabajador, savedSchedules, periodIdentifier]);
 
   const dynamicFilterOptions = useMemo(() => {
     if (!users) return { cargos: [], ubicaciones: [], trabajadores: [] };
@@ -452,8 +451,8 @@ function SchedulePageContent() {
                   }}
                   isScheduleLocked={isScheduleLocked}
                   transfers={transfers}
-                  vacations={(vacations as Vacation[] | undefined) || []}
-                  absences={absences}
+                  vacations={(vacationRequests as Vacation[] | undefined) || []}
+                  absences={(vacationRequests?.filter(r => r.requestType === 'permiso') as Absence[] | undefined) || []}
                   lactations={lactations}
                   roleChanges={roleChanges}
                   allCollaborators={collaborators as Collaborator[]}
@@ -479,16 +478,16 @@ function SchedulePageContent() {
           <VacationManager
               open={isVacationModalOpen}
               onOpenChange={setIsVacationModalOpen}
-              vacations={(vacations as Vacation[] | undefined) || []}
-              onVacationsChange={() => { /* This will be handled by firestore real-time updates */ }}
+              vacations={(vacationRequests as Vacation[] | undefined) || []}
               collaborators={collaborators}
+              allUsers={users || []}
           />
           <AbsenceManager
               open={isAbsenceModalOpen}
               onOpenChange={setIsAbsenceModalOpen}
-              absences={absences}
-              onAbsencesChange={setAbsences}
+              requests={(vacationRequests as Vacation[] | undefined) || []}
               collaborators={collaborators}
+              allUsers={users || []}
           />
           <LactationManager
               open={isLactationModalOpen}
@@ -529,5 +528,3 @@ export default function SchedulePage() {
     );
 }
 
-
-    
