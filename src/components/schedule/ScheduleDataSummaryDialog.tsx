@@ -285,7 +285,6 @@ export function ScheduleDataSummaryDialog({
 
   React.useEffect(() => {
     if (open) {
-      // Reset view to period and clear annual filters when dialog opens
       setViewMode('period');
       setAnnualLocation('todos');
       setAnnualJobTitle('todos');
@@ -331,11 +330,7 @@ export function ScheduleDataSummaryDialog({
 
     const currentYear = format(currentDate, 'yyyy');
     
-    const yearSchedules = Object.values(savedSchedules).filter(s => 
-        s.id.startsWith(currentYear) &&
-        (annualLocation === 'todos' || s.location === annualLocation) &&
-        (annualJobTitle === 'todos' || s.jobTitle === annualJobTitle)
-    );
+    const yearSchedules = Object.values(savedSchedules).filter(s => s.id.startsWith(currentYear));
 
     const annualData = new Map<string, SummaryData>();
 
@@ -387,7 +382,19 @@ export function ScheduleDataSummaryDialog({
         });
     });
     
-    const collaboratorData = Array.from(annualData.values());
+    let collaboratorData = Array.from(annualData.values());
+    const fullCollaboratorMap = new Map(collaborators.map(c => [c.id, c]));
+        
+    collaboratorData = collaboratorData.filter(summary => {
+        const collaborator = fullCollaboratorMap.get(summary.id);
+        if (!collaborator) return false;
+
+        const locationMatch = annualLocation === 'todos' || collaborator.originalLocation === annualLocation;
+        const jobTitleMatch = annualJobTitle === 'todos' || summary.jobTitle === annualJobTitle;
+        
+        return locationMatch && jobTitleMatch;
+    });
+    
     const grouped = collaboratorData.reduce((acc, data) => {
         let group = acc.find(g => g.jobTitle === data.jobTitle);
         if (!group) {
