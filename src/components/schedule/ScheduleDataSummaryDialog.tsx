@@ -104,12 +104,10 @@ function calculateScheduleSummary(
         
         let compensationHours = 0;
         let compensationDetails: { day: Date, shift: string | null }[] = [];
-        let finalWorkedDayKeys = [...workedDayKeys];
 
         if (workedDayKeys.length > 22) {
             const extraDaysCount = workedDayKeys.length - 22;
             const compensationDayKeys = workedDayKeys.slice(-extraDaysCount);
-            finalWorkedDayKeys = workedDayKeys.slice(0, 22);
 
             compensationDayKeys.forEach(dayKey => {
                 const day = new Date(`${dayKey}T00:00:00`);
@@ -127,7 +125,7 @@ function calculateScheduleSummary(
             });
         }
         
-        const extraHours = finalWorkedDayKeys.reduce((acc, dayKey) => {
+        const extraHours = workedDayKeys.reduce((acc, dayKey) => {
             const day = new Date(`${dayKey}T00:00:00`);
             const dayIsHoliday = allHolidays.some(h => isWithinInterval(day, { start: h.startDate, end: h.endDate }));
             const jornada = dayIsHoliday ? "FESTIVO" : "NORMAL"; 
@@ -192,11 +190,11 @@ const SummaryTable = ({ groupedData, uniqueShifts }: { groupedData: any[], uniqu
                   {uniqueShifts.map(shift => <TableHead key={shift} className="p-1 text-center w-10 border-x">{shift}</TableHead>)}
                   <TableHead className="p-1 text-center w-10 border-x font-bold">LIB</TableHead>
                   {weekDaysLabels.map(day => <TableHead key={day} className="p-1 text-center w-10 border-x">{day}</TableHead>)}
-                  <TableHead className="p-1 text-center w-16 border-x">H.E. 25%</TableHead>
-                  <TableHead className="p-1 text-center w-16 border-x">H.E. 50%</TableHead>
-                  <TableHead className="p-1 text-center w-16 border-x">H.E. 100%</TableHead>
-                  <TableHead className="p-1 text-center w-16 border-x">H. Comp.</TableHead>
-                  <TableHead className="p-1 text-center w-16 border-x">Multas (%)</TableHead>
+                  <TableHead className="p-1 text-center w-24 border-x">Recargo Noct. (25%)</TableHead>
+                  <TableHead className="p-1 text-center w-24 border-x">H. Suplem. (50%)</TableHead>
+                  <TableHead className="p-1 text-center w-24 border-x">H. Extraord. (100%)</TableHead>
+                  <TableHead className="p-1 text-center w-24 border-x">H. Comp.</TableHead>
+                  <TableHead className="p-1 text-center w-24 border-x">Multas (%)</TableHead>
               </TableRow>
           </TableHeader>
           <TableBody>
