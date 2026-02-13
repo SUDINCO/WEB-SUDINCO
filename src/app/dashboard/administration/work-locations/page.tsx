@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -171,7 +171,7 @@ export default function WorkLocationsPage() {
       if (location) {
           handleEdit(location);
       }
-  }, [locations]);
+  }, [locations, handleEdit]);
 
   return (
     <div className="space-y-6">
