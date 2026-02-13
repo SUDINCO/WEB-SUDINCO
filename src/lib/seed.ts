@@ -147,9 +147,9 @@ const initialData = {
         { jobTitle: "CAJERO DE RECAUDO", scheduleType: "ROTATING", cycle: ["M8", "M8", "T8", "T8", "N8", "LIB", "LIB"] },
         { jobTitle: "AUXILIAR DE RECAUDO", scheduleType: "ROTATING", cycle: ["M8", "M8", "T8", "T8", "LIB", "LIB"] },
         { jobTitle: "ASISTENTE DE ATENCION AL CLIENTE", scheduleType: "ROTATING", cycle: ["D10", "D10", "D10", "D10", "D10", "LIB", "LIB"] },
-        { jobTitle: "ADMINISTRADOR DE PEAJE", scheduleType: "MONDAY_TO_FRIDAY", cycle: ["D12", "D12", "D12", "D12", "D12", "LIB", "LIB"] },
-        { jobTitle: "ASISTENTE ADMINISTRATIVO DE PEAJE", scheduleType: "ROTATING", cycle: ["D12", "D12", "N12", "N12", "LIB", "LIB"] },
-        { jobTitle: "CONDUCTOR DE GRUA", scheduleType: "ROTATING", cycle: ["D12", "D12", "N12", "N12", "LIB", "LIB"] },
+        { jobTitle: "ADMINISTRADOR DE PEAJE", scheduleType: "MONDAY_TO_FRIDAY", cycle: ["D12"] },
+        { jobTitle: "ASISTENTE ADMINISTRATIVO DE PEAJE", scheduleType: "ROTATING", cycle: ["D12", "D12", "N12", "N12", "LIB", "LIB", "LIB"] },
+        { jobTitle: "CONDUCTOR DE GRUA", scheduleType: "ROTATING", cycle: ["D12", "D12", "N12", "N12", "LIB", "LIB", "LIB", "LIB"] },
         { jobTitle: "RESPONSABLE DE ATENCION PREHOSPITALARIA", scheduleType: "ROTATING", cycle: ["T24", "LIB", "LIB"] },
         { jobTitle: "OPERADOR DE VEHICULO DE EMERGENCIA", scheduleType: "ROTATING", cycle: ["T24", "LIB", "LIB"] },
         { jobTitle: "SERVICIOS GENERALES", scheduleType: "ROTATING", cycle: ["M8", "M8", "M8", "M8", "M8", "LIB", "LIB"] },
@@ -170,10 +170,8 @@ const initialData = {
         {"jobTitle":"AUDITOR DE PEAJE","dayType":"FESTIVO","shift":"TA","startTime":"12:00","endTime":"20:00","nightSurcharge":0,"sup50":0,"ext100":8},
         {"jobTitle":"AUXILIAR DE MANTENIMIENTO","dayType":"NORMAL","shift":"M8","startTime":"06:00","endTime":"14:00","nightSurcharge":0,"sup50":0,"ext100":0},
         {"jobTitle":"AUXILIAR DE MANTENIMIENTO","dayType":"NORMAL","shift":"M8","startTime":"08:00","endTime":"16:00","nightSurcharge":0,"sup50":0,"ext100":0},
-        {"jobTitle":"AUXILIAR DE MANTENIMIENTO","dayType":"NORMAL","shift":"T8","startTime":"14:00","endTime":"22:00","nightSurcharge":3,"sup50":0,"ext100":0},
         {"jobTitle":"AUXILIAR DE MANTENIMIENTO","dayType":"FESTIVO","shift":"M8","startTime":"06:00","endTime":"14:00","nightSurcharge":0,"sup50":0,"ext100":8},
         {"jobTitle":"AUXILIAR DE MANTENIMIENTO","dayType":"FESTIVO","shift":"M8","startTime":"08:00","endTime":"16:00","nightSurcharge":0,"sup50":0,"ext100":8},
-        {"jobTitle":"AUXILIAR DE MANTENIMIENTO","dayType":"FESTIVO","shift":"T8","startTime":"14:00","endTime":"22:00","nightSurcharge":0,"sup50":0,"ext100":8},
         {"jobTitle":"AUXILIAR DE RECAUDO","dayType":"NORMAL","shift":"M8","startTime":"06:00","endTime":"14:00","nightSurcharge":0,"sup50":0,"ext100":0},
         {"jobTitle":"AUXILIAR DE RECAUDO","dayType":"NORMAL","shift":"T8","startTime":"14:00","endTime":"22:00","nightSurcharge":3,"sup50":0,"ext100":0},
         {"jobTitle":"AUXILIAR DE RECAUDO","dayType":"FESTIVO","shift":"M8","startTime":"06:00","endTime":"14:00","nightSurcharge":0,"sup50":0,"ext100":8},
@@ -247,7 +245,7 @@ export async function seedDatabase(db: Firestore) {
     try {
         const allowedShiftsByJobTitle = new Map<string, Set<string>>();
         initialData.shiftPatterns.forEach(pattern => {
-            const shifts = new Set(pattern.cycle.filter((s): s is string => !!s));
+            const shifts = new Set(pattern.cycle.filter((s): s is string => !!s && s !== 'LIB'));
             allowedShiftsByJobTitle.set(pattern.jobTitle, shifts);
         });
 
@@ -255,7 +253,8 @@ export async function seedDatabase(db: Firestore) {
             const allowedShifts = allowedShiftsByJobTitle.get(rule.jobTitle);
             return allowedShifts ? allowedShifts.has(rule.shift) : false;
         });
-        
+
+        // Seed other collections if they are empty
         await Promise.all([
             seedCollection(db, 'roles', initialData.roles, 'name'),
             seedCollection(db, 'empresas', initialData.empresas),
@@ -264,8 +263,27 @@ export async function seedDatabase(db: Firestore) {
             seedCollection(db, 'areas', initialData.areas),
             seedCollection(db, 'centrosCosto', initialData.centrosCosto),
             seedCollection(db, 'shiftPatterns', initialData.shiftPatterns, 'jobTitle'),
-            seedCollection(db, 'overtimeRules', filteredOvertimeRules)
         ]);
+
+        // Always re-seed overtimeRules to ensure data consistency
+        const overtimeCollectionRef = collection(db, 'overtimeRules');
+        const snapshot = await getDocs(overtimeCollectionRef);
+        const batch = writeBatch(db);
+        snapshot.docs.forEach(doc => batch.delete(doc.ref)); // Delete all existing
+        
+        filteredOvertimeRules.forEach(rule => { // Add corrected ones
+            const newDocRef = doc(overtimeCollectionRef);
+            const dataToSet = {
+                ...rule,
+                nightSurcharge: rule.nightSurcharge || 0,
+                sup50: rule.sup50 || 0,
+                ext100: rule.ext100 || 0,
+            };
+            batch.set(newDocRef, dataToSet);
+        });
+        await batch.commit();
+        console.log(`'overtimeRules' has been re-seeded with ${filteredOvertimeRules.length} correct rules.`);
+        
         hasSeeded = true;
     } catch (error) {
         console.error("Error seeding database:", error);
