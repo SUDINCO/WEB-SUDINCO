@@ -225,7 +225,7 @@ export function ScheduleDataSummaryDialog({
 
     const relevantCollaborators = collaborators.filter(c => relevantCollaboratorIds.has(c.id));
 
-    return calculateScheduleSummary(relevantCollaborators, days, unifiedSchedule, holidays, overtimeRules, transfers, roleChanges);
+    return calculateScheduleSummary(relevantCollaborators, unifiedSchedule, days, holidays, overtimeRules, transfers, roleChanges);
   }, [viewMode, periodIdentifier, savedSchedules, selectedLocation, selectedJobTitle, collaborators, days, holidays, overtimeRules, transfers, roleChanges]);
 
 
@@ -255,7 +255,7 @@ export function ScheduleDataSummaryDialog({
 
         const periodCollaborators = collaborators.filter(c => periodSchedule.schedule[c.id]);
         
-        const periodSummary = calculateScheduleSummary(periodCollaborators, periodDays, periodScheduleMap, holidays, overtimeRules, transfers, roleChanges);
+        const periodSummary = calculateScheduleSummary(periodCollaborators, periodScheduleMap, periodDays, holidays, overtimeRules, transfers, roleChanges);
 
         periodSummary.groupedData.forEach(group => {
             group.employees.forEach(employee => {
