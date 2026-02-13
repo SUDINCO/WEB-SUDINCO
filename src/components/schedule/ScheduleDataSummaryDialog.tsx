@@ -18,7 +18,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { format, getDay, isWithinInterval, parseISO } from 'date-fns';
+import { format, getDay, isWithinInterval, parseISO, subMonths, eachDayOfInterval } from 'date-fns';
 import type { Collaborator, Holiday, OvertimeRule, RoleChange, SavedSchedule, TemporaryTransfer } from '@/lib/types';
 import { getShiftDetailsFromRules } from '@/lib/schedule-generator';
 import { getEffectiveDetails } from '@/lib/schedule-utils';
@@ -245,13 +245,16 @@ export function ScheduleDataSummaryDialog({
     const annualData = new Map<string, SummaryData>();
 
     yearSchedules.forEach(periodSchedule => {
-        const allDayKeysInPeriod = new Set<string>();
-        Object.values(periodSchedule.schedule).forEach(dayMap => {
-          Object.keys(dayMap).forEach(dayKey => allDayKeysInPeriod.add(dayKey));
-        });
-        const periodDaysKeys = Array.from(allDayKeysInPeriod);
-        if (periodDaysKeys.length === 0) return;
-        const periodDays = periodDaysKeys.map(key => parseISO(key));
+        const [year, month] = periodSchedule.id.split('_')[0].split('-').map(Number);
+        if (!year || !month) return;
+
+        const periodDate = new Date(year, month - 1, 1);
+        const prevMonthForPeriod = subMonths(periodDate, 1);
+        const start = new Date(prevMonthForPeriod.getFullYear(), prevMonthForPeriod.getMonth(), 21);
+        const end = new Date(periodDate.getFullYear(), periodDate.getMonth(), 20);
+        const periodDays = eachDayOfInterval({ start, end });
+
+        if (periodDays.length === 0) return;
 
         const periodScheduleMap = new Map<string, Map<string, string | null>>();
         Object.entries(periodSchedule.schedule).forEach(([collabId, dayMap]) => {
