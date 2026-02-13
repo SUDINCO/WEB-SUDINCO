@@ -305,6 +305,14 @@ export interface ShiftPattern {
     cycle: (string | null)[];
 }
 
+export interface WorkLocation {
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  radius: number;
+}
+
 export interface NotificationChange {
   field: 'scheduledShift' | 'entryTime' | 'exitTime' | 'observation';
   from: string | null;
@@ -367,4 +375,3 @@ export interface Role {
     [key: string]: boolean;
   };
 }
-
