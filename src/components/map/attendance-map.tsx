@@ -48,7 +48,7 @@ function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
 function BoundsFitter({ bounds }: { bounds: L.LatLngBounds | null }) {
     const map = useMap();
     React.useEffect(() => {
-        if (bounds) {
+        if (bounds && bounds.isValid()) {
             map.fitBounds(bounds, { padding: [50, 50] });
         }
     }, [bounds, map]);
@@ -156,7 +156,7 @@ export default function AttendanceMap({ workLocations, records, viewType }: Atte
                         <Circle
                             center={[location.latitude, location.longitude]}
                             radius={location.radius}
-                            pathOptions={{ color: 'hsl(var(--primary))', fillColor: 'hsl(var(--primary))', fillOpacity: 0.1, weight: 1 }}
+                            pathOptions={{ color: 'hsl(var(--primary))', fillColor: 'hsl(var(--primary))', fillOpacity: 0.2, weight: 2 }}
                         >
                             <Tooltip>
                                 <strong>{location.name}</strong><br />
