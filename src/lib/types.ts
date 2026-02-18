@@ -306,6 +306,17 @@ export interface WorkLocation {
   radius: number;
 }
 
+export interface LocationReport {
+  id: string;
+  userId: string;
+  userName: string;
+  timestamp: number;
+  latitude: number;
+  longitude: number;
+  photoUrl: string;
+  notes?: string;
+}
+
 export interface NotificationChange {
   field: 'scheduledShift' | 'entryTime' | 'exitTime' | 'observation';
   from: string | null;
