@@ -237,7 +237,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     <nav className="grid gap-2 text-lg font-medium">
       <Link href="/dashboard" className="flex items-center justify-center gap-2 text-lg font-semibold mb-4">
         <Image
-          src="https://core.gruposudinco.com/_images/companies/tool_bar.png"
+          src="https://i.imgur.com/2VvcyEO.png"
           alt="Acceso CORE"
           width={120}
           height={40}
@@ -328,7 +328,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
               <div className="app-header-content">
                 <Link href="/dashboard">
                   <Image
-                    src="https://core.gruposudinco.com/_images/companies/logo_blanco.png"
+                    src="https://i.imgur.com/2VvcyEO.png"
                     alt="Acceso CORE"
                     width={80}
                     height={28}
@@ -402,7 +402,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
             
             <div className="flex items-center">
               <Image
-                src="https://core.gruposudinco.com/_images/companies/tool_bar.png"
+                src="https://i.imgur.com/2VvcyEO.png"
                 alt="CORE Logo"
                 width={100}
                 height={40}

@@ -118,7 +118,7 @@ export function LoginForm() {
     <Card className="w-full max-w-sm shadow-2xl">
       <CardHeader className="text-center items-center">
         <Image
-          src="https://core.gruposudinco.com/_images/companies/logo_azul.png"
+          src="https://i.imgur.com/6V3WsMA.png"
           alt="Acceso CORE"
           width={150}
           height={50}
