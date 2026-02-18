@@ -178,8 +178,8 @@ service cloud.firestore {
 
     // ATTENDANCE RECORDS
     match /attendance/{recordId} {
-      allow read, update: if isSignedIn() && resource.data.collaboratorId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.collaboratorId == request.auth.uid;
+      allow read, update: if isMasterOrAdmin() || (isSignedIn() && resource.data.collaboratorId == request.auth.uid);
     }
     
     // WORK LOCATIONS: Any signed-in user can read locations for validation, but only admins can manage them.

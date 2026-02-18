@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { PlusCircle, Trash2 } from 'lucide-react';
+import { PlusCircle, Trash2, Map } from 'lucide-react';
 import { useCollection, useFirestore } from '@/firebase';
 import { collection, doc, addDoc, deleteDoc, updateDoc, DocumentData, setDoc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
@@ -43,9 +43,13 @@ const permissionsMap = [
             ]
         },
         {
-            title: "Nómina",
+            title: "Nómina y Asistencia",
             tabs: [
                 { id: 'staff', name: 'Nómina' },
+                { id: 'attendance', name: 'Mi Registro' },
+                { id: 'attendance-map', name: 'Mapa de Asistencia' },
+                { id: 'schedule', name: 'Cronograma' },
+                { id: 'report-location', name: 'Reportar Ubicación' },
             ]
         },
         {
@@ -54,19 +58,6 @@ const permissionsMap = [
                 { id: 'vacation-requests', name: 'Solicitud de Vacaciones y Permisos' },
             ]
         },
-        {
-            title: "Asistencia",
-            tabs: [
-                { id: 'attendance', name: 'Mi Registro' },
-                { id: 'schedule', name: 'Cronograma' },
-            ]
-        },
-    ]
-  },
-  {
-    menu: 'Reportes',
-    tabs: [
-      { id: 'report-location', name: 'Reportar Ubicación' },
     ]
   },
   {

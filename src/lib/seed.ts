@@ -9,7 +9,7 @@ const initialData = {
                 "staff": true, "profile-evaluation": true, "approvals": true, "performance-evaluation": true,
                 "my-evaluations": true, "observed-evaluations": true, "vacation-requests": true, "schedule": true, 
                 "publications": true, "roles": true, "leader-assignment": true, "schedule-settings": true,
-                "work-locations": true, "attendance": true
+                "work-locations": true, "attendance": true, "attendance-map": true
             }
         },
         {
@@ -18,7 +18,7 @@ const initialData = {
                 "staff": true, "profile-evaluation": true, "approvals": true, "performance-evaluation": true,
                 "my-evaluations": true, "observed-evaluations": true, "vacation-requests": true, "schedule": true, 
                 "publications": true, "roles": false, "leader-assignment": true, "schedule-settings": true,
-                "work-locations": true, "attendance": true
+                "work-locations": true, "attendance": true, "attendance-map": true
             }
         }
     ],

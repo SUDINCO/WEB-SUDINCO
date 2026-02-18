@@ -33,6 +33,7 @@ import {
   MessageSquare,
   LayoutGrid,
   BarChart,
+  Map,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -162,6 +163,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
             sublinks: [
                 { name: "Nómina", href: "/dashboard/staff", icon: Users, id: "staff" },
                 { name: "Mi Registro", href: "/dashboard/attendance", icon: Clock, id: "attendance" },
+                { name: "Mapa de Asistencia", href: "/dashboard/attendance-map", icon: Map, id: "attendance-map" },
                 { name: "Cronograma", href: "/dashboard/schedule", icon: CalendarCheck, id: "schedule" },
                 { name: "Reportar Ubicación", href: "/dashboard/report-location", icon: MapPin, id: "report-location" },
             ]
