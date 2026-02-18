@@ -1,7 +1,8 @@
+
 'use client';
 
 import React from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Circle, Tooltip } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Circle, Tooltip, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import type { WorkLocation, AttendanceRecord, LocationReport } from '@/lib/types';
@@ -43,6 +44,17 @@ function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
     return R * c;
 }
 
+// This component will adjust the map's view to fit the provided bounds.
+function BoundsFitter({ bounds }: { bounds: L.LatLngBounds | null }) {
+    const map = useMap();
+    React.useEffect(() => {
+        if (bounds) {
+            map.fitBounds(bounds, { padding: [50, 50] });
+        }
+    }, [bounds, map]);
+    return null;
+}
+
 interface AttendanceMapProps {
   workLocations: WorkLocation[];
   records: (AttendanceRecord | LocationReport)[];
@@ -80,6 +92,49 @@ export default function AttendanceMap({ workLocations, records, viewType }: Atte
 
         return { locationCounts: counts, outOfBoundsRecords: outOfBounds };
     }, [records, workLocations, viewType]);
+
+    const bounds = React.useMemo(() => {
+        const points: L.LatLngTuple[] = [];
+
+        if (viewType === 'attendance') {
+            const attendanceRecords = records as AttendanceRecord[];
+            workLocations.forEach(loc => {
+                if (loc.latitude && loc.longitude) {
+                    points.push([loc.latitude, loc.longitude]);
+                }
+            });
+            attendanceRecords.forEach(rec => {
+                if (rec.entryLatitude && rec.entryLongitude) {
+                    points.push([rec.entryLatitude, rec.entryLongitude]);
+                }
+            });
+        } else { // 'reports'
+            const locationReports = records as LocationReport[];
+            locationReports.forEach(rep => {
+                if (rep.latitude && rep.longitude) {
+                    points.push([rep.latitude, rep.longitude]);
+                }
+            });
+        }
+
+        if (points.length === 0) {
+            return null;
+        }
+
+        return L.latLngBounds(points);
+    }, [records, workLocations, viewType]);
+    
+    const safelyFormatDate = (date: any) => {
+        try {
+            const dateObj = date?.toDate ? date.toDate() : new Date(date);
+            if (isNaN(dateObj.getTime())) {
+                return 'Hora inválida';
+            }
+            return format(dateObj, 'HH:mm:ss');
+        } catch {
+            return 'Hora inválida';
+        }
+    };
     
     return (
         <MapContainer center={defaultCenter} zoom={11} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
@@ -87,6 +142,8 @@ export default function AttendanceMap({ workLocations, records, viewType }: Atte
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
+            
+            {bounds && <BoundsFitter bounds={bounds} />}
             
             {/* Render geofences and concentration circles for attendance view */}
             {viewType === 'attendance' && workLocations.map(location => {
@@ -128,7 +185,7 @@ export default function AttendanceMap({ workLocations, records, viewType }: Atte
                     <Popup>
                         <strong>Fuera de Zona</strong><br />
                         <strong>Empleado:</strong> {record.userName}<br />
-                        <strong>Hora:</strong> {record.entryTime ? format(new Date((record.entryTime as any).toDate?.() ?? record.entryTime), 'HH:mm:ss') : 'N/A'}<br/>
+                        <strong>Hora:</strong> {safelyFormatDate(record.entryTime)}<br/>
                         <strong>Ubicación Registrada:</strong> {record.entryWorkLocationName}
                     </Popup>
                 </Marker>
