@@ -254,21 +254,34 @@ export interface Lactation {
 
 export interface AttendanceRecord {
   id: string;
-  collaborator: Collaborator;
-  date: Date;
+  collaborator?: Collaborator; // from schedule-generator
+  collaboratorId?: string; // from firestore
+  userName?: string; // from location-report
+  date: any; // Can be Date object or Firestore Timestamp
   scheduledShift: string | null;
-  entryTime: Date | null;
-  exitTime: Date | null;
-  isEntryRegistered: boolean;
-  isExitRegistered: boolean;
-  latenessInMinutes: number;
-  workedHours: number | null;
-  extraHours25: number;
-  extraHours50: number;
-  extraHours100: number;
-  observations: string;
-  registrationStatus: 'Completo' | 'Incompleto' | 'Falta' | 'N/A' | 'Programado';
-  complianceStatus: 'A Tiempo' | 'Atraso' | 'Falta' | 'N/A';
+  entryTime: any | null;
+  exitTime: any | null;
+
+  // From Firestore document
+  status?: 'on-time' | 'late' | 'absent' | 'in-progress' | 'completed' | 'day-off';
+  entryLatitude?: number;
+  entryLongitude?: number;
+  exitLatitude?: number;
+  exitLongitude?: number;
+  entryWorkLocationName?: string;
+  exitWorkLocationName?: string;
+
+  // From schedule-generator computation
+  isEntryRegistered?: boolean;
+  isExitRegistered?: boolean;
+  latenessInMinutes?: number;
+  workedHours?: number | null;
+  extraHours25?: number;
+  extraHours50?: number;
+  extraHours100?: number;
+  observations?: string;
+  registrationStatus?: 'Completo' | 'Incompleto' | 'Falta' | 'N/A' | 'Programado';
+  complianceStatus?: 'A Tiempo' | 'Atraso' | 'Falta' | 'N/A';
 }
 
 
