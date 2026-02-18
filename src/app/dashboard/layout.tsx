@@ -235,12 +235,12 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
   const NavigationMenu = () => (
     <nav className="grid gap-2 text-lg font-medium">
-      <Link href="/dashboard" className="flex items-center justify-center gap-2 text-lg font-semibold mb-4">
+      <Link href="/dashboard" className="flex items-center justify-center gap-2 text-lg font-semibold">
         <Image
           src="https://i.postimg.cc/jSvfPdzH/LOGO1.png"
           alt="Acceso CORE"
-          width={120}
-          height={40}
+          width={150}
+          height={50}
         />
       </Link>
       
@@ -330,8 +330,8 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                   <Image
                     src="https://i.postimg.cc/jSvfPdzH/LOGO1.png"
                     alt="Acceso CORE"
-                    width={80}
-                    height={28}
+                    width={100}
+                    height={35}
                     className="app-header-logo"
                   />
                 </Link>
@@ -404,7 +404,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
               <Image
                 src="https://i.postimg.cc/jSvfPdzH/LOGO1.png"
                 alt="CORE Logo"
-                width={100}
+                width={120}
                 height={40}
               />
             </div>
