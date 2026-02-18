@@ -120,8 +120,8 @@ export function LoginForm() {
         <Image
           src="https://i.imgur.com/6V3WsMA.png"
           alt="Acceso CORE"
-          width={150}
-          height={50}
+          width={300}
+          height={100}
           className="mb-4"
         />
         <CardDescription>¡Bienvenido de nuevo! Por favor, inicie sesión para continuar.</CardDescription>
