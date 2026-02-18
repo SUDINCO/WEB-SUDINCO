@@ -1,8 +1,7 @@
-
 "use client"
 
 import * as React from "react"
-import { Check, ChevronsUpDown, CheckCircle2, PlusCircle } from "lucide-react"
+import { Check, ChevronsUpDown, CheckCircle2, PlusCircle, X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -13,6 +12,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
+  CommandSeparator,
 } from "@/components/ui/command"
 import {
   Popover,
@@ -40,6 +40,7 @@ interface ComboboxProps {
   className?: string;
   allowCreate?: boolean;
   disabled?: boolean;
+  allowClear?: boolean;
 }
 
 const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
@@ -54,6 +55,7 @@ const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
       className,
       allowCreate = false,
       disabled = false,
+      allowClear = false,
       ...props
     },
     ref
@@ -131,6 +133,18 @@ const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
                     <CommandEmpty>{notFoundMessage}</CommandEmpty>
                 )}
               <CommandGroup>
+                {allowClear && value && (
+                    <>
+                        <CommandItem
+                            onSelect={() => handleSelect('')}
+                            className="text-muted-foreground"
+                        >
+                            <X className="mr-2 h-4 w-4" />
+                            Limpiar selección
+                        </CommandItem>
+                        <CommandSeparator />
+                    </>
+                )}
                 {filteredOptions.map((option) => (
                   <CommandItem
                     key={option.value}

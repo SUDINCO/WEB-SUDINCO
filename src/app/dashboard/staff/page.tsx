@@ -1435,6 +1435,7 @@ export default function StaffPage() {
                                 searchPlaceholder="Buscar líder por nombre o cargo..."
                                 notFoundMessage="No se encontraron líderes."
                                 {...field}
+                                allowClear={true}
                               />
                               <FormMessage />
                             </FormItem>
@@ -1739,4 +1740,5 @@ export default function StaffPage() {
     </>
   );
 }
+
 

@@ -1052,7 +1052,7 @@ function EvaluationList() {
     };
     
     const handleConfirmAssignment = async () => {
-        if (!assignmentData || !selectedNewAssignee || !firestore) return;
+        if (!assignmentData || !firestore) return;
         
         const { worker, field } = assignmentData;
         const workerDocRef = doc(firestore, 'users', worker.id);
@@ -1537,6 +1537,7 @@ function EvaluationList() {
                             placeholder={`Seleccionar ${assignmentData?.field === 'evaluador' ? 'evaluador' : 'observador'}...`}
                             searchPlaceholder='Buscar por nombre o cargo...'
                             notFoundMessage='No se encontró usuario.'
+                            allowClear={true}
                         />
                     </div>
                     <DialogFooter>
