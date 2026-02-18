@@ -174,6 +174,13 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
       ]
     },
     {
+      module: "Reportes",
+      icon: MapPin,
+      sublinks: [
+        { name: "Reportar Ubicación", href: "/dashboard/report-location", icon: MapPin, id: "report-location" },
+      ]
+    },
+    {
       module: "Asignaciones",
       icon: ClipboardCheck,
       sublinks: [

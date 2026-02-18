@@ -177,5 +177,11 @@ service cloud.firestore {
         allow read: if isSignedIn();
         allow write: if isMasterOrAdmin();
     }
+    
+    // LOCATION REPORTS: Users can create their own. Admins can read all.
+    match /locationReports/{reportId} {
+      allow read: if isMasterOrAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+    }
   }
 }

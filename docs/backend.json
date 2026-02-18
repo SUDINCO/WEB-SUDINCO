@@ -708,6 +708,21 @@
         }
       },
       "required": ["name", "latitude", "longitude", "radius"]
+    },
+    "LocationReport": {
+      "title": "Location Report",
+      "type": "object",
+      "description": "Stores a location and photo report from a user.",
+      "properties": {
+        "userId": { "type": "string", "description": "The ID of the user submitting the report." },
+        "userName": { "type": "string" },
+        "timestamp": { "type": "number", "description": "Timestamp of the report." },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "photoUrl": { "type": "string", "format": "uri" },
+        "notes": { "type": "string" }
+      },
+      "required": ["userId", "userName", "timestamp", "latitude", "longitude", "photoUrl"]
     }
   },
   "auth": {
@@ -807,6 +822,10 @@
     "/workLocations/{locationId}": {
       "schema": { "$ref": "#/entities/WorkLocation" },
       "description": "Stores defined work locations and their geofence radii for attendance validation."
+    },
+    "/locationReports/{reportId}": {
+      "schema": { "$ref": "#/entities/LocationReport" },
+      "description": "Stores user location reports."
     }
   }
 }

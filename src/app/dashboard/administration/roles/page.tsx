@@ -64,6 +64,12 @@ const permissionsMap = [
     ]
   },
   {
+    menu: 'Reportes',
+    tabs: [
+      { id: 'report-location', name: 'Reportar Ubicación' },
+    ]
+  },
+  {
     menu: 'Comunicación',
     tabs: [
       { id: 'publications', name: 'Publicaciones' },
