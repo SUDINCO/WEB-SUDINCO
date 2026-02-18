@@ -1,3 +1,4 @@
+
 "use client";
 import React, { useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
@@ -13,7 +14,7 @@ import { es } from 'date-fns/locale';
 import { Calendar as CalendarIcon, LoaderCircle } from 'lucide-react';
 import type { WorkLocation, AttendanceRecord, LocationReport } from '@/lib/types';
 
-const AttendanceMap = dynamic(() => import('@/components/map/attendance-map'), {
+const AttendanceMap = dynamic(() => import('../../../components/map/attendance-map'), {
     ssr: false,
     loading: () => <div className="h-full w-full bg-muted flex items-center justify-center"><LoaderCircle className="h-6 w-6 animate-spin" /> <p className="ml-2">Cargando mapa...</p></div>
 });
