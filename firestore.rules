@@ -77,6 +77,16 @@ service cloud.firestore {
       allow delete: if isMaster();
     }
 
+    // MANAGER EVALUATIONS: Employees evaluate their managers.
+    match /managerEvaluations/{evaluationId} {
+      // An employee can create an evaluation about their manager.
+      allow create: if isSignedIn() && request.resource.data.employeeId == request.auth.uid;
+      // The manager being evaluated, the employee who wrote it, or an Admin/Master can read it.
+      allow read: if isMasterOrAdmin() || (isSignedIn() && (resource.data.managerId == request.auth.uid || resource.data.employeeId == request.auth.uid));
+      // Only Master can update/delete for now to be safe.
+      allow update, delete: if isMaster();
+    }
+
     // VACATION REQUESTS: Users manage their own requests.
     match /vacationRequests/{requestId} {
         allow create: if isMasterOrAdmin() || (isSignedIn() && request.resource.data.userId == request.auth.uid);
@@ -150,7 +160,7 @@ service cloud.firestore {
     
     // PUBLICATIONS
     match /publications/{publicationId} {
-      allow read: if isSignedIn();
+      allow read: if true;
       allow create: if isSignedIn() 
                     && request.resource.data.authorId == request.auth.uid
                     && request.resource.data.status == 'pending';
