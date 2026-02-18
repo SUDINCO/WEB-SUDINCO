@@ -875,8 +875,8 @@ export default function DashboardHomePage() {
   };
   
   const TareasYEventos = ({ tasks, upcomingEvents, eventsLoading }: { tasks: any[], upcomingEvents: Publication[], eventsLoading: boolean }) => (
-      <Card className="flex flex-col h-full">
-        <div className="flex flex-col h-full">
+      <Card className="flex flex-col">
+        <div className="flex flex-col">
           {(tasks.length > 0 || upcomingEvents.length > 0) ? (
             <>
               {tasks.length > 0 && (
@@ -941,7 +941,7 @@ export default function DashboardHomePage() {
               )}
             </>
           ) : (
-             <CardContent className="flex-grow flex items-center justify-center">
+             <CardContent className="flex-grow flex items-center justify-center p-6">
                <div className="text-center text-muted-foreground">
                   <CheckCircle className="mx-auto h-12 w-12 text-green-500" />
                   <h3 className="mt-2 text-sm font-semibold">Todo en orden</h3>
