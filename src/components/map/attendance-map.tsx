@@ -128,7 +128,7 @@ export default function AttendanceMap({ workLocations, records, viewType }: Atte
                     <Popup>
                         <strong>Fuera de Zona</strong><br />
                         <strong>Empleado:</strong> {record.userName}<br />
-                        <strong>Hora:</strong> {record.entryTime ? format(new Date(record.entryTime as any), 'HH:mm:ss') : 'N/A'}<br/>
+                        <strong>Hora:</strong> {record.entryTime ? format(new Date((record.entryTime as any).toDate?.() ?? record.entryTime), 'HH:mm:ss') : 'N/A'}<br/>
                         <strong>Ubicación Registrada:</strong> {record.entryWorkLocationName}
                     </Popup>
                 </Marker>
