@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   },
   description: 'Página de acceso para la aplicación CORE',
   icons: {
-    icon: 'https://i.imgur.com/mrKc940.png',
+    icon: 'https://i.postimg.cc/4dGTGZS8/LOGO3.png',
   },
 };
 
