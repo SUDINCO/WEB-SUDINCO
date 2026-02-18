@@ -752,12 +752,29 @@ export default function StaffPage() {
     if (!users) return;
 
     const usersByCedula = new Map(users.map(u => [u.cedula, u]));
+    const usersByEmail = new Map(users.map(u => [normalizeEmail(u.email), u]));
+    
+    const seenInFile = new Map<string, 'cedula' | 'email'>();
     const analysisResult: ImportAnalysis = [];
+    let duplicatesFound = false;
 
-    importedData.forEach(row => {
-        const cedula = String(row.cedula || '');
-        const existingUser = usersByCedula.get(cedula);
+    importedData.forEach((row, index) => {
+        const cedula = String(row.cedula || '').trim();
+        const email = normalizeEmail(row.email);
+        
+        if (!cedula || !email) {
+            toast({
+                variant: 'destructive',
+                title: `Fila ${index + 2} omitida`,
+                description: 'La cédula y el email son obligatorios.',
+            });
+            duplicatesFound = true;
+            return;
+        }
 
+        const existingUserByCedula = usersByCedula.get(cedula);
+        const existingUserByEmail = usersByEmail.get(email);
+        
         let fechaIngreso = row.fecha_ingreso;
         if (typeof fechaIngreso === 'number') {
             fechaIngreso = format(excelSerialToDate(fechaIngreso), 'yyyy-MM-dd');
@@ -783,7 +800,7 @@ export default function StaffPage() {
             nombres: normalizeText(row.nombres),
             fechaIngreso: fechaIngreso,
             fechaNacimiento: fechaNacimiento,
-            email: normalizeEmail(row.email),
+            email: email,
             empresa: normalizeText(row.empresa),
             cargo: normalizeText(row.cargo),
             ubicacion: normalizeText(row.ubicacion),
@@ -796,28 +813,60 @@ export default function StaffPage() {
             Status: (String(row.estado || '').toLowerCase() === 'active' || String(row.estado || '').toLowerCase() === 'activo') ? 'active' : 'inactive',
         };
 
-        if (existingUser) {
+        if (existingUserByCedula) { // Existing user found by cedula, prepare for update
             const changes: ChangeDetail[] = [];
             Object.keys(importUser).forEach(key => {
                 const fieldKey = key as keyof typeof importUser;
                 const newValue = importUser[fieldKey];
-                const oldValue = existingUser[fieldKey as keyof UserProfile];
+                const oldValue = existingUserByCedula[fieldKey as keyof UserProfile];
                 if (normalizeText(String(newValue || '')) !== normalizeText(String(oldValue || ''))) {
                     changes.push({ field: fieldKey, oldValue, newValue });
                 }
             });
 
             if (changes.length > 0) {
-                analysisResult.push({ user: { ...importUser, id: existingUser.id }, status: 'update', changes });
+                analysisResult.push({ user: { ...importUser, id: existingUserByCedula.id }, status: 'update', changes });
             }
-        } else {
+        } else { // This is a new user, check for potential duplicates
+            if (existingUserByEmail) {
+                toast({
+                    variant: 'destructive',
+                    title: `Usuario Duplicado Omitido (Fila ${index + 2})`,
+                    description: `El email '${row.email}' ya está registrado con otra cédula.`,
+                });
+                duplicatesFound = true;
+                return;
+            }
+            if (seenInFile.has(cedula) || seenInFile.has(email)) {
+                 toast({
+                    variant: 'destructive',
+                    title: `Duplicado en Archivo Omitido (Fila ${index + 2})`,
+                    description: `La cédula '${cedula}' o el email '${row.email}' está repetido en el archivo de importación.`,
+                });
+                duplicatesFound = true;
+                return;
+            }
+
+            // If no duplicates, mark as new and add to seen list
+            seenInFile.set(cedula, 'cedula');
+            seenInFile.set(email, 'email');
             analysisResult.push({ user: importUser, status: 'new', changes: [] });
         }
     });
+    
+    if (analysisResult.length === 0 && !duplicatesFound) {
+        toast({
+            title: "No hay cambios",
+            description: "No se encontraron usuarios nuevos ni actualizaciones en el archivo."
+        });
+        return;
+    }
 
-    setImportAnalysis(analysisResult);
-    setIsImportDialogOpen(true);
-};
+    if (analysisResult.length > 0) {
+      setImportAnalysis(analysisResult);
+      setIsImportDialogOpen(true);
+    }
+  };
 
 
   const confirmImport = async () => {
@@ -1690,3 +1739,4 @@ export default function StaffPage() {
     </>
   );
 }
+
