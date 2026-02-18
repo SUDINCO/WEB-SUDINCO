@@ -158,22 +158,17 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
           ]
         },
         {
-          title: "Nómina",
-          sublinks: [
-            { name: "Nómina", href: "/dashboard/staff", icon: Users, id: "staff" },
-          ]
+            title: "Nómina y Asistencia",
+            sublinks: [
+                { name: "Nómina", href: "/dashboard/staff", icon: Users, id: "staff" },
+                { name: "Mi Registro", href: "/dashboard/attendance", icon: Clock, id: "attendance" },
+                { name: "Cronograma", href: "/dashboard/schedule", icon: CalendarCheck, id: "schedule" },
+            ]
         },
         {
           title: "Solicitudes",
           sublinks: [
             { name: "Vacaciones y Permisos", href: "/dashboard/vacation-requests", icon: CalendarDays, id: "vacation-requests" },
-          ]
-        },
-        {
-          title: "Asistencia",
-          sublinks: [
-            { name: "Asistencia", href: "/dashboard/attendance", icon: Briefcase, id: "attendance" },
-            { name: "Cronograma", href: "/dashboard/schedule", icon: CalendarCheck, id: "schedule" },
           ]
         },
       ]
