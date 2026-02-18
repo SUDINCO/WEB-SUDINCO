@@ -163,6 +163,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                 { name: "Nómina", href: "/dashboard/staff", icon: Users, id: "staff" },
                 { name: "Mi Registro", href: "/dashboard/attendance", icon: Clock, id: "attendance" },
                 { name: "Cronograma", href: "/dashboard/schedule", icon: CalendarCheck, id: "schedule" },
+                { name: "Reportar Ubicación", href: "/dashboard/report-location", icon: MapPin, id: "report-location" },
             ]
         },
         {
@@ -171,13 +172,6 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
             { name: "Vacaciones y Permisos", href: "/dashboard/vacation-requests", icon: CalendarDays, id: "vacation-requests" },
           ]
         },
-      ]
-    },
-    {
-      module: "Reportes",
-      icon: MapPin,
-      sublinks: [
-        { name: "Reportar Ubicación", href: "/dashboard/report-location", icon: MapPin, id: "report-location" },
       ]
     },
     {
