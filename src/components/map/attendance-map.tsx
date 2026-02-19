@@ -221,7 +221,7 @@ export default function AttendanceMap({ workLocations, records, viewType, onLoca
                         <strong>Reporte de Ubicación</strong><br />
                         <strong>Empleado:</strong> {report.userName}<br />
                         <strong>Hora:</strong> {format(new Date(report.timestamp), 'HH:mm:ss')}<br/>
-                        {report.notes && `<strong>Notas:</strong> ${report.notes}`}<br/>
+                        {report.notes && `<strong>Comentario:</strong> ${report.notes}`}<br/>
                         {report.photoUrl && <img src={report.photoUrl} alt="Evidencia" style={{ width: '150px', marginTop: '5px' }} />}
                     </Popup>
                 </Marker>
