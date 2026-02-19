@@ -80,7 +80,7 @@ function AttendanceControlPage() {
                 entrada: editingRecord.attendance?.entryTime ? format(editingRecord.attendance.entryTime as Date, 'HH:mm') : '',
                 salida: editingRecord.attendance?.exitTime ? format(editingRecord.attendance.exitTime as Date, 'HH:mm') : '',
                 turno: editingRecord.scheduledShift || 'LIB',
-                observaciones: editingRecord.attendance?.observations || '',
+                observaciones: (editingRecord.attendance as any)?.observations || '',
                 justificacion: '',
             });
         }
@@ -90,7 +90,8 @@ function AttendanceControlPage() {
         if (isLoading || !users || !savedSchedules) return [];
 
         const dayKey = format(selectedDate, 'yyyy-MM-dd');
-        const periodIdentifier = format(selectedDate.getDate() >= 21 ? addMonths(selectedDate, 1) : selectedDate, 'yyyy-MM');
+        const periodDate = selectedDate.getDate() < 21 ? selectedDate : addMonths(selectedDate, 1);
+        const periodIdentifier = format(periodDate, 'yyyy-MM');
 
         const periodSchedules = savedSchedules.filter(s => s.id.startsWith(periodIdentifier));
         
@@ -167,8 +168,46 @@ function AttendanceControlPage() {
     }, [selectedDate, filters, isLoading, users, savedSchedules, attendanceRecords, overtimeRules]);
     
     const handleFilterChange = (filterName: 'ubicacion' | 'cargo' | 'colaborador', value: string) => {
-        setFilters(prev => ({ ...prev, [filterName]: value }));
+        setFilters(prev => {
+            if (filterName === 'ubicacion') {
+                return { ubicacion: value, cargo: 'todos', colaborador: 'todos' };
+            }
+            if (filterName === 'cargo') {
+                return { ...prev, cargo: value, colaborador: 'todos' };
+            }
+            return { ...prev, [filterName]: value };
+        });
     };
+    
+    const ubicacionOptions = useMemo(() => {
+        const options = (ubicaciones || []).map(o => ({ value: o.name, label: o.name }));
+        return [{ value: 'todos', label: 'Todas las ubicaciones' }, ...options];
+    }, [ubicaciones]);
+
+    const cargoOptions = useMemo(() => {
+        if (!users) return [{ value: 'todos', label: 'Todos los cargos' }];
+        let filteredUsers = users;
+        if (filters.ubicacion !== 'todos') {
+            filteredUsers = filteredUsers.filter(u => u.ubicacion === filters.ubicacion);
+        }
+        const uniqueCargos = [...new Set(filteredUsers.map(u => u.cargo))].sort();
+        return [{ value: 'todos', label: 'Todos los cargos' }, ...uniqueCargos.map(c => ({ value: c, label: c }))];
+    }, [users, filters.ubicacion]);
+
+    const colaboradorOptions = useMemo(() => {
+        if (!users) return [{ value: 'todos', label: 'Todos los colaboradores' }];
+        let filteredUsers = users;
+        if (filters.ubicacion !== 'todos') {
+            filteredUsers = filteredUsers.filter(u => u.ubicacion === filters.ubicacion);
+        }
+        if (filters.cargo !== 'todos') {
+            filteredUsers = filteredUsers.filter(u => u.cargo === filters.cargo);
+        }
+        return [
+            { value: 'todos', label: 'Todos los colaboradores' },
+            ...filteredUsers.map(u => ({ value: u.id, label: `${u.nombres} ${u.apellidos}` }))
+        ];
+    }, [users, filters.ubicacion, filters.cargo]);
     
     const allShiftOptions = useMemo(() => {
         const shifts = new Set<string>();
@@ -234,7 +273,7 @@ function AttendanceControlPage() {
                 'Tardanza (HH:mm)': tardanza,
                 'T. Laborado (Horas)': workedHours,
                 'Registro': item.status,
-                'Observaciones': item.attendance?.observations || ''
+                'Observaciones': (item.attendance as any)?.observations || ''
             };
         });
 
@@ -259,9 +298,9 @@ function AttendanceControlPage() {
                     </div>
                 </CardHeader>
                 <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <Combobox options={(ubicaciones || []).map(o => ({ value: o.name, label: o.name }))} value={filters.ubicacion} onChange={(v) => handleFilterChange('ubicacion', v)} placeholder="Todas las ubicaciones" />
-                    <Combobox options={(cargos || []).map(o => ({ value: o.name, label: o.name }))} value={filters.cargo} onChange={(v) => handleFilterChange('cargo', v)} placeholder="Todos los cargos" />
-                    <Combobox options={(users || []).map(u => ({ value: u.id, label: `${u.nombres} ${u.apellidos}` }))} value={filters.colaborador} onChange={(v) => handleFilterChange('colaborador', v)} placeholder="Todos los colaboradores" />
+                    <Combobox options={ubicacionOptions} value={filters.ubicacion} onChange={(v) => handleFilterChange('ubicacion', v)} placeholder="Todas las ubicaciones" />
+                    <Combobox options={cargoOptions} value={filters.cargo} onChange={(v) => handleFilterChange('cargo', v)} placeholder="Todos los cargos" />
+                    <Combobox options={colaboradorOptions} value={filters.colaborador} onChange={(v) => handleFilterChange('colaborador', v)} placeholder="Todos los colaboradores" />
                     <Popover>
                         <PopoverTrigger asChild>
                             <Button variant="outline" className="w-full justify-start text-left font-normal">
@@ -359,12 +398,22 @@ function AttendanceControlPage() {
                                     <TableCell className="font-medium">{`${item.collaborator.nombres} ${item.collaborator.apellidos}`}</TableCell>
                                     <TableCell>{item.collaborator.cargo}</TableCell>
                                     <TableCell>{item.scheduledShift || 'LIB'}</TableCell>
-                                    <TableCell className={cn("flex items-center gap-1", item.manuallyEdited && "text-blue-600")}>{entry} {item.manuallyEdited && <User className="h-3 w-3"/>}</TableCell>
-                                    <TableCell className={cn("flex items-center gap-1", item.manuallyEdited && "text-blue-600")}>{exit} {item.manuallyEdited && <User className="h-3 w-3"/>}</TableCell>
+                                    <TableCell className={cn(item.manuallyEdited && "text-blue-600")}>
+                                        <div className="flex items-center gap-1">
+                                            {entry}
+                                            {item.manuallyEdited && <TooltipProvider><Tooltip><TooltipTrigger asChild><button type="button"><User className="h-3 w-3"/></button></TooltipTrigger><TooltipContent><p>Registro manual</p></TooltipContent></Tooltip></TooltipProvider>}
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className={cn(item.manuallyEdited && "text-blue-600")}>
+                                        <div className="flex items-center gap-1">
+                                            {exit}
+                                            {item.manuallyEdited && <TooltipProvider><Tooltip><TooltipTrigger asChild><button type="button"><User className="h-3 w-3"/></button></TooltipTrigger><TooltipContent><p>Registro manual</p></TooltipContent></Tooltip></TooltipProvider>}
+                                        </div>
+                                    </TableCell>
                                     <TableCell>{tardanza}</TableCell>
                                     <TableCell>{workedHours}</TableCell>
                                     <TableCell>{statusBadge}</TableCell>
-                                    <TableCell className="text-xs max-w-xs truncate">{item.attendance?.observations || (item.status === 'Falta' ? 'No se presenta al turno' : (item.status === 'Día Libre' ? 'Día Libre' : ''))}</TableCell>
+                                    <TableCell className="text-xs max-w-xs truncate">{ (item.attendance as any)?.observations || (item.status === 'Falta' ? 'No se presenta al turno' : (item.status === 'Día Libre' ? 'Día Libre' : ''))}</TableCell>
                                     <TableCell className="text-right">
                                         <Button variant="ghost" size="icon" onClick={() => setEditingRecord(item)}><Edit className="h-4 w-4" /></Button>
                                     </TableCell>
@@ -385,3 +434,5 @@ export default function AttendanceControlPageWrapper() {
     // This wrapper can be used to provide any necessary context if needed in the future.
     return <AttendanceControlPage />;
 }
+
+    
