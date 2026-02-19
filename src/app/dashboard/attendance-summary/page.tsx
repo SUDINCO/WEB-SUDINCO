@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
@@ -23,15 +22,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { useUser, useFirestore, useCollection } from '@/firebase';
 import { collection, doc, query, where, getDocs, addDoc, updateDoc, writeBatch, deleteDoc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
-import { format, parse, differenceInMinutes, startOfDay, set, isPast, isToday, subMonths, addMonths, eachDayOfInterval, isSameDay } from 'date-fns';
+import { format, parse, differenceInMinutes, startOfDay, set, isPast, isToday, subMonths, addMonths, eachDayOfInterval, isSameDay, isSaturday, isSunday } from 'date-fns';
 import { es } from 'date-fns/locale';
 import * as XLSX from 'xlsx';
 import {
   CalendarIcon, Download, Search, Edit, LoaderCircle, AlertTriangle, CheckCircle, Clock, Info, User, Trash2,
 } from 'lucide-react';
-import type { UserProfile, SavedSchedule, AttendanceRecord, OvertimeRule, GenericOption } from '@/lib/types';
+import type { UserProfile, SavedSchedule, AttendanceRecord, OvertimeRule, GenericOption, ShiftPattern } from '@/lib/types';
 import { getShiftDetailsFromRules } from '@/lib/schedule-generator';
-import { cn, normalizeText } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
     AlertDialog,
@@ -85,8 +84,9 @@ function AttendanceControlPage() {
     const { data: overtimeRules, isLoading: rulesLoading } = useCollection<OvertimeRule>(useMemo(() => firestore ? collection(firestore, 'overtimeRules') : null, [firestore]));
     const { data: ubicaciones, isLoading: ubicacionesLoading } = useCollection<GenericOption>(useMemo(() => firestore ? collection(firestore, 'ubicaciones') : null, [firestore]));
     const { data: cargos, isLoading: cargosLoading } = useCollection<GenericOption>(useMemo(() => firestore ? collection(firestore, 'cargos') : null, [firestore]));
+    const { data: shiftPatterns, isLoading: patternsLoading } = useCollection<ShiftPattern>(useMemo(() => firestore ? collection(firestore, 'shiftPatterns') : null, [firestore]));
     
-    const isLoading = usersLoading || schedulesLoading || attendanceLoading || rulesLoading || ubicacionesLoading || cargosLoading;
+    const isLoading = usersLoading || schedulesLoading || attendanceLoading || rulesLoading || ubicacionesLoading || cargosLoading || patternsLoading;
 
     const form = useForm<z.infer<typeof editAttendanceSchema>>({
         resolver: zodResolver(editAttendanceSchema)
@@ -116,54 +116,68 @@ function AttendanceControlPage() {
     }, [editingRecord, form]);
 
     const tableData = useMemo((): TableRowData[] => {
-        if (isLoading || !users || !savedSchedules || !attendanceRecords) return [];
+        if (isLoading || !users || !savedSchedules || !attendanceRecords || !shiftPatterns) return [];
 
         const dayKey = format(selectedDate, 'yyyy-MM-dd');
-        const periodIdentifier = format(currentDateForPeriod(selectedDate), 'yyyy-MM');
+        const periodDate = currentDateForPeriod(selectedDate);
+        const periodIdentifier = format(periodDate, 'yyyy-MM');
 
-        const relevantSchedules = Object.values(savedSchedules).filter(s => 
-            s.id.startsWith(periodIdentifier) &&
-            (filters.ubicacion === 'todos' || s.location === filters.ubicacion) &&
-            (filters.cargo === 'todos' || s.jobTitle === filters.cargo)
-        );
+        // 1. Get manually scheduled users
+        const periodSchedules = savedSchedules.filter(s => s.id.startsWith(periodIdentifier));
+        const manuallyScheduledUserIds = new Set<string>();
+        const allCollaboratorsForDay: { id: string; shift: string | null }[] = [];
 
-        let collaboratorsForDay = new Map<string, string | null>();
-        relevantSchedules.forEach(scheduleDoc => {
+        periodSchedules.forEach(scheduleDoc => {
             Object.entries(scheduleDoc.schedule).forEach(([collabId, dayMap]) => {
                 if (dayMap[dayKey] !== undefined) {
-                    if (!collaboratorsForDay.has(collabId)) {
-                       collaboratorsForDay.set(collabId, dayMap[dayKey]);
+                    if (!manuallyScheduledUserIds.has(collabId)) {
+                       allCollaboratorsForDay.push({ id: collabId, shift: dayMap[dayKey] });
+                       manuallyScheduledUserIds.add(collabId);
                     }
                 }
             });
         });
-        
-        if (filters.colaborador !== 'todos') {
-            if (collaboratorsForDay.has(filters.colaborador)) {
-                const shift = collaboratorsForDay.get(filters.colaborador);
-                collaboratorsForDay.clear();
-                collaboratorsForDay.set(filters.colaborador, shift !== undefined ? shift : null);
-            } else {
-                collaboratorsForDay.clear();
+
+        // 2. Get default "N9" users
+        const shiftPatternsByCargo = new Map<string, any>(shiftPatterns.map(p => [p.jobTitle, p]));
+        const isWeekend = isSaturday(selectedDate) || isSunday(selectedDate);
+
+        users.forEach(user => {
+            if (user.Status === 'active' && !manuallyScheduledUserIds.has(user.id)) {
+                if (!shiftPatternsByCargo.has(user.cargo)) {
+                    const shift = isWeekend ? null : 'N9';
+                    allCollaboratorsForDay.push({ id: user.id, shift: shift });
+                }
             }
-        }
+        });
 
-        return Array.from(collaboratorsForDay.keys()).map(collabId => {
-            const collab = users.find(u => u.id === collabId);
-            if (!collab) return null;
+        const fullCollaboratorData = allCollaboratorsForDay
+            .map(cs => {
+                const collaborator = users.find(u => u.id === cs.id);
+                if (!collaborator) return null;
+                return { collaborator, scheduledShift: cs.shift };
+            })
+            .filter((item): item is { collaborator: UserProfile; scheduledShift: string | null } => !!item);
+        
+        // 3. Apply UI Filters
+        const filteredByDropdowns = fullCollaboratorData.filter(item => 
+            (filters.ubicacion === 'todos' || item.collaborator.ubicacion === filters.ubicacion) &&
+            (filters.cargo === 'todos' || item.collaborator.cargo === filters.cargo) &&
+            (filters.colaborador === 'todos' || item.collaborator.id === filters.colaborador)
+        );
 
-            const scheduledShift = collaboratorsForDay.get(collabId) || null;
-            const attendance = attendanceRecords.find(ar => ar.collaboratorId === collabId && ar.date && isSameDay(ar.date, selectedDate)) || null;
+        // 4. Map to final TableRowData structure
+        return filteredByDropdowns.map(({ collaborator, scheduledShift }) => {
+            const attendance = attendanceRecords.find(ar => ar.collaboratorId === collaborator.id && ar.date && isSameDay(ar.date, selectedDate)) || null;
 
             let lateness = null;
             let workedHours = null;
             let status: TableRowData['status'] = 'N/A';
-
             const entryTime = attendance?.entryTime;
             const exitTime = attendance?.exitTime;
 
             if (scheduledShift && scheduledShift !== 'LIB') {
-                const shiftDetails = getShiftDetailsFromRules(scheduledShift, collab.cargo, 'NORMAL', overtimeRules || []);
+                const shiftDetails = getShiftDetailsFromRules(scheduledShift, collaborator.cargo, 'NORMAL', overtimeRules || []);
                 if (entryTime && shiftDetails) {
                     const shiftStart = set(selectedDate, { hours: shiftDetails.start.h, minutes: shiftDetails.start.m });
                     const diff = differenceInMinutes(entryTime, shiftStart);
@@ -184,7 +198,7 @@ function AttendanceControlPage() {
             }
 
             return {
-                collaborator: collab,
+                collaborator,
                 scheduledShift,
                 attendance,
                 lateness,
@@ -192,9 +206,9 @@ function AttendanceControlPage() {
                 status,
                 manuallyEdited: !!(attendance as any)?.manuallyEditedBy
             };
-        }).filter((item): item is TableRowData => !!item);
+        });
         
-    }, [selectedDate, filters, isLoading, users, savedSchedules, attendanceRecords, overtimeRules]);
+    }, [selectedDate, filters, isLoading, users, savedSchedules, attendanceRecords, overtimeRules, shiftPatterns]);
     
     const handleFilterChange = (filterName: 'ubicacion' | 'cargo' | 'colaborador', value: string) => {
         setFilters(prev => {
@@ -209,22 +223,22 @@ function AttendanceControlPage() {
     };
     
      const ubicacionOptions = useMemo(() => {
-        if (!savedSchedules) return [];
-        const uniqueUbicaciones = [...new Set(Object.values(savedSchedules).map(s => s.location).filter(Boolean))].sort();
+        if (!users) return [];
+        const uniqueUbicaciones = [...new Set(users.map(u => u.ubicacion).filter(Boolean) as string[])].sort();
         return [{ value: 'todos', label: 'Todas las ubicaciones' }, ...uniqueUbicaciones.map(name => ({ value: name, label: name }))];
-    }, [savedSchedules]);
+    }, [users]);
 
     const cargoOptions = useMemo(() => {
-        if (!savedSchedules) return [{ value: 'todos', label: 'Todos los cargos' }];
+        if (!users) return [{ value: 'todos', label: 'Todos los cargos' }];
         
-        let relevantSchedules = Object.values(savedSchedules);
+        let filteredUsers = users;
         if (filters.ubicacion !== 'todos') {
-            relevantSchedules = relevantSchedules.filter(s => s.location === filters.ubicacion);
+            filteredUsers = filteredUsers.filter(u => u.ubicacion === filters.ubicacion);
         }
-        const uniqueCargos = [...new Set(relevantSchedules.map(s => s.jobTitle))].sort();
+        const uniqueCargos = [...new Set(filteredUsers.map(u => u.cargo))].sort();
         return [{ value: 'todos', label: 'Todos los cargos' }, ...uniqueCargos.map(c => ({ value: c, label: c }))];
 
-    }, [savedSchedules, filters.ubicacion]);
+    }, [users, filters.ubicacion]);
 
     const colaboradorOptions = useMemo(() => {
         if (!users) return [{ value: 'todos', label: 'Todos los colaboradores' }];
@@ -521,5 +535,3 @@ export default function AttendanceControlPageWrapper() {
     // This wrapper can be used to provide any necessary context if needed in the future.
     return <AttendanceControlPage />;
 }
-
-    
