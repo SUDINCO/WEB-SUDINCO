@@ -10,9 +10,6 @@ export const metadata: Metadata = {
     template: "%s | CORE",
   },
   description: 'Página de acceso para la aplicación CORE',
-  icons: {
-    icon: 'https://i.postimg.cc/4dGTGZS8/LOGO3.png',
-  },
 };
 
 export const viewport: Viewport = {
