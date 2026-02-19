@@ -5,5 +5,5 @@
 // This file is kept to avoid breaking navigation or old links but renders nothing.
 
 export default function DeprecatedWorkSchedulesPage() {
-    return null;
+    return <></>;
 }
