@@ -555,7 +555,7 @@ function AttendancePageContent() {
     if (action === 'out' && !latestRecord) return;
 
     setIsClocking(true);
-    let position = null;
+    let position: GeolocationPosition | null = null;
     let locationName = "Ubicación no registrada";
 
     try {
@@ -564,8 +564,18 @@ function AttendancePageContent() {
         
         if (position && workLocations) {
             for (const location of workLocations) {
-                const distance = getDistance(position.coords.latitude, position.coords.longitude, location.latitude, location.longitude);
-                if (distance <= location.radius) {
+                // Ensure the location properties are numbers before calculation
+                const locLat = Number(location.latitude);
+                const locLon = Number(location.longitude);
+                const locRad = Number(location.radius);
+
+                if (isNaN(locLat) || isNaN(locLon) || isNaN(locRad)) {
+                    console.error("Invalid location data, skipping:", location);
+                    continue;
+                }
+                
+                const distance = getDistance(position.coords.latitude, position.coords.longitude, locLat, locLon);
+                if (distance <= locRad) {
                     locationName = location.name;
                     break;
                 }
