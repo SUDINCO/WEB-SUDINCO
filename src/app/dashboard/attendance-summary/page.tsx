@@ -184,18 +184,14 @@ function AttendanceControlPage() {
                 status = 'Día Libre';
                 if (!observationText) observationText = 'Día Libre';
             } else {
-                let shiftDetails = getShiftDetailsFromRules(scheduledShift, collaborator.cargo, 'NORMAL', overtimeRules);
-                 if (!shiftDetails && scheduledShift === 'N9') {
-                    shiftDetails = { start: { h: 8, m: 30 }, hours: 9 };
-                }
-                
+                const shiftDetails = getShiftDetailsFromRules(scheduledShift, collaborator.cargo, 'NORMAL', overtimeRules);
                 const now = new Date();
 
                 if (shiftDetails) {
-                    const shiftStart = set(selectedDate, { hours: shiftDetails.start.h, minutes: shiftDetails.start.m });
+                    const shiftStart = set(selectedDate, { hours: shiftDetails.start.h, minutes: shiftDetails.start.m, seconds: 0, milliseconds: 0 });
                     const shiftEnd = addMinutes(shiftStart, shiftDetails.hours * 60);
 
-                    if (!entryTime) { // No clock-in
+                    if (!entryTime) {
                         if (isToday(selectedDate)) {
                             if (now < shiftStart) {
                                 status = 'En Proceso';
@@ -214,7 +210,7 @@ function AttendanceControlPage() {
                             status = 'En Proceso';
                             if (!observationText) observationText = 'Turno programado';
                         }
-                    } else { // Has clock-in
+                    } else {
                         lateness = Math.max(0, differenceInMinutes(entryTime, shiftStart));
 
                         if (!exitTime) {
@@ -590,5 +586,3 @@ export default function AttendanceControlPageWrapper() {
     // This wrapper can be used to provide any necessary context if needed in the future.
     return <AttendanceControlPage />;
 }
-
-    

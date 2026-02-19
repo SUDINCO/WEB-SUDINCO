@@ -21,6 +21,7 @@ import {
 import type { Collaborator, Vacation, TemporaryTransfer, Lactation, AttendanceRecord, RoleChange, Holiday, OvertimeRule, ShiftPattern, Notification, ManualOverride, ManualOverrides } from '@/lib/types';
 import { getEffectiveDetails } from './schedule-utils';
 import { allJobTitles as ALL_JOB_TITLES } from './data';
+import { normalizeText } from './utils';
 
 function simpleHash(str: string): number {
   let hash = 0;
@@ -272,18 +273,33 @@ export function applyConditioningRebalance(
 
 
 export const getShiftDetailsFromRules = (shift: string, effectiveJobTitle: string, dayType: "NORMAL" | "FESTIVO", overtimeRules: OvertimeRule[]): { start: { h: number; m: number }; hours: number } | null => {
+    const normalizedJobTitle = normalizeText(effectiveJobTitle);
+    
     let rule = overtimeRules.find(r => 
-        r.jobTitle === effectiveJobTitle && 
+        normalizeText(r.jobTitle) === normalizedJobTitle && 
         r.shift === shift && 
         r.dayType === dayType
     );
 
-    if (!rule && shift === 'N9') {
-        rule = overtimeRules.find(r => 
-            r.jobTitle === '_DEFAULT_OFFICE_' && 
-            r.shift === 'N9' && 
-            r.dayType === dayType
-        );
+    // Fallback logic for common shifts if no specific rule is found
+    if (!rule) {
+        switch (shift) {
+            case 'N9':
+                rule = overtimeRules.find(r => 
+                    r.jobTitle === '_DEFAULT_OFFICE_' && 
+                    r.shift === 'N9' && 
+                    r.dayType === dayType
+                );
+                break;
+            case 'N12':
+                return { start: { h: 18, m: 0 }, hours: 12 };
+            case 'D12':
+                return { start: { h: 6, m: 0 }, hours: 12 };
+            case 'T24':
+                 return { start: { h: 6, m: 0 }, hours: 24 };
+            default:
+                break;
+        }
     }
 
     if (rule && rule.startTime && rule.endTime) {
@@ -300,7 +316,7 @@ export const getShiftDetailsFromRules = (shift: string, effectiveJobTitle: strin
             };
         } catch (e) {
             console.error(`Invalid time format in overtimeRules for shift ${shift}`, e);
-            return null; // Fallback if parsing fails
+            return null;
         }
     }
     return null;
