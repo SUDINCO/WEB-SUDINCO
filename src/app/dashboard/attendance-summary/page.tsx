@@ -21,18 +21,30 @@ import { Combobox } from '@/components/ui/combobox';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { useUser, useFirestore, useCollection } from '@/firebase';
-import { collection, doc, query, where, getDocs, addDoc, updateDoc, writeBatch } from 'firebase/firestore';
+import { collection, doc, query, where, getDocs, addDoc, updateDoc, writeBatch, deleteDoc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { format, parse, differenceInMinutes, startOfDay, set, isPast, isToday, subMonths, addMonths, eachDayOfInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
 import * as XLSX from 'xlsx';
 import {
-  CalendarIcon, Download, Search, Edit, LoaderCircle, AlertTriangle, CheckCircle, Clock, Info, User,
+  CalendarIcon, Download, Search, Edit, LoaderCircle, AlertTriangle, CheckCircle, Clock, Info, User, Trash2,
 } from 'lucide-react';
 import type { UserProfile, SavedSchedule, AttendanceRecord, OvertimeRule, GenericOption } from '@/lib/types';
 import { getShiftDetailsFromRules } from '@/lib/schedule-generator';
-import { cn } from '@/lib/utils';
+import { cn, normalizeText } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+
 
 type TableRowData = {
     collaborator: UserProfile;
@@ -52,6 +64,11 @@ const editAttendanceSchema = z.object({
   justificacion: z.string().optional(),
 });
 
+// Helper para el cálculo de la fecha del período
+const currentDateForPeriod = (date: Date) => {
+    return date.getDate() < 21 ? date : addMonths(date, 1);
+};
+
 
 function AttendanceControlPage() {
     const { user } = useUser();
@@ -60,10 +77,11 @@ function AttendanceControlPage() {
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [filters, setFilters] = useState({ ubicacion: 'todos', cargo: 'todos', colaborador: 'todos' });
     const [editingRecord, setEditingRecord] = useState<TableRowData | null>(null);
+    const [recordToDelete, setRecordToDelete] = useState<TableRowData | null>(null);
 
     const { data: users, isLoading: usersLoading } = useCollection<UserProfile>(useMemo(() => firestore ? collection(firestore, 'users') : null, [firestore]));
     const { data: savedSchedules, isLoading: schedulesLoading } = useCollection<SavedSchedule>(useMemo(() => firestore ? collection(firestore, 'savedSchedules') : null, [firestore]));
-    const { data: attendanceRecords, isLoading: attendanceLoading } = useCollection<AttendanceRecord>(useMemo(() => firestore ? collection(firestore, 'attendance') : null, [firestore]));
+    const { data: attendanceRecordsData, isLoading: attendanceLoading } = useCollection<AttendanceRecord>(useMemo(() => firestore ? collection(firestore, 'attendance') : null, [firestore]));
     const { data: overtimeRules, isLoading: rulesLoading } = useCollection<OvertimeRule>(useMemo(() => firestore ? collection(firestore, 'overtimeRules') : null, [firestore]));
     const { data: ubicaciones, isLoading: ubicacionesLoading } = useCollection<GenericOption>(useMemo(() => firestore ? collection(firestore, 'ubicaciones') : null, [firestore]));
     const { data: cargos, isLoading: cargosLoading } = useCollection<GenericOption>(useMemo(() => firestore ? collection(firestore, 'cargos') : null, [firestore]));
@@ -73,6 +91,17 @@ function AttendanceControlPage() {
     const form = useForm<z.infer<typeof editAttendanceSchema>>({
         resolver: zodResolver(editAttendanceSchema)
     });
+
+    const attendanceRecords = useMemo(() => {
+        if (!attendanceRecordsData) return [];
+        return attendanceRecordsData.map(rec => ({
+            ...rec,
+            date: rec.date && (rec.date as any).toDate ? (rec.date as any).toDate() : null,
+            entryTime: rec.entryTime && (rec.entryTime as any).toDate ? (rec.entryTime as any).toDate() : null,
+            exitTime: rec.exitTime && (rec.exitTime as any).toDate ? (rec.exitTime as any).toDate() : null,
+        }));
+    }, [attendanceRecordsData]);
+
     
     useEffect(() => {
         if(editingRecord) {
@@ -88,43 +117,38 @@ function AttendanceControlPage() {
 
     const tableData = useMemo((): TableRowData[] => {
         if (isLoading || !users || !savedSchedules) return [];
-
-        const dayKey = format(selectedDate, 'yyyy-MM-dd');
-        const periodDate = selectedDate.getDate() < 21 ? selectedDate : addMonths(selectedDate, 1);
-        const periodIdentifier = format(periodDate, 'yyyy-MM');
-
-        const periodSchedules = savedSchedules.filter(s => s.id.startsWith(periodIdentifier));
         
-        let collaboratorsForDay: { id: string; shift: string | null }[] = [];
-        periodSchedules.forEach(scheduleDoc => {
+        const dayKey = format(selectedDate, 'yyyy-MM-dd');
+        const periodIdentifier = format(currentDateForPeriod(selectedDate), 'yyyy-MM');
+
+        const relevantSchedules = Object.values(savedSchedules).filter(s => 
+            s.id.startsWith(periodIdentifier) &&
+            (filters.ubicacion === 'todos' || normalizeText(s.location) === normalizeText(filters.ubicacion)) &&
+            (filters.cargo === 'todos' || normalizeText(s.jobTitle) === normalizeText(filters.cargo))
+        );
+
+        const collaboratorsInSchedules = new Set<string>();
+        const shiftsByCollaborator = new Map<string, string | null>();
+
+        relevantSchedules.forEach(scheduleDoc => {
             Object.entries(scheduleDoc.schedule).forEach(([collabId, dayMap]) => {
                 if (dayMap[dayKey] !== undefined) {
-                    if (!collaboratorsForDay.some(c => c.id === collabId)) {
-                       collaboratorsForDay.push({ id: collabId, shift: dayMap[dayKey] });
+                    collaboratorsInSchedules.add(collabId);
+                    if(!shiftsByCollaborator.has(collabId)) {
+                        shiftsByCollaborator.set(collabId, dayMap[dayKey]);
                     }
                 }
             });
         });
-        
-        const filteredCollaborators = collaboratorsForDay.map(cs => users.find(u => u.id === cs.id)).filter((u): u is UserProfile => !!u);
-        
-        const filteredByDropdowns = filteredCollaborators.filter(u => 
-            (filters.ubicacion === 'todos' || u.ubicacion === filters.ubicacion) &&
-            (filters.cargo === 'todos' || u.cargo === filters.cargo) &&
-            (filters.colaborador === 'todos' || u.id === filters.colaborador)
+
+        const filteredCollaborators = users.filter(user => 
+            collaboratorsInSchedules.has(user.id) &&
+            (filters.colaborador === 'todos' || user.id === filters.colaborador)
         );
 
-        return filteredByDropdowns.map(collab => {
-            const scheduledShift = collaboratorsForDay.find(cs => cs.id === collab.id)?.shift || null;
-            const rawAttendance = attendanceRecords?.find(ar => ar.collaboratorId === collab.id && format((ar.date as any).toDate(), 'yyyy-MM-dd') === dayKey) || null;
-            
-            const attendance = rawAttendance 
-                ? {
-                    ...rawAttendance,
-                    entryTime: rawAttendance.entryTime && (rawAttendance.entryTime as any).toDate ? (rawAttendance.entryTime as any).toDate() : null,
-                    exitTime: rawAttendance.exitTime && (rawAttendance.exitTime as any).toDate ? (rawAttendance.exitTime as any).toDate() : null,
-                  }
-                : null;
+        return filteredCollaborators.map(collab => {
+            const scheduledShift = shiftsByCollaborator.get(collab.id) || null;
+            const attendance = attendanceRecords?.find(ar => ar.collaboratorId === collab.id && ar.date && isSameDay(ar.date, selectedDate)) || null;
 
             let lateness = null;
             let workedHours = null;
@@ -161,7 +185,7 @@ function AttendanceControlPage() {
                 lateness,
                 workedHours,
                 status,
-                manuallyEdited: !!(rawAttendance as any)?.manuallyEditedBy
+                manuallyEdited: !!(attendance as any)?.manuallyEditedBy
             };
         });
         
@@ -179,35 +203,31 @@ function AttendanceControlPage() {
         });
     };
     
-    const ubicacionOptions = useMemo(() => {
-        const options = (ubicaciones || []).map(o => ({ value: o.name, label: o.name }));
-        return [{ value: 'todos', label: 'Todas las ubicaciones' }, ...options];
-    }, [ubicaciones]);
+     const ubicacionOptions = useMemo(() => {
+        if (!savedSchedules) return [];
+        const uniqueUbicaciones = [...new Set(Object.values(savedSchedules).map(s => s.location).filter(Boolean))].sort();
+        return [{ value: 'todos', label: 'Todas las ubicaciones' }, ...uniqueUbicaciones.map(name => ({ value: name, label: name }))];
+    }, [savedSchedules]);
 
     const cargoOptions = useMemo(() => {
-        if (!users) return [{ value: 'todos', label: 'Todos los cargos' }];
-        let filteredUsers = users;
+        if (!savedSchedules || !users) return [];
+        
+        let relevantSchedules = Object.values(savedSchedules);
         if (filters.ubicacion !== 'todos') {
-            filteredUsers = filteredUsers.filter(u => u.ubicacion === filters.ubicacion);
+            relevantSchedules = relevantSchedules.filter(s => s.location === filters.ubicacion);
         }
-        const uniqueCargos = [...new Set(filteredUsers.map(u => u.cargo))].sort();
-        return [{ value: 'todos', label: 'Todos los cargos' }, ...uniqueCargos.map(c => ({ value: c, label: c }))];
-    }, [users, filters.ubicacion]);
+        const uniqueCargos = [...new Set(relevantSchedules.map(s => s.jobTitle))].sort();
+        return [{ value: 'todos', label: 'Todos los cargos' }, ...uniqueCargos.map(name => ({ value: name, label: name }))];
+
+    }, [savedSchedules, filters.ubicacion, users]);
 
     const colaboradorOptions = useMemo(() => {
-        if (!users) return [{ value: 'todos', label: 'Todos los colaboradores' }];
-        let filteredUsers = users;
-        if (filters.ubicacion !== 'todos') {
-            filteredUsers = filteredUsers.filter(u => u.ubicacion === filters.ubicacion);
-        }
-        if (filters.cargo !== 'todos') {
-            filteredUsers = filteredUsers.filter(u => u.cargo === filters.cargo);
-        }
+        if (!tableData) return [{ value: 'todos', label: 'Todos los colaboradores' }];
         return [
             { value: 'todos', label: 'Todos los colaboradores' },
-            ...filteredUsers.map(u => ({ value: u.id, label: `${u.nombres} ${u.apellidos}` }))
+            ...tableData.map(item => ({ value: item.collaborator.id, label: `${item.collaborator.nombres} ${item.collaborator.apellidos}` }))
         ];
-    }, [users, filters.ubicacion, filters.cargo]);
+    }, [tableData]);
     
     const allShiftOptions = useMemo(() => {
         const shifts = new Set<string>();
@@ -253,6 +273,35 @@ function AttendanceControlPage() {
         } catch (error) {
             console.error("Error saving attendance:", error);
             toast({ variant: 'destructive', title: "Error al Guardar", description: "No se pudo guardar el registro de asistencia. Asegúrese de tener permisos de ubicación." });
+        }
+    };
+
+    const handleDeleteRecord = async () => {
+        if (!recordToDelete?.attendance?.id || !firestore) {
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: 'No hay registro para eliminar.'
+            });
+            setRecordToDelete(null);
+            return;
+        }
+
+        try {
+            await deleteDoc(doc(firestore, 'attendance', recordToDelete.attendance.id));
+            toast({
+                title: 'Registro Eliminado',
+                description: 'El registro de asistencia ha sido eliminado correctamente.'
+            });
+        } catch (error) {
+            console.error("Error deleting attendance record:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Error al Eliminar',
+                description: 'No se pudo eliminar el registro de asistencia.'
+            });
+        } finally {
+            setRecordToDelete(null);
         }
     };
     
@@ -355,6 +404,27 @@ function AttendanceControlPage() {
                 </DialogContent>
             </Dialog>
 
+            <AlertDialog open={!!recordToDelete} onOpenChange={setRecordToDelete}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Esta acción eliminará permanentemente el registro de asistencia para este colaborador en este día. No se puede deshacer.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleDeleteRecord}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            Eliminar Registro
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+
             <Card>
                 <CardHeader>
                     <p className="text-sm text-muted-foreground">Mostrando {tableData.length} registros de asistencia.</p>
@@ -416,6 +486,9 @@ function AttendanceControlPage() {
                                     <TableCell className="text-xs max-w-xs truncate">{ (item.attendance as any)?.observations || (item.status === 'Falta' ? 'No se presenta al turno' : (item.status === 'Día Libre' ? 'Día Libre' : ''))}</TableCell>
                                     <TableCell className="text-right">
                                         <Button variant="ghost" size="icon" onClick={() => setEditingRecord(item)}><Edit className="h-4 w-4" /></Button>
+                                        <Button variant="ghost" size="icon" disabled={!item.attendance} onClick={() => setRecordToDelete(item)}>
+                                            <Trash2 className="h-4 w-4 text-destructive" />
+                                        </Button>
                                     </TableCell>
                                 </TableRow>
                                 )
@@ -434,5 +507,3 @@ export default function AttendanceControlPageWrapper() {
     // This wrapper can be used to provide any necessary context if needed in the future.
     return <AttendanceControlPage />;
 }
-
-    
