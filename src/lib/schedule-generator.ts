@@ -137,7 +137,12 @@ export function generarHorariosEstaticos(
       }
 
       const patternData = JOB_CYCLES.get(effectiveJobTitle);
-      if (!patternData) return;
+      
+      if (!patternData) { // If no pattern is found for the job title
+        const isWeekday = !isSaturday(day) && !isSunday(day);
+        schedule.get(collaborator.id)!.set(dayKey, isWeekday ? 'N9' : null); // Assign N9 on weekdays, LIB on weekends
+        return; // Continue to next collaborator/day
+      }
       
       if (patternData.scheduleType === 'MONDAY_TO_FRIDAY') {
           const isWeekday = !isSaturday(day) && !isSunday(day);
@@ -267,11 +272,19 @@ export function applyConditioningRebalance(
 
 
 export const getShiftDetailsFromRules = (shift: string, effectiveJobTitle: string, dayType: "NORMAL" | "FESTIVO", overtimeRules: OvertimeRule[]): { start: { h: number; m: number }; hours: number } | null => {
-    const rule = overtimeRules.find(r => 
+    let rule = overtimeRules.find(r => 
         r.jobTitle === effectiveJobTitle && 
         r.shift === shift && 
         r.dayType === dayType
     );
+
+    if (!rule && shift === 'N9') {
+        rule = overtimeRules.find(r => 
+            r.jobTitle === '_DEFAULT_OFFICE_' && 
+            r.shift === 'N9' && 
+            r.dayType === dayType
+        );
+    }
 
     if (rule && rule.startTime && rule.endTime) {
         try {
