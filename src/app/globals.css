@@ -70,7 +70,7 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground font-body;
+    @apply bg-background text-foreground font-body overscroll-y-none;
   }
 }
 
@@ -181,4 +181,15 @@
 }
 .app-icon-link:hover .app-icon-label {
     @apply text-accent;
+}
+
+.leaflet-tooltip-label {
+  background-color: hsla(var(--card), 0.8);
+  border-color: hsla(var(--border), 0.5);
+  color: hsl(var(--card-foreground));
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  border-width: 1px;
 }

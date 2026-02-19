@@ -28,6 +28,15 @@ const outOfBoundsIcon = new L.Icon({
     shadowSize: [41, 41]
 });
 
+const locationIcon = new L.Icon({
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.3.1/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+});
+
 // Utility function to calculate distance between two lat-lon points in meters
 function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
     const R = 6371e3; // metres
@@ -59,9 +68,10 @@ interface AttendanceMapProps {
   workLocations: WorkLocation[];
   records: (AttendanceRecord | LocationReport)[];
   viewType: 'attendance' | 'reports';
+  onLocationClick?: (locationId: string) => void;
 }
 
-export default function AttendanceMap({ workLocations, records, viewType }: AttendanceMapProps) {
+export default function AttendanceMap({ workLocations, records, viewType, onLocationClick }: AttendanceMapProps) {
     const defaultCenter: [number, number] = [-2.14, -79.9]; // Guayaquil
     
     // Process records for attendance view
@@ -145,32 +155,36 @@ export default function AttendanceMap({ workLocations, records, viewType }: Atte
             
             {bounds && <BoundsFitter bounds={bounds} />}
             
-            {/* Render geofences and concentration circles for attendance view */}
+            {/* Render geofences and markers for attendance view */}
             {viewType === 'attendance' && workLocations.map(location => {
                 const count = locationCounts.get(location.id) || 0;
-                const concentrationRadius = count > 0 ? Math.min(location.radius * 0.8, 50 + count * 20) : 0;
-
+                
                 return (
                     <React.Fragment key={location.id}>
+                         <Marker
+                            position={[location.latitude, location.longitude]}
+                            icon={locationIcon}
+                            eventHandlers={{
+                                click: () => {
+                                    if (onLocationClick) onLocationClick(location.id);
+                                },
+                            }}
+                        >
+                            <Tooltip
+                                permanent
+                                direction="bottom"
+                                offset={[0, 41]}
+                                className="leaflet-tooltip-label"
+                            >
+                                {location.name} ({count})
+                            </Tooltip>
+                        </Marker>
                         {/* Geofence Circle */}
                         <Circle
                             center={[location.latitude, location.longitude]}
                             radius={location.radius}
                             pathOptions={{ color: 'hsl(var(--primary))', fillColor: 'hsl(var(--primary))', fillOpacity: 0.2, weight: 2 }}
-                        >
-                            <Tooltip>
-                                <strong>{location.name}</strong><br />
-                                {count} registro(s) aquí
-                            </Tooltip>
-                        </Circle>
-                        {/* Concentration Circle */}
-                        {count > 0 && (
-                            <Circle
-                                center={[location.latitude, location.longitude]}
-                                radius={concentrationRadius}
-                                pathOptions={{ color: 'hsl(var(--accent))', fillColor: 'hsl(var(--accent))', fillOpacity: 0.4, weight: 2 }}
-                            />
-                        )}
+                        />
                     </React.Fragment>
                 );
             })}

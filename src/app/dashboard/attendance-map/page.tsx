@@ -12,7 +12,9 @@ import { collection } from 'firebase/firestore';
 import { format, startOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Calendar as CalendarIcon, LoaderCircle } from 'lucide-react';
-import type { WorkLocation, AttendanceRecord, LocationReport } from '@/lib/types';
+import type { WorkLocation, AttendanceRecord, LocationReport, UserProfile } from '@/lib/types';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 const AttendanceMap = dynamic(() => import('../../../components/map/attendance-map'), {
     ssr: false,
@@ -22,6 +24,7 @@ const AttendanceMap = dynamic(() => import('../../../components/map/attendance-m
 export default function AttendanceMapPage() {
   const [date, setDate] = useState<Date>(startOfDay(new Date()));
   const [viewType, setViewType] = useState<'attendance' | 'reports'>('attendance');
+  const [selectedLocation, setSelectedLocation] = useState<WorkLocation | null>(null);
   const firestore = useFirestore();
 
   const { data: workLocations, isLoading: locationsLoading } = useCollection<WorkLocation>(
@@ -34,6 +37,10 @@ export default function AttendanceMapPage() {
 
   const { data: allReports, isLoading: reportsLoading } = useCollection<LocationReport>(
     useMemo(() => firestore ? collection(firestore, 'locationReports') : null, [firestore])
+  );
+
+  const { data: allUsers, isLoading: usersLoading } = useCollection<UserProfile>(
+    useMemo(() => (firestore ? collection(firestore, 'users') : null), [firestore])
   );
 
   const filteredData = useMemo(() => {
@@ -52,10 +59,80 @@ export default function AttendanceMapPage() {
     }
   }, [date, viewType, allAttendance, allReports]);
 
-  const isLoading = locationsLoading || attendanceLoading || reportsLoading;
+  const recordsForSelectedLocation = useMemo(() => {
+    if (!selectedLocation || !allAttendance || !allUsers) return [];
+
+    const selectedDateStr = format(date, 'yyyy-MM-dd');
+    
+    return allAttendance
+      .filter(record => {
+        const recordDate = (record.date as any)?.toDate ? (record.date as any).toDate() : new Date(record.date);
+        return format(recordDate, 'yyyy-MM-dd') === selectedDateStr && record.entryWorkLocationName === selectedLocation.name;
+      })
+      .map(record => {
+          const user = allUsers.find(u => u.id === record.collaboratorId);
+          const userName = user ? `${user.nombres} ${user.apellidos}` : record.userName || 'Desconocido';
+          return {
+              ...record,
+              userName,
+              entryTime: record.entryTime && (record.entryTime as any)?.toDate ? (record.entryTime as any).toDate() : null,
+              exitTime: record.exitTime && (record.exitTime as any)?.toDate ? (record.exitTime as any).toDate() : null,
+          }
+      })
+      .sort((a,b) => (a.entryTime?.getTime() || 0) - (b.entryTime?.getTime() || 0));
+
+  }, [selectedLocation, allAttendance, allUsers, date]);
+
+  const handleLocationClick = (locationId: string) => {
+    const location = workLocations?.find(l => l.id === locationId);
+    if (location) {
+      setSelectedLocation(location);
+    }
+  };
+
+  const isLoading = locationsLoading || attendanceLoading || reportsLoading || usersLoading;
 
   return (
     <div className="space-y-6">
+      <Sheet open={!!selectedLocation} onOpenChange={(isOpen) => !isOpen && setSelectedLocation(null)}>
+        <SheetContent className="sm:max-w-lg">
+            <SheetHeader>
+                <SheetTitle>Historial de Timbres: {selectedLocation?.name}</SheetTitle>
+                <SheetDescription>
+                    Registros del día {format(date, 'dd MMMM, yyyy', { locale: es })}.
+                </SheetDescription>
+            </SheetHeader>
+            <div className="py-4">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Persona</TableHead>
+                            <TableHead>Entrada</TableHead>
+                            <TableHead>Salida</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {recordsForSelectedLocation.length > 0 ? (
+                            recordsForSelectedLocation.map(record => (
+                                <TableRow key={record.id}>
+                                    <TableCell>{record.userName}</TableCell>
+                                    <TableCell>{record.entryTime ? format(record.entryTime, 'HH:mm:ss') : '-'}</TableCell>
+                                    <TableCell>{record.exitTime ? format(record.exitTime, 'HH:mm:ss') : '-'}</TableCell>
+                                </TableRow>
+                            ))
+                        ) : (
+                            <TableRow>
+                                <TableCell colSpan={3} className="text-center h-24">
+                                    No hay registros para esta ubicación en la fecha seleccionada.
+                                </TableCell>
+                            </TableRow>
+                        )}
+                    </TableBody>
+                </Table>
+            </div>
+        </SheetContent>
+      </Sheet>
+
       <Card>
         <CardHeader>
           <CardTitle>Mapa de Asistencia</CardTitle>
@@ -91,6 +168,7 @@ export default function AttendanceMapPage() {
               workLocations={workLocations || []}
               records={filteredData}
               viewType={viewType}
+              onLocationClick={handleLocationClick}
             />
           )}
         </CardContent>
