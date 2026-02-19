@@ -333,12 +333,16 @@ function SchedulePageContent() {
   const isConditioningDisabled = selectedCargo !== 'CAJERO DE RECAUDO' || selectedUbicacion === 'todos';
   const isLoading = usersLoading || contextLoading || vacationsLoading;
 
-  const isSaveDisabled = useMemo(() => {
-    if (selectedCargo === 'CAJERO DE RECAUDO') {
-      return selectedUbicacion === 'todos';
+  const shouldShowSaveControls = useMemo(() => {
+    if (selectedCargo === 'todos') {
+        return false;
     }
-    return selectedCargo === 'todos';
-  }, [selectedCargo, selectedUbicacion]);
+    if (selectedCargo === 'CAJERO DE RECAUDO' && selectedUbicacion === 'todos') {
+        return false;
+    }
+    const hasPattern = shiftPatterns.some(p => normalizeText(p.jobTitle) === normalizeText(selectedCargo));
+    return hasPattern;
+  }, [selectedCargo, selectedUbicacion, shiftPatterns]);
   
   if (isLoading) {
     return <div>Cargando datos del cronograma...</div>
@@ -419,16 +423,18 @@ function SchedulePageContent() {
                     <ClipboardCheck className="mr-2 h-4 w-4" />
                     Aprobaciones
                   </Button>
-                  {isScheduleLocked ? (
-                    <Button onClick={handleModifySchedule} disabled={isSaveDisabled}>
-                        <Edit className="mr-2 h-4 w-4" />
-                        Modificar Cronograma
-                    </Button>
-                  ) : (
-                    <Button onClick={handleSaveSchedule} disabled={isSaveDisabled}>
-                        <Save className="mr-2 h-4 w-4" />
-                        Guardar Horario
-                    </Button>
+                  {shouldShowSaveControls && (
+                    isScheduleLocked ? (
+                        <Button onClick={handleModifySchedule}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Modificar Cronograma
+                        </Button>
+                    ) : (
+                        <Button onClick={handleSaveSchedule}>
+                            <Save className="mr-2 h-4 w-4" />
+                            Guardar Horario
+                        </Button>
+                    )
                   )}
               </div>
               
