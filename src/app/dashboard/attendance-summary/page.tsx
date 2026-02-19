@@ -116,39 +116,44 @@ function AttendanceControlPage() {
     }, [editingRecord, form]);
 
     const tableData = useMemo((): TableRowData[] => {
-        if (isLoading || !users || !savedSchedules) return [];
-        
+        if (isLoading || !users || !savedSchedules || !attendanceRecords) return [];
+
         const dayKey = format(selectedDate, 'yyyy-MM-dd');
         const periodIdentifier = format(currentDateForPeriod(selectedDate), 'yyyy-MM');
 
         const relevantSchedules = Object.values(savedSchedules).filter(s => 
             s.id.startsWith(periodIdentifier) &&
-            (filters.ubicacion === 'todos' || normalizeText(s.location) === normalizeText(filters.ubicacion)) &&
-            (filters.cargo === 'todos' || normalizeText(s.jobTitle) === normalizeText(filters.cargo))
+            (filters.ubicacion === 'todos' || s.location === filters.ubicacion) &&
+            (filters.cargo === 'todos' || s.jobTitle === filters.cargo)
         );
 
-        const collaboratorsInSchedules = new Set<string>();
-        const shiftsByCollaborator = new Map<string, string | null>();
-
+        let collaboratorsForDay = new Map<string, string | null>();
         relevantSchedules.forEach(scheduleDoc => {
             Object.entries(scheduleDoc.schedule).forEach(([collabId, dayMap]) => {
                 if (dayMap[dayKey] !== undefined) {
-                    collaboratorsInSchedules.add(collabId);
-                    if(!shiftsByCollaborator.has(collabId)) {
-                        shiftsByCollaborator.set(collabId, dayMap[dayKey]);
+                    if (!collaboratorsForDay.has(collabId)) {
+                       collaboratorsForDay.set(collabId, dayMap[dayKey]);
                     }
                 }
             });
         });
+        
+        if (filters.colaborador !== 'todos') {
+            if (collaboratorsForDay.has(filters.colaborador)) {
+                const shift = collaboratorsForDay.get(filters.colaborador);
+                collaboratorsForDay.clear();
+                collaboratorsForDay.set(filters.colaborador, shift !== undefined ? shift : null);
+            } else {
+                collaboratorsForDay.clear();
+            }
+        }
 
-        const filteredCollaborators = users.filter(user => 
-            collaboratorsInSchedules.has(user.id) &&
-            (filters.colaborador === 'todos' || user.id === filters.colaborador)
-        );
+        return Array.from(collaboratorsForDay.keys()).map(collabId => {
+            const collab = users.find(u => u.id === collabId);
+            if (!collab) return null;
 
-        return filteredCollaborators.map(collab => {
-            const scheduledShift = shiftsByCollaborator.get(collab.id) || null;
-            const attendance = attendanceRecords?.find(ar => ar.collaboratorId === collab.id && ar.date && isSameDay(ar.date, selectedDate)) || null;
+            const scheduledShift = collaboratorsForDay.get(collabId) || null;
+            const attendance = attendanceRecords.find(ar => ar.collaboratorId === collabId && ar.date && isSameDay(ar.date, selectedDate)) || null;
 
             let lateness = null;
             let workedHours = null;
@@ -187,7 +192,7 @@ function AttendanceControlPage() {
                 status,
                 manuallyEdited: !!(attendance as any)?.manuallyEditedBy
             };
-        });
+        }).filter((item): item is TableRowData => !!item);
         
     }, [selectedDate, filters, isLoading, users, savedSchedules, attendanceRecords, overtimeRules]);
     
@@ -210,24 +215,33 @@ function AttendanceControlPage() {
     }, [savedSchedules]);
 
     const cargoOptions = useMemo(() => {
-        if (!savedSchedules || !users) return [];
+        if (!savedSchedules) return [{ value: 'todos', label: 'Todos los cargos' }];
         
         let relevantSchedules = Object.values(savedSchedules);
         if (filters.ubicacion !== 'todos') {
             relevantSchedules = relevantSchedules.filter(s => s.location === filters.ubicacion);
         }
         const uniqueCargos = [...new Set(relevantSchedules.map(s => s.jobTitle))].sort();
-        return [{ value: 'todos', label: 'Todos los cargos' }, ...uniqueCargos.map(name => ({ value: name, label: name }))];
+        return [{ value: 'todos', label: 'Todos los cargos' }, ...uniqueCargos.map(c => ({ value: c, label: c }))];
 
-    }, [savedSchedules, filters.ubicacion, users]);
+    }, [savedSchedules, filters.ubicacion]);
 
     const colaboradorOptions = useMemo(() => {
-        if (!tableData) return [{ value: 'todos', label: 'Todos los colaboradores' }];
+        if (!users) return [{ value: 'todos', label: 'Todos los colaboradores' }];
+        let filteredUsers = users;
+
+        if (filters.ubicacion !== 'todos') {
+            filteredUsers = filteredUsers.filter(u => u.ubicacion === filters.ubicacion);
+        }
+        if (filters.cargo !== 'todos') {
+            filteredUsers = filteredUsers.filter(u => u.cargo === filters.cargo);
+        }
+
         return [
             { value: 'todos', label: 'Todos los colaboradores' },
-            ...tableData.map(item => ({ value: item.collaborator.id, label: `${item.collaborator.nombres} ${item.collaborator.apellidos}` }))
+            ...filteredUsers.map(u => ({ value: u.id, label: `${u.nombres} ${u.apellidos}` }))
         ];
-    }, [tableData]);
+    }, [users, filters.ubicacion, filters.cargo]);
     
     const allShiftOptions = useMemo(() => {
         const shifts = new Set<string>();
@@ -404,7 +418,7 @@ function AttendanceControlPage() {
                 </DialogContent>
             </Dialog>
 
-            <AlertDialog open={!!recordToDelete} onOpenChange={setRecordToDelete}>
+            <AlertDialog open={!!recordToDelete} onOpenChange={() => setRecordToDelete(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
@@ -484,7 +498,7 @@ function AttendanceControlPage() {
                                     <TableCell>{workedHours}</TableCell>
                                     <TableCell>{statusBadge}</TableCell>
                                     <TableCell className="text-xs max-w-xs truncate">{ (item.attendance as any)?.observations || (item.status === 'Falta' ? 'No se presenta al turno' : (item.status === 'Día Libre' ? 'Día Libre' : ''))}</TableCell>
-                                    <TableCell className="text-right">
+                                    <TableCell className="text-right flex items-center justify-end">
                                         <Button variant="ghost" size="icon" onClick={() => setEditingRecord(item)}><Edit className="h-4 w-4" /></Button>
                                         <Button variant="ghost" size="icon" disabled={!item.attendance} onClick={() => setRecordToDelete(item)}>
                                             <Trash2 className="h-4 w-4 text-destructive" />
