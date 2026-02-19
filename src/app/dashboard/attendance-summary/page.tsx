@@ -1,3 +1,5 @@
+
+      
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
@@ -182,7 +184,11 @@ function AttendanceControlPage() {
                 status = 'Día Libre';
                 if (!observationText) observationText = 'Día Libre';
             } else {
-                const shiftDetails = getShiftDetailsFromRules(scheduledShift, collaborator.cargo, 'NORMAL', overtimeRules);
+                let shiftDetails = getShiftDetailsFromRules(scheduledShift, collaborator.cargo, 'NORMAL', overtimeRules);
+                 if (!shiftDetails && scheduledShift === 'N9') {
+                    shiftDetails = { start: { h: 8, m: 30 }, hours: 9 };
+                }
+                
                 const now = new Date();
 
                 if (shiftDetails) {
@@ -584,3 +590,5 @@ export default function AttendanceControlPageWrapper() {
     // This wrapper can be used to provide any necessary context if needed in the future.
     return <AttendanceControlPage />;
 }
+
+    
