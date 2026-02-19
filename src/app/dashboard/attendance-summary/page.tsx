@@ -51,7 +51,7 @@ type TableRowData = {
     attendance: Partial<AttendanceRecord> | null;
     lateness: number | null;
     workedHours: number | null;
-    status: 'Completo' | 'Incompleto' | 'Falta' | 'Día Libre' | 'N/A';
+    status: 'Completo' | 'Incompleto' | 'Falta' | 'Día Libre' | 'N/A' | 'Atrasado' | 'En Proceso';
     manuallyEdited: boolean;
 };
 
@@ -116,7 +116,7 @@ function AttendanceControlPage() {
     }, [editingRecord, form]);
 
     const tableData = useMemo((): TableRowData[] => {
-        if (isLoading || !users || !savedSchedules || !attendanceRecords || !shiftPatterns) return [];
+        if (isLoading || !users || !savedSchedules || !attendanceRecords || !shiftPatterns || !overtimeRules) return [];
 
         const dayKey = format(selectedDate, 'yyyy-MM-dd');
         const periodDate = currentDateForPeriod(selectedDate);
@@ -176,24 +176,43 @@ function AttendanceControlPage() {
             const entryTime = attendance?.entryTime;
             const exitTime = attendance?.exitTime;
 
-            if (scheduledShift && scheduledShift !== 'LIB') {
-                const shiftDetails = getShiftDetailsFromRules(scheduledShift, collaborator.cargo, 'NORMAL', overtimeRules || []);
-                if (entryTime && shiftDetails) {
-                    const shiftStart = set(selectedDate, { hours: shiftDetails.start.h, minutes: shiftDetails.start.m });
-                    const diff = differenceInMinutes(entryTime, shiftStart);
-                    lateness = Math.max(0, diff);
-                }
-
-                if (isPast(selectedDate) || isToday(selectedDate)) {
-                    if (!entryTime && !exitTime) status = 'Falta';
-                    else if (entryTime && !exitTime) status = 'Incompleto';
-                    else if (entryTime && exitTime) status = 'Completo';
-                }
+            if (!scheduledShift || scheduledShift === 'LIB') {
+                status = 'Día Libre';
             } else {
-                 status = 'Día Libre';
+                const shiftDetails = getShiftDetailsFromRules(scheduledShift, collaborator.cargo, 'NORMAL', overtimeRules);
+                const now = new Date();
+
+                if (shiftDetails) {
+                    const shiftStart = set(selectedDate, { hours: shiftDetails.start.h, minutes: shiftDetails.start.m });
+                    
+                    if (!entryTime) { // No hay registro de entrada
+                        if (isToday(selectedDate) && now < shiftStart) {
+                           status = 'En Proceso';
+                        } else if (isPast(selectedDate) || (isToday(selectedDate) && now >= shiftStart)) {
+                           status = 'Falta';
+                        } else { // Es una fecha futura
+                           status = 'En Proceso';
+                        }
+                    } else { // Hay registro de entrada
+                        lateness = Math.max(0, differenceInMinutes(entryTime, shiftStart));
+
+                        if (!exitTime) {
+                            status = 'Incompleto';
+                        } else {
+                            workedHours = differenceInMinutes(exitTime, entryTime) / 60;
+                            if (lateness > 0) {
+                                status = 'Atrasado';
+                            } else {
+                                status = 'Completo';
+                            }
+                        }
+                    }
+                } else {
+                    status = 'N/A';
+                }
             }
 
-            if(entryTime && exitTime) {
+            if(entryTime && exitTime && workedHours === null) {
                 workedHours = differenceInMinutes(exitTime, entryTime) / 60;
             }
 
@@ -258,8 +277,9 @@ function AttendanceControlPage() {
     }, [users, filters.ubicacion, filters.cargo]);
     
     const allShiftOptions = useMemo(() => {
+        if (!overtimeRules) return ['LIB'];
         const shifts = new Set<string>();
-        overtimeRules?.forEach(r => shifts.add(r.shift));
+        overtimeRules.forEach(r => shifts.add(r.shift));
         return ['LIB', ...Array.from(shifts).sort()];
     }, [overtimeRules]);
 
@@ -349,7 +369,7 @@ function AttendanceControlPage() {
                 'Salida': exit,
                 'Tardanza (HH:mm)': tardanza,
                 'T. Laborado (Horas)': workedHours,
-                'Registro': item.status,
+                'Estado': item.status,
                 'Observaciones': (item.attendance as any)?.observations || ''
             };
         });
@@ -468,7 +488,7 @@ function AttendanceControlPage() {
                                 <TableHead>Salida</TableHead>
                                 <TableHead>Tardanza</TableHead>
                                 <TableHead>T. Laborado</TableHead>
-                                <TableHead>Registro</TableHead>
+                                <TableHead>Estado</TableHead>
                                 <TableHead>Observaciones</TableHead>
                                 <TableHead className="text-right">Acciones</TableHead>
                             </TableRow>
@@ -486,8 +506,10 @@ function AttendanceControlPage() {
                                 let statusBadge;
                                 switch (item.status) {
                                     case 'Completo': statusBadge = <Badge className="bg-green-100 text-green-800">Completo</Badge>; break;
+                                    case 'Atrasado': statusBadge = <Badge className="bg-orange-100 text-orange-800">Atrasado</Badge>; break;
                                     case 'Incompleto': statusBadge = <Badge className="bg-yellow-100 text-yellow-800">Incompleto</Badge>; break;
                                     case 'Falta': statusBadge = <Badge variant="destructive">Falta</Badge>; break;
+                                    case 'En Proceso': statusBadge = <Badge className="bg-blue-100 text-blue-800">En Proceso</Badge>; break;
                                     default: statusBadge = <Badge variant="secondary">{item.status}</Badge>;
                                 }
 
