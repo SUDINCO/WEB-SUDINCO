@@ -77,8 +77,8 @@ function AttendanceControlPage() {
     useEffect(() => {
         if(editingRecord) {
             form.reset({
-                entrada: editingRecord.attendance?.entryTime ? format(new Date(editingRecord.attendance.entryTime), 'HH:mm') : '',
-                salida: editingRecord.attendance?.exitTime ? format(new Date(editingRecord.attendance.exitTime), 'HH:mm') : '',
+                entrada: editingRecord.attendance?.entryTime ? format(editingRecord.attendance.entryTime as Date, 'HH:mm') : '',
+                salida: editingRecord.attendance?.exitTime ? format(editingRecord.attendance.exitTime as Date, 'HH:mm') : '',
                 turno: editingRecord.scheduledShift || 'LIB',
                 observaciones: editingRecord.attendance?.observations || '',
                 justificacion: '',
@@ -115,14 +115,22 @@ function AttendanceControlPage() {
 
         return filteredByDropdowns.map(collab => {
             const scheduledShift = collaboratorsForDay.find(cs => cs.id === collab.id)?.shift || null;
-            const attendance = attendanceRecords?.find(ar => ar.collaboratorId === collab.id && format((ar.date as any).toDate(), 'yyyy-MM-dd') === dayKey) || null;
+            const rawAttendance = attendanceRecords?.find(ar => ar.collaboratorId === collab.id && format((ar.date as any).toDate(), 'yyyy-MM-dd') === dayKey) || null;
             
+            const attendance = rawAttendance 
+                ? {
+                    ...rawAttendance,
+                    entryTime: rawAttendance.entryTime && (rawAttendance.entryTime as any).toDate ? (rawAttendance.entryTime as any).toDate() : null,
+                    exitTime: rawAttendance.exitTime && (rawAttendance.exitTime as any).toDate ? (rawAttendance.exitTime as any).toDate() : null,
+                  }
+                : null;
+
             let lateness = null;
             let workedHours = null;
             let status: TableRowData['status'] = 'N/A';
 
-            const entryTime = attendance?.entryTime ? (attendance.entryTime as any).toDate() : null;
-            const exitTime = attendance?.exitTime ? (attendance.exitTime as any).toDate() : null;
+            const entryTime = attendance?.entryTime;
+            const exitTime = attendance?.exitTime;
 
             if (scheduledShift && scheduledShift !== 'LIB') {
                 const shiftDetails = getShiftDetailsFromRules(scheduledShift, collab.cargo, 'NORMAL', overtimeRules || []);
@@ -152,7 +160,7 @@ function AttendanceControlPage() {
                 lateness,
                 workedHours,
                 status,
-                manuallyEdited: !!(attendance as any)?.manuallyEditedBy
+                manuallyEdited: !!(rawAttendance as any)?.manuallyEditedBy
             };
         });
         
@@ -211,8 +219,8 @@ function AttendanceControlPage() {
     
      const handleExport = () => {
         const dataToExport = tableData.map(item => {
-            const entry = item.attendance?.entryTime ? format(new Date(item.attendance.entryTime), 'HH:mm:ss') : '--';
-            const exit = item.attendance?.exitTime ? format(new Date(item.attendance.exitTime), 'HH:mm:ss') : '--';
+            const entry = item.attendance?.entryTime ? format(item.attendance.entryTime as Date, 'HH:mm:ss') : '--';
+            const exit = item.attendance?.exitTime ? format(item.attendance.exitTime as Date, 'HH:mm:ss') : '--';
             const latenessMinutes = item.lateness || 0;
             const tardanza = `${String(Math.floor(latenessMinutes / 60)).padStart(2, '0')}:${String(latenessMinutes % 60).padStart(2, '0')}`;
             const workedHours = item.workedHours !== null ? item.workedHours.toFixed(2) : '--';
@@ -332,8 +340,8 @@ function AttendanceControlPage() {
                             {isLoading ? (
                                 <TableRow><TableCell colSpan={10} className="h-24 text-center"><LoaderCircle className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
                             ) : tableData.length > 0 ? tableData.map(item => {
-                                const entry = item.attendance?.entryTime ? format(new Date(item.attendance.entryTime), 'HH:mm:ss') : '--';
-                                const exit = item.attendance?.exitTime ? format(new Date(item.attendance.exitTime), 'HH:mm:ss') : '--';
+                                const entry = item.attendance?.entryTime ? format(item.attendance.entryTime as Date, 'HH:mm:ss') : '--';
+                                const exit = item.attendance?.exitTime ? format(item.attendance.exitTime as Date, 'HH:mm:ss') : '--';
                                 const latenessMinutes = item.lateness || 0;
                                 const tardanza = latenessMinutes > 0 ? `${String(Math.floor(latenessMinutes / 60)).padStart(2, '0')}:${String(latenessMinutes % 60).padStart(2, '0')}` : '--';
                                 const workedHours = item.workedHours !== null ? `${item.workedHours.toFixed(2)}h` : '--';
