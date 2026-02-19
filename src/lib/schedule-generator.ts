@@ -281,16 +281,18 @@ export const getShiftDetailsFromRules = (shift: string, effectiveJobTitle: strin
         r.dayType === dayType
     );
 
-    // Fallback logic for common shifts if no specific rule is found
+    // If no specific rule, try the default office rule for 'N9'
+    if (!rule && shift === 'N9') {
+        rule = overtimeRules.find(r => 
+            r.jobTitle === '_DEFAULT_OFFICE_' && 
+            r.shift === 'N9' && 
+            r.dayType === dayType
+        );
+    }
+    
+    // Fallback logic for other common shifts if no specific rule is found
     if (!rule) {
         switch (shift) {
-            case 'N9':
-                rule = overtimeRules.find(r => 
-                    r.jobTitle === '_DEFAULT_OFFICE_' && 
-                    r.shift === 'N9' && 
-                    r.dayType === dayType
-                );
-                break;
             case 'N12':
                 return { start: { h: 18, m: 0 }, hours: 12 };
             case 'D12':
