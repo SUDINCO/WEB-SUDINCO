@@ -22,7 +22,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useUser, useFirestore, useCollection } from '@/firebase';
 import { collection, doc, query, where, getDocs, addDoc, updateDoc, writeBatch, deleteDoc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
-import { format, parse, differenceInMinutes, startOfDay, set, isPast, isToday, subMonths, addMonths, eachDayOfInterval, isSameDay, isSaturday, isSunday } from 'date-fns';
+import { format, parse, differenceInMinutes, startOfDay, set, isPast, isToday, subMonths, addMonths, eachDayOfInterval, isSameDay, isSaturday, isSunday, addMinutes } from 'date-fns';
 import { es } from 'date-fns/locale';
 import * as XLSX from 'xlsx';
 import {
@@ -51,7 +51,7 @@ type TableRowData = {
     attendance: Partial<AttendanceRecord> | null;
     lateness: number | null;
     workedHours: number | null;
-    status: 'Completo' | 'Incompleto' | 'Falta' | 'Día Libre' | 'N/A' | 'Atrasado' | 'En Proceso';
+    status: 'Completo' | 'Incompleto' | 'Falta' | 'Día Libre' | 'N/A' | 'Atrasado' | 'En Proceso' | 'Pendiente';
     manuallyEdited: boolean;
 };
 
@@ -173,42 +173,65 @@ function AttendanceControlPage() {
             let lateness = null;
             let workedHours = null;
             let status: TableRowData['status'] = 'N/A';
+            let observationText = (attendance as any)?.observations || '';
+
             const entryTime = attendance?.entryTime;
             const exitTime = attendance?.exitTime;
 
             if (!scheduledShift || scheduledShift === 'LIB') {
                 status = 'Día Libre';
+                if (!observationText) observationText = 'Día Libre';
             } else {
                 const shiftDetails = getShiftDetailsFromRules(scheduledShift, collaborator.cargo, 'NORMAL', overtimeRules);
                 const now = new Date();
 
                 if (shiftDetails) {
                     const shiftStart = set(selectedDate, { hours: shiftDetails.start.h, minutes: shiftDetails.start.m });
-                    
-                    if (!entryTime) { // No hay registro de entrada
-                        if (isToday(selectedDate) && now < shiftStart) {
-                           status = 'En Proceso';
-                        } else if (isPast(selectedDate) || (isToday(selectedDate) && now >= shiftStart)) {
-                           status = 'Falta';
-                        } else { // Es una fecha futura
-                           status = 'En Proceso';
+                    const shiftEnd = addMinutes(shiftStart, shiftDetails.hours * 60);
+
+                    if (!entryTime) { // No clock-in
+                        if (isToday(selectedDate)) {
+                            if (now < shiftStart) {
+                                status = 'En Proceso';
+                                if (!observationText) observationText = 'Turno programado';
+                            } else if (now >= shiftStart && now < shiftEnd) {
+                                status = 'Pendiente';
+                                if (!observationText) observationText = 'Turno pendiente de registro';
+                            } else { // now >= shiftEnd
+                                status = 'Falta';
+                                if (!observationText) observationText = 'No se presentó al turno';
+                            }
+                        } else if (isPast(selectedDate)) {
+                            status = 'Falta';
+                            if (!observationText) observationText = 'No se presentó al turno';
+                        } else { // future date
+                            status = 'En Proceso';
+                            if (!observationText) observationText = 'Turno programado';
                         }
-                    } else { // Hay registro de entrada
+                    } else { // Has clock-in
                         lateness = Math.max(0, differenceInMinutes(entryTime, shiftStart));
 
                         if (!exitTime) {
                             status = 'Incompleto';
+                             if (isToday(selectedDate) && now < shiftEnd) {
+                                if (!observationText) observationText = 'Turno en progreso';
+                            } else {
+                                if (!observationText) observationText = 'Salida no registrada';
+                            }
                         } else {
                             workedHours = differenceInMinutes(exitTime, entryTime) / 60;
                             if (lateness > 0) {
                                 status = 'Atrasado';
+                                if (!observationText) observationText = 'Llegada tarde';
                             } else {
                                 status = 'Completo';
+                                if (!observationText) observationText = 'Turno cumplido';
                             }
                         }
                     }
                 } else {
                     status = 'N/A';
+                    if (!observationText) observationText = 'Turno sin regla de horario definida.';
                 }
             }
 
@@ -219,7 +242,10 @@ function AttendanceControlPage() {
             return {
                 collaborator,
                 scheduledShift,
-                attendance,
+                attendance: {
+                    ...attendance,
+                    observations: observationText
+                },
                 lateness,
                 workedHours,
                 status,
@@ -507,6 +533,7 @@ function AttendanceControlPage() {
                                 switch (item.status) {
                                     case 'Completo': statusBadge = <Badge className="bg-green-100 text-green-800">Completo</Badge>; break;
                                     case 'Atrasado': statusBadge = <Badge className="bg-orange-100 text-orange-800">Atrasado</Badge>; break;
+                                    case 'Pendiente': statusBadge = <Badge className="bg-yellow-100 text-yellow-800">Pendiente</Badge>; break;
                                     case 'Incompleto': statusBadge = <Badge className="bg-yellow-100 text-yellow-800">Incompleto</Badge>; break;
                                     case 'Falta': statusBadge = <Badge variant="destructive">Falta</Badge>; break;
                                     case 'En Proceso': statusBadge = <Badge className="bg-blue-100 text-blue-800">En Proceso</Badge>; break;
@@ -533,7 +560,7 @@ function AttendanceControlPage() {
                                     <TableCell>{tardanza}</TableCell>
                                     <TableCell>{workedHours}</TableCell>
                                     <TableCell>{statusBadge}</TableCell>
-                                    <TableCell className="text-xs max-w-xs truncate">{ (item.attendance as any)?.observations || (item.status === 'Falta' ? 'No se presenta al turno' : (item.status === 'Día Libre' ? 'Día Libre' : ''))}</TableCell>
+                                    <TableCell className="text-xs max-w-xs truncate">{ (item.attendance as any)?.observations || ''}</TableCell>
                                     <TableCell className="text-right flex items-center justify-end">
                                         <Button variant="ghost" size="icon" onClick={() => setEditingRecord(item)}><Edit className="h-4 w-4" /></Button>
                                         <Button variant="ghost" size="icon" disabled={!item.attendance} onClick={() => setRecordToDelete(item)}>
