@@ -90,7 +90,7 @@ function AttendanceControlPage() {
         if (isLoading || !users || !savedSchedules) return [];
 
         const dayKey = format(selectedDate, 'yyyy-MM-dd');
-        const periodIdentifier = format(selectedDate.getDate() < 21 ? subMonths(selectedDate, 1) : selectedDate, 'yyyy-MM');
+        const periodIdentifier = format(selectedDate.getDate() >= 21 ? addMonths(selectedDate, 1) : selectedDate, 'yyyy-MM');
 
         const periodSchedules = savedSchedules.filter(s => s.id.startsWith(periodIdentifier));
         
@@ -152,7 +152,7 @@ function AttendanceControlPage() {
                 lateness,
                 workedHours,
                 status,
-                manuallyEdited: !!attendance?.manuallyEditedBy
+                manuallyEdited: !!(attendance as any)?.manuallyEditedBy
             };
         });
         
@@ -351,8 +351,8 @@ function AttendanceControlPage() {
                                     <TableCell className="font-medium">{`${item.collaborator.nombres} ${item.collaborator.apellidos}`}</TableCell>
                                     <TableCell>{item.collaborator.cargo}</TableCell>
                                     <TableCell>{item.scheduledShift || 'LIB'}</TableCell>
-                                    <TableCell className="flex items-center gap-1">{entry} {item.manuallyEdited && <User className="h-3 w-3 text-blue-500"/>}</TableCell>
-                                    <TableCell className="flex items-center gap-1">{exit} {item.manuallyEdited && <User className="h-3 w-3 text-blue-500"/>}</TableCell>
+                                    <TableCell className={cn("flex items-center gap-1", item.manuallyEdited && "text-blue-600")}>{entry} {item.manuallyEdited && <User className="h-3 w-3"/>}</TableCell>
+                                    <TableCell className={cn("flex items-center gap-1", item.manuallyEdited && "text-blue-600")}>{exit} {item.manuallyEdited && <User className="h-3 w-3"/>}</TableCell>
                                     <TableCell>{tardanza}</TableCell>
                                     <TableCell>{workedHours}</TableCell>
                                     <TableCell>{statusBadge}</TableCell>
