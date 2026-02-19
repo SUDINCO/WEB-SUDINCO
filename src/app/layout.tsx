@@ -6,10 +6,10 @@ import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 export const metadata: Metadata = {
   title: {
-    default: "CORE",
-    template: "%s | CORE",
+    default: "PERFORMA",
+    template: "%s | PERFORMA",
   },
-  description: 'Página de acceso para la aplicación CORE',
+  description: 'Página de acceso para la aplicación PERFORMA',
 };
 
 export const viewport: Viewport = {

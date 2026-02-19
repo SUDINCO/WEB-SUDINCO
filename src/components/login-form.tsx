@@ -119,7 +119,7 @@ export function LoginForm() {
       <CardHeader className="text-center items-center">
         <Image
           src="https://i.imgur.com/6V3WsMA.png"
-          alt="Acceso CORE"
+          alt="Acceso PERFORMA"
           width={300}
           height={100}
           className="mb-4"

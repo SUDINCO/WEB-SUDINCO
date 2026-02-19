@@ -239,7 +239,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
       <Link href="/dashboard" className="flex items-center justify-center gap-2 text-lg font-semibold">
         <Image
           src="https://i.postimg.cc/jSvfPdzH/LOGO1.png"
-          alt="Acceso CORE"
+          alt="Acceso PERFORMA"
           width={150}
           height={50}
         />
@@ -330,7 +330,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                 <Link href="/dashboard">
                   <Image
                     src="https://i.postimg.cc/jSvfPdzH/LOGO1.png"
-                    alt="Acceso CORE"
+                    alt="Acceso PERFORMA"
                     width={100}
                     height={35}
                     className="app-header-logo"
@@ -404,7 +404,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
             <div className="flex items-center">
               <Image
                 src="https://i.postimg.cc/jSvfPdzH/LOGO1.png"
-                alt="CORE Logo"
+                alt="PERFORMA Logo"
                 width={120}
                 height={40}
               />
