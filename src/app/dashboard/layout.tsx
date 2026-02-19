@@ -165,6 +165,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                 { name: "Mi Registro", href: "/dashboard/attendance", icon: Clock, id: "attendance" },
                 { name: "Mapa de Asistencia", href: "/dashboard/attendance-map", icon: Map, id: "attendance-map" },
                 { name: "Cronograma", href: "/dashboard/schedule", icon: CalendarCheck, id: "schedule" },
+                { name: "Control de Asistencia", href: "/dashboard/attendance-summary", icon: ClipboardCheck, id: "attendance-summary" },
                 { name: "Reportar Ubicación", href: "/dashboard/report-location", icon: MapPin, id: "report-location" },
             ]
         },

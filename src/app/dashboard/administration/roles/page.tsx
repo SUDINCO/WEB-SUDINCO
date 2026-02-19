@@ -49,6 +49,7 @@ const permissionsMap = [
                 { id: 'attendance', name: 'Mi Registro' },
                 { id: 'attendance-map', name: 'Mapa de Asistencia' },
                 { id: 'schedule', name: 'Cronograma' },
+                { id: 'attendance-summary', name: 'Control de Asistencia' },
                 { id: 'report-location', name: 'Reportar Ubicación' },
             ]
         },
