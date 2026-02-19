@@ -8,32 +8,11 @@ import NextTopLoader from 'nextjs-toploader';
 import {
   Home,
   Menu,
-  Briefcase,
-  FileText,
-  User,
   ChevronDown,
-  Shield,
   LoaderCircle,
-  FileSearch,
-  CheckSquare,
-  ClipboardCheck,
-  CalendarDays,
-  UserCog,
-  Users,
-  Award,
-  CalendarCheck,
-  SlidersHorizontal,
-  Eye,
-  Megaphone,
-  Rss,
-  UserCheck as UserCheckIcon,
-  Clock,
-  MapPin,
-  Bell,
   MessageSquare,
-  LayoutGrid,
-  BarChart,
-  Map,
+  Bell,
+  User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -61,12 +40,15 @@ import { AppsMenu } from "@/components/dashboard/apps-menu";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { UserProfileProvider, useUserProfile } from '@/context/user-profile-context';
+import { allNavLinks } from '@/lib/nav-links';
+import { useRecentLinks } from '@/hooks/use-recent-links';
 
 const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes
 
 function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const { addRecentLink } = useRecentLinks();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isAppsMenuOpen, setAppsMenuOpen] = useState(false);
 
@@ -76,6 +58,12 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const inactivityTimer = useRef<NodeJS.Timeout>();
 
   const isLoading = userLoading || profileLoading;
+
+  useEffect(() => {
+    if (pathname) {
+      addRecentLink(pathname);
+    }
+  }, [pathname, addRecentLink]);
 
   const handleSignOut = useCallback(() => {
     if (auth) {
@@ -138,65 +126,6 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
   const isActive = (href: string) => pathname === href;
 
-  const allNavLinks = useMemo(() => [
-    {
-      module: "Recursos Humanos",
-      icon: Briefcase,
-      groups: [
-        {
-          title: "Evaluaciones de Desempeño",
-          sublinks: [
-            { name: "Personal a Evaluar", href: "/dashboard/my-evaluations", icon: Award, id: "my-evaluations" },
-            { name: "Evaluaciones Observadas", href: "/dashboard/observed-evaluations", icon: Eye, id: "observed-evaluations" },
-            { name: "Mi Estado de Evaluación", href: "/dashboard/my-status", icon: UserCheckIcon, id: "my-status" },
-          ]
-        },
-        {
-          title: "Aprobación de Contrataciones",
-          sublinks: [
-            { name: "Evaluación de Perfil", href: "/dashboard/profile-evaluation", icon: FileSearch, id: "profile-evaluation" },
-            { name: "Aprobaciones", href: "/dashboard/approvals", icon: CheckSquare, id: "approvals" },
-          ]
-        },
-        {
-            title: "Nómina y Asistencia",
-            sublinks: [
-                { name: "Nómina", href: "/dashboard/staff", icon: Users, id: "staff" },
-                { name: "Mi Registro", href: "/dashboard/attendance", icon: Clock, id: "attendance" },
-                { name: "Mapa de Asistencia", href: "/dashboard/attendance-map", icon: Map, id: "attendance-map" },
-                { name: "Cronograma", href: "/dashboard/schedule", icon: CalendarCheck, id: "schedule" },
-                { name: "Control de Asistencia", href: "/dashboard/attendance-summary", icon: ClipboardCheck, id: "attendance-summary" },
-                { name: "Reportar Ubicación", href: "/dashboard/report-location", icon: MapPin, id: "report-location" },
-            ]
-        },
-        {
-          title: "Solicitudes",
-          sublinks: [
-            { name: "Vacaciones y Permisos", href: "/dashboard/vacation-requests", icon: CalendarDays, id: "vacation-requests" },
-          ]
-        },
-      ]
-    },
-    {
-      module: "Asignaciones",
-      icon: ClipboardCheck,
-      sublinks: [
-        { name: "Ubicaciones de Trabajo", href: "/dashboard/administration/work-locations", icon: MapPin, id: "work-locations" },
-      ]
-    },
-    {
-      module: "Administración",
-      icon: Shield,
-      sublinks: [
-        { name: "Aprobación de Publicaciones", href: "/dashboard/administration/evaluation-percentages", icon: Megaphone, id: "publications" },
-        { name: "Evaluación de Desempeño", href: "/dashboard/performance-evaluation", icon: ClipboardCheck, id: "performance-evaluation" },
-        { name: "Roles y Permisos", href: "/dashboard/administration/roles", icon: FileText, id: "roles" },
-        { name: "Asignación de Líderes", href: "/dashboard/administration/leader-assignment", icon: UserCog, id: "leader-assignment" },
-        { name: "Configuración de Horarios", href: "/dashboard/administration/schedule-settings", icon: SlidersHorizontal, id: "schedule-settings" },
-      ]
-    }
-  ], []);
-
   const navLinks = useMemo(() => {
     if (!userProfile) return [];
 
@@ -217,7 +146,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
       const accessibleSublinks = module.sublinks?.filter(sublink => userPermissions[sublink.id] || sublink.id === 'my-status') || [];
       return { ...module, sublinks: accessibleSublinks };
     }).filter(module => (module.sublinks && module.sublinks.length > 0) || (module.groups && module.groups.length > 0));
-  }, [userProfile, userRole, allNavLinks]);
+  }, [userProfile, userRole]);
   
   const activeModule = useMemo(() => navLinks.find(module =>
     (module.sublinks && module.sublinks.some(sublink => isActive(sublink.href))) ||

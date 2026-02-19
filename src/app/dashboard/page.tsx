@@ -110,6 +110,7 @@ import { Separator } from '@/components/ui/separator';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useRecentLinks } from '@/hooks/use-recent-links';
 
 // Type definitions
 interface UserProfile {
@@ -752,26 +753,28 @@ export default function DashboardHomePage() {
   // --- Sub-components for rendering ---
 
   const QuickAccess = () => {
-    const quickLinks = [
-        { href: '/dashboard/my-evaluations', icon: Award, label: 'Evaluar Personal', color: 'bg-blue-100 text-blue-700' },
-        { href: '/dashboard/vacation-requests', icon: CalendarDays, label: 'Solicitudes', color: 'bg-green-100 text-green-700' },
-        { href: '/dashboard/profile-evaluation', icon: FileSearch, label: 'Perfiles', color: 'bg-amber-100 text-amber-700' },
+    const { recentLinks } = useRecentLinks();
+
+    const linkColors = [
+      'bg-blue-100 text-blue-700',
+      'bg-green-100 text-green-700',
+      'bg-amber-100 text-amber-700',
     ];
     
     return (
         <Card>
             <CardHeader>
                 <CardTitle>Accesos Rápidos</CardTitle>
-                <CardDescription>Navega a las secciones principales.</CardDescription>
+                <CardDescription>Tus páginas más visitadas recientemente.</CardDescription>
             </CardHeader>
             <CardContent>
                 <div className="grid grid-cols-3 gap-2">
-                    {quickLinks.map(link => (
+                    {recentLinks.map((link, index) => (
                         <Link href={link.href} key={link.href} className="flex flex-col items-center justify-center p-2 rounded-lg hover:bg-muted text-center space-y-1 group">
-                            <div className={cn("p-3 rounded-full group-hover:scale-110 transition-transform", link.color)}>
+                            <div className={cn("p-3 rounded-full group-hover:scale-110 transition-transform", linkColors[index % linkColors.length])}>
                                 <link.icon className="h-5 w-5" />
                             </div>
-                            <p className="text-xs font-medium text-muted-foreground group-hover:text-primary transition-colors">{link.label}</p>
+                            <p className="text-xs font-medium text-muted-foreground group-hover:text-primary transition-colors">{link.name}</p>
                         </Link>
                     ))}
                 </div>
