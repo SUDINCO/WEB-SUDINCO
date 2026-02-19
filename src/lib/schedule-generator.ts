@@ -273,6 +273,11 @@ export function applyConditioningRebalance(
 
 
 export const getShiftDetailsFromRules = (shift: string, effectiveJobTitle: string, dayType: "NORMAL" | "FESTIVO", overtimeRules: OvertimeRule[]): { start: { h: number; m: number }; hours: number } | null => {
+    // Hardcoded fallback for N9 shift
+    if (shift === 'N9') {
+        return { start: { h: 8, m: 30 }, hours: 9 };
+    }
+
     const normalizedJobTitle = normalizeText(effectiveJobTitle);
     
     let rule = overtimeRules.find(r => 
@@ -280,15 +285,6 @@ export const getShiftDetailsFromRules = (shift: string, effectiveJobTitle: strin
         r.shift === shift && 
         r.dayType === dayType
     );
-
-    // If no specific rule, try the default office rule for 'N9'
-    if (!rule && shift === 'N9') {
-        rule = overtimeRules.find(r => 
-            r.jobTitle === '_DEFAULT_OFFICE_' && 
-            r.shift === 'N9' && 
-            r.dayType === dayType
-        );
-    }
     
     // Fallback logic for other common shifts if no specific rule is found
     if (!rule) {
