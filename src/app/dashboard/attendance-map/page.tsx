@@ -24,7 +24,7 @@ const AttendanceMap = dynamic(() => import('../../../components/map/attendance-m
 export default function AttendanceMapPage() {
   const [date, setDate] = useState<Date>(startOfDay(new Date()));
   const [viewType, setViewType] = useState<'attendance' | 'reports'>('attendance');
-  const [selectedLocation, setSelectedLocation] = useState<WorkLocation | null>(null);
+  const [sheetData, setSheetData] = useState<{ title: string; description: string; records: any[] } | null>(null);
   const firestore = useFirestore();
 
   const { data: workLocations, isLoading: locationsLoading } = useCollection<WorkLocation>(
@@ -59,48 +59,62 @@ export default function AttendanceMapPage() {
     }
   }, [date, viewType, allAttendance, allReports]);
 
-  const recordsForSelectedLocation = useMemo(() => {
-    if (!selectedLocation || !allAttendance || !allUsers) return [];
-
-    const selectedDateStr = format(date, 'yyyy-MM-dd');
-    
-    return allAttendance
-      .filter(record => {
-        const recordDate = (record.date as any)?.toDate ? (record.date as any).toDate() : new Date(record.date);
-        return format(recordDate, 'yyyy-MM-dd') === selectedDateStr && record.entryWorkLocationName === selectedLocation.name;
-      })
-      .map(record => {
-          const user = allUsers.find(u => u.id === record.collaboratorId);
-          const userName = user ? `${user.nombres} ${user.apellidos}` : record.userName || 'Desconocido';
-          return {
-              ...record,
-              userName,
-              entryTime: record.entryTime && (record.entryTime as any)?.toDate ? (record.entryTime as any).toDate() : null,
-              exitTime: record.exitTime && (record.exitTime as any)?.toDate ? (record.exitTime as any).toDate() : null,
-          }
-      })
-      .sort((a,b) => (a.entryTime?.getTime() || 0) - (b.entryTime?.getTime() || 0));
-
-  }, [selectedLocation, allAttendance, allUsers, date]);
-
   const handleLocationClick = (locationId: string) => {
+    if (!allAttendance || !allUsers) return;
+
     const location = workLocations?.find(l => l.id === locationId);
     if (location) {
-      setSelectedLocation(location);
+        const recordsForLocation = allAttendance
+            .filter(record => {
+                const recordDate = (record.date as any)?.toDate ? (record.date as any).toDate() : new Date(record.date);
+                return format(recordDate, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd') && record.entryWorkLocationName === location.name;
+            })
+            .map(record => {
+                const user = allUsers.find(u => u.id === record.collaboratorId);
+                const userName = user ? `${user.nombres} ${user.apellidos}` : record.userName || 'Desconocido';
+                return {
+                    ...record,
+                    userName,
+                    entryTime: record.entryTime && (record.entryTime as any)?.toDate ? (record.entryTime as any).toDate() : null,
+                    exitTime: record.exitTime && (record.exitTime as any)?.toDate ? (record.exitTime as any).toDate() : null,
+                };
+            })
+            .sort((a,b) => (a.entryTime?.getTime() || 0) - (b.entryTime?.getTime() || 0));
+
+        setSheetData({
+            title: `Historial de Timbres: ${location.name}`,
+            description: `Registros del día ${format(date, 'dd MMMM, yyyy', { locale: es })}.`,
+            records: recordsForLocation || []
+        });
     }
+  };
+
+  const handleOutOfBoundsRecordClick = (record: AttendanceRecord) => {
+    if (!allUsers) return;
+    const user = allUsers.find(u => u.id === record.collaboratorId);
+    const enrichedRecord = {
+        ...record,
+        userName: user ? `${user.nombres} ${user.apellidos}` : record.userName || 'Desconocido',
+        entryTime: record.entryTime && (record.entryTime as any)?.toDate ? (record.entryTime as any).toDate() : null,
+        exitTime: record.exitTime && (record.exitTime as any)?.toDate ? (record.exitTime as any).toDate() : null,
+    };
+    
+    setSheetData({
+        title: `Detalle de Timbre Fuera de Zona`,
+        description: `Registro de ${enrichedRecord.userName} el día ${format(date, 'dd MMMM, yyyy', { locale: es })}.`,
+        records: [enrichedRecord]
+    });
   };
 
   const isLoading = locationsLoading || attendanceLoading || reportsLoading || usersLoading;
 
   return (
     <div className="space-y-6">
-      <Sheet open={!!selectedLocation} onOpenChange={(isOpen) => !isOpen && setSelectedLocation(null)}>
+      <Sheet open={!!sheetData} onOpenChange={(isOpen) => !isOpen && setSheetData(null)}>
         <SheetContent className="sm:max-w-lg">
             <SheetHeader>
-                <SheetTitle>Historial de Timbres: {selectedLocation?.name}</SheetTitle>
-                <SheetDescription>
-                    Registros del día {format(date, 'dd MMMM, yyyy', { locale: es })}.
-                </SheetDescription>
+                <SheetTitle>{sheetData?.title}</SheetTitle>
+                <SheetDescription>{sheetData?.description}</SheetDescription>
             </SheetHeader>
             <div className="py-4">
                 <Table>
@@ -112,8 +126,8 @@ export default function AttendanceMapPage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {recordsForSelectedLocation.length > 0 ? (
-                            recordsForSelectedLocation.map(record => (
+                        {sheetData?.records && sheetData.records.length > 0 ? (
+                            sheetData.records.map(record => (
                                 <TableRow key={record.id}>
                                     <TableCell>{record.userName}</TableCell>
                                     <TableCell>{record.entryTime ? format(record.entryTime, 'HH:mm:ss') : '-'}</TableCell>
@@ -123,7 +137,7 @@ export default function AttendanceMapPage() {
                         ) : (
                             <TableRow>
                                 <TableCell colSpan={3} className="text-center h-24">
-                                    No hay registros para esta ubicación en la fecha seleccionada.
+                                    No hay registros para esta selección.
                                 </TableCell>
                             </TableRow>
                         )}
@@ -169,6 +183,7 @@ export default function AttendanceMapPage() {
               records={filteredData}
               viewType={viewType}
               onLocationClick={handleLocationClick}
+              onOutOfBoundsRecordClick={handleOutOfBoundsRecordClick}
             />
           )}
         </CardContent>

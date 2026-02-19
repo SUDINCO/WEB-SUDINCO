@@ -69,9 +69,10 @@ interface AttendanceMapProps {
   records: (AttendanceRecord | LocationReport)[];
   viewType: 'attendance' | 'reports';
   onLocationClick?: (locationId: string) => void;
+  onOutOfBoundsRecordClick?: (record: AttendanceRecord) => void;
 }
 
-export default function AttendanceMap({ workLocations, records, viewType, onLocationClick }: AttendanceMapProps) {
+export default function AttendanceMap({ workLocations, records, viewType, onLocationClick, onOutOfBoundsRecordClick }: AttendanceMapProps) {
     const defaultCenter: [number, number] = [-2.14, -79.9]; // Guayaquil
     
     // Process records for attendance view
@@ -195,6 +196,11 @@ export default function AttendanceMap({ workLocations, records, viewType, onLoca
                     key={record.id} 
                     position={[record.entryLatitude!, record.entryLongitude!]} 
                     icon={outOfBoundsIcon}
+                    eventHandlers={{
+                        click: () => {
+                            if (onOutOfBoundsRecordClick) onOutOfBoundsRecordClick(record as AttendanceRecord);
+                        },
+                    }}
                 >
                     <Popup>
                         <strong>Fuera de Zona</strong><br />
