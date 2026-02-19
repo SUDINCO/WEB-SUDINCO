@@ -10,6 +10,10 @@ export const metadata: Metadata = {
     template: "%s | PERFORMA",
   },
   description: 'Página de acceso para la aplicación PERFORMA',
+  icons: {
+    icon: 'https://i.postimg.cc/jSvfPdzH/LOGO1.png',
+    apple: 'https://i.postimg.cc/jSvfPdzH/LOGO1.png',
+  },
 };
 
 export const viewport: Viewport = {
