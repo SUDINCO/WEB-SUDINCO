@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -174,7 +173,7 @@ export default function AttendanceMap({ workLocations, records, viewType, onLoca
                             <Tooltip
                                 permanent
                                 direction="bottom"
-                                offset={[0, 41]}
+                                offset={[0, 10]}
                                 className="leaflet-tooltip-label"
                             >
                                 {location.name} ({count})

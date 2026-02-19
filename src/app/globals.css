@@ -184,12 +184,12 @@
 }
 
 .leaflet-tooltip-label {
-  background-color: hsla(var(--card), 0.8);
-  border-color: hsla(var(--border), 0.5);
-  color: hsl(var(--card-foreground));
+  background-color: hsl(var(--primary));
+  border-color: transparent;
+  color: hsl(var(--primary-foreground));
   font-weight: 600;
   padding: 4px 8px;
   border-radius: 4px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  border-width: 1px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  border-width: 0;
 }
