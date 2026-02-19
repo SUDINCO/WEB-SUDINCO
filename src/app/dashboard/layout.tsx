@@ -13,6 +13,7 @@ import {
   MessageSquare,
   Bell,
   User,
+  Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
