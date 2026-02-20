@@ -813,8 +813,23 @@ export default function StaffPage() {
 
         if (existingUserByCedula) { // Existing user found by cedula, prepare for update
             const changes: ChangeDetail[] = [];
+            const importUserEmail = normalizeEmail(row.email);
+            const existingUserEmail = normalizeEmail(existingUserByCedula.email);
+            if (importUserEmail !== existingUserEmail) {
+                toast({
+                    variant: 'default',
+                    title: 'Modificación de Email Omitida',
+                    description: `No se puede cambiar el email para ${existingUserByCedula.nombres} ${existingUserByCedula.apellidos} mediante importación. El email es el identificador de acceso.`,
+                    duration: 8000
+                });
+            }
+
             Object.keys(importUser).forEach(key => {
                 const fieldKey = key as keyof typeof importUser;
+                if (fieldKey === 'email' || fieldKey === 'cedula') { 
+                    return; 
+                }
+
                 const newValue = importUser[fieldKey];
                 const oldValue = existingUserByCedula[fieldKey as keyof UserProfile];
                 if (normalizeText(String(newValue || '')) !== normalizeText(String(oldValue || ''))) {
@@ -1786,6 +1801,7 @@ export default function StaffPage() {
     </>
   );
 }
+
 
 
 
