@@ -77,7 +77,7 @@
 
 /* Styles adapted from HTML for the mobile-like app structure */
 .app-container {
-  @apply relative mx-auto flex min-h-screen w-full flex-col overflow-hidden bg-background shadow-2xl;
+  @apply relative mx-auto flex min-h-screen w-full flex-col bg-background shadow-2xl;
 }
 
 .app-header {
