@@ -844,13 +844,13 @@ export default function DashboardHomePage() {
                                 <CarouselItem key={user.id}>
                                     <div className="p-1">
                                         <div className="flex flex-col items-center text-center p-4">
-                                            <Avatar className="h-16 w-16 mb-3 border-4 border-amber-300">
+                                            <Avatar className="h-16 w-16 mb-3 border-4 border-accent">
                                                 <AvatarImage src={user.photoUrl} />
                                                 <AvatarFallback>{user.nombres[0]}{user.apellidos[0]}</AvatarFallback>
                                             </Avatar>
                                             <h3 className="font-semibold text-md text-foreground">{user.nombres} {user.apellidos}</h3>
                                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                                <Gift className="h-4 w-4 text-amber-500" />
+                                                <Gift className="h-4 w-4 text-accent" />
                                                 <p>
                                                   {isSameDay(user.birthDate!, new Date()) ? '¡Feliz Cumpleaños Hoy!' : format(user.birthDate!, 'd MMMM', { locale: es })}
                                                 </p>
@@ -959,8 +959,9 @@ export default function DashboardHomePage() {
   
   return (
     <>
-      <div className="bg-white py-4 px-6 border-b -m-4 lg:-m-6 mb-4 lg:mb-6">
-          <h2 className="text-xl text-gray-600">Bienvenido, {currentUserProfile?.nombres ? `${currentUserProfile.nombres} ${currentUserProfile.apellidos}` : authUser?.email}</h2>
+      <div className="bg-background pb-6 -mt-6 -mx-6 px-6">
+          <h1 className="text-3xl font-bold tracking-tight">Bienvenido, {currentUserProfile?.nombres}</h1>
+          <p className="text-muted-foreground">Este es tu centro de mando para PERFORMA.</p>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           <EventCreatorDialog open={isEventDialogOpen} onOpenChange={setIsEventDialogOpen} selectedDate={selectedEventDate} currentUserProfile={currentUserProfile || null} />

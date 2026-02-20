@@ -165,22 +165,22 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
   const NavigationMenu = () => (
     <nav className="grid gap-2 text-lg font-medium">
-      <Link href="/dashboard" className="flex items-center justify-center gap-2 text-lg font-semibold">
+      <Link href="/dashboard" className="flex items-center justify-center gap-2 text-lg font-semibold py-4">
         <Image
-          src="https://i.postimg.cc/MGdx1gn6/performa.png"
+          src="https://i.postimg.cc/jSvfPdzH/LOGO1.png"
           alt="Acceso PERFORMA"
           width={150}
           height={50}
         />
       </Link>
       
-      <h3 className="my-2 px-3 text-sm font-semibold text-blue-300/80">
+      <h3 className="my-2 px-3 text-sm font-semibold text-primary-foreground/60">
         Módulos
       </h3>
       <Accordion type="multiple" className="w-full" defaultValue={activeModule ? [activeModule] : []}>
         {navLinks.map((link) => (
           <AccordionItem value={link.module} key={link.module} className="border-b-0">
-            <AccordionTrigger className="flex items-center gap-4 rounded-none px-3 py-2 text-blue-200 hover:no-underline hover:bg-blue-800/50">
+            <AccordionTrigger className="flex items-center gap-4 rounded-none px-3 py-2 text-primary-foreground/80 hover:no-underline hover:bg-primary-foreground/10">
               <div className="flex items-center gap-4">
                 <link.icon className="h-5 w-5" />
                 <span className="text-base font-medium">{link.module}</span>
@@ -191,17 +191,17 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                 <Accordion type="multiple" className="w-full" defaultValue={activeGroup ? [activeGroup] : []}>
                   {link.groups.map(group => (
                     <AccordionItem value={group.title} key={group.title} className="border-b-0">
-                      <AccordionTrigger className="flex items-center gap-2 rounded-none px-3 py-2 text-blue-300/80 hover:no-underline hover:bg-blue-800/50 text-sm">
+                      <AccordionTrigger className="flex items-center gap-2 rounded-none px-3 py-2 text-primary-foreground/70 hover:no-underline hover:bg-primary-foreground/10 text-sm">
                         <span className="font-semibold">{group.title}</span>
                       </AccordionTrigger>
                       <AccordionContent className="pt-2 pb-0 pl-4">
-                        <div className="flex flex-col gap-1 border-l border-blue-700 pl-4">
+                        <div className="flex flex-col gap-1 border-l border-primary-foreground/20 pl-4">
                           {group.sublinks.map((sublink: any) => (
                             <Link
                               key={sublink.name}
                               href={sublink.href}
                               onClick={handleLinkClick}
-                              className={cn("flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors", isActive(sublink.href) ? 'bg-amber-400 text-blue-900' : 'text-blue-200 hover:bg-blue-800')}
+                              className={cn("flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors", isActive(sublink.href) ? 'bg-accent text-accent-foreground' : 'text-primary-foreground/90 hover:bg-primary-foreground/10')}
                             >
                               <sublink.icon className="h-4 w-4" />
                               {sublink.name}
@@ -213,13 +213,13 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                   ))}
                 </Accordion>
               ) : (
-                <div className="flex flex-col gap-1 ml-4 border-l border-blue-700 pl-4 py-2">
+                <div className="flex flex-col gap-1 ml-4 border-l border-primary-foreground/20 pl-4 py-2">
                   {link.sublinks?.map((sublink: any) => (
                     <Link
                       key={sublink.name}
                       href={sublink.href}
                       onClick={handleLinkClick}
-                      className={cn("flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors", isActive(sublink.href) ? 'bg-amber-400 text-blue-900' : 'text-blue-200 hover:bg-blue-800')}
+                      className={cn("flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors", isActive(sublink.href) ? 'bg-accent text-accent-foreground' : 'text-primary-foreground/90 hover:bg-primary-foreground/10')}
                     >
                       <sublink.icon className="h-4 w-4" />
                       {sublink.name}
@@ -237,7 +237,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const renderLayout = () => (
      <>
       <NextTopLoader
-        color="#2563EB"
+        color="hsl(var(--accent))"
         initialPosition={0.08}
         crawlSpeed={200}
         height={3}
@@ -245,10 +245,9 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         showSpinner={false}
         easing="ease"
         speed={200}
-        shadow="0 0 10px #2563EB,0 0 5px #2563EB"
+        shadow="0 0 10px hsl(var(--accent)),0 0 5px hsl(var(--accent))"
       />
       
-      {/* Container for both mobile and desktop views */}
       <div className="h-full">
         
         {/* Mobile View */}
@@ -258,7 +257,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
               <div className="app-header-content">
                 <Link href="/dashboard">
                   <Image
-                    src="https://i.postimg.cc/MGdx1gn6/performa.png"
+                    src="https://i.postimg.cc/jSvfPdzH/LOGO1.png"
                     alt="Acceso PERFORMA"
                     width={100}
                     height={35}
@@ -308,23 +307,23 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
         {/* Desktop View */}
         <div className="hidden md:flex h-screen flex-col">
-          <header className="sticky top-0 z-50 flex h-16 shrink-0 items-center justify-between gap-4 border-b bg-blue-900 px-4 md:px-6 text-white">
+          <header className="sticky top-0 z-50 flex h-16 shrink-0 items-center justify-between gap-4 border-b bg-primary px-4 md:px-6 text-white">
             <div className="flex items-center gap-2 md:gap-4">
               <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="ghost" className="flex items-center gap-2 text-white hover:bg-blue-800 hover:text-white px-2 md:px-3 py-2 h-auto text-base rounded-md">
+                  <Button variant="ghost" className="flex items-center gap-2 text-white hover:bg-primary-foreground/10 hover:text-white px-2 md:px-3 py-2 h-auto text-base rounded-md">
                     <Menu className="h-5 w-5" />
                     <span className="font-medium hidden md:inline">MENÚ</span>
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="left" className="flex flex-col bg-blue-900 text-white border-r-0 p-0">
+                <SheetContent side="left" className="flex flex-col bg-primary text-white border-r-0 p-0">
                   <SheetHeader>
                     <SheetTitle className="sr-only">Menú Principal</SheetTitle>
                   </SheetHeader>
                   <NavigationMenu />
                 </SheetContent>
               </Sheet>
-              <Link href="/dashboard" className="flex items-center gap-2 text-white hover:bg-blue-800 rounded-md px-2 md:px-3 py-2 text-base">
+              <Link href="/dashboard" className="flex items-center gap-2 text-white hover:bg-primary-foreground/10 rounded-md px-2 md:px-3 py-2 text-base">
                 <Home className="h-5 w-5" />
                 <span className="font-medium hidden md:inline">HOME</span>
               </Link>
@@ -332,7 +331,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
             
             <div className="flex items-center">
               <Image
-                src="https://i.postimg.cc/MGdx1gn6/performa.png"
+                src="https://i.postimg.cc/jSvfPdzH/LOGO1.png"
                 alt="PERFORMA Logo"
                 width={120}
                 height={40}
@@ -342,7 +341,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
             <div className="flex items-center gap-4">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="flex items-center gap-2 text-white hover:bg-blue-800 hover:text-white px-3 py-2 h-auto text-base rounded-md">
+                  <Button variant="ghost" className="flex items-center gap-2 text-white hover:bg-primary-foreground/10 hover:text-white px-3 py-2 h-auto text-base rounded-md">
                     <User className="h-5 w-5" />
                     <span className="font-medium hidden md:inline">{user?.email}</span>
                     <ChevronDown className="h-4 w-4" />
@@ -364,7 +363,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
           </header>
 
           <div className="flex-1 overflow-y-auto">
-            <main className="p-4 lg:p-6 bg-slate-50 min-h-full">
+            <main className="p-4 lg:p-6 bg-background min-h-full animate-fade-in">
               {children}
             </main>
           </div>

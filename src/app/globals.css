@@ -13,31 +13,32 @@
     @apply h-full;
   }
   :root {
-    --background: 40 50% 98%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 40 50% 98%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 40 50% 98%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
+    --background: 216 28% 97%; /* #F4F6F9 */
+    --foreground: 215 9% 25%; /* Slightly lighter than pure black */
+    --card: 0 0% 100%;
+    --card-foreground: 215 9% 25%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 9% 25%;
+    --primary: 211 65% 18%; /* #0F2A4A */
     --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 35.6 91.6% 51.4%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
+    --secondary: 215 14% 94%; /* Lighter gray for secondary buttons */
+    --secondary-foreground: 211 65% 18%;
+    --muted: 215 14% 94%;
+    --muted-foreground: 215 9% 47%; /* #6B7280 */
+    --accent: 214 84% 96%; /* Very light blue for hovers */
+    --accent-foreground: 214 84% 40%;
+    --destructive: 0 72% 50%; /* #dc2626 */
     --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
+    --border: 215 14% 88%; /* #DEE2E6 */
+    --input: 215 14% 88%;
+    --ring: 214 84% 57%; /* #2F80ED */
+    
+    --chart-1: 35 92% 55%; /* Accent Yellow/Orange family */
+    --chart-2: 24 94% 51%;
+    --chart-3: 14 90% 48%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
+    --radius: 0.5rem; /* 8px */
   }
   .dark {
     --background: 222.2 84% 4.9%;
@@ -46,24 +47,19 @@
     --card-foreground: 210 40% 98%;
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
-    --primary: 221.2 83.2% 53.3%;
+    --primary: 211 65% 18%;
     --primary-foreground: 210 40% 98%;
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
-    --accent: 35.6 91.6% 51.4%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 217.2 32.6% 25.5%;
+    --accent-foreground: 210 40% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 221.2 83.2% 53.3%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    --ring: 214 84% 57%;
   }
 }
 
@@ -74,6 +70,9 @@
   body {
     @apply bg-background text-foreground font-body overscroll-y-none;
   }
+  * {
+    @apply transition-colors duration-200;
+  }
 }
 
 /* Styles adapted from HTML for the mobile-like app structure */
@@ -82,7 +81,7 @@
 }
 
 .app-header {
-  @apply sticky top-0 z-50 w-full bg-blue-900 text-primary-foreground shadow-md;
+  @apply sticky top-0 z-50 w-full bg-primary text-primary-foreground shadow-md;
 }
 
 .app-header-content {
@@ -131,9 +130,9 @@
 .central-nav-item {
   @apply -mt-6 flex h-[56px] w-[56px] items-center justify-center 
           bg-primary text-primary-foreground 
-          shadow-[0_8px_25px_rgba(var(--primary),0.6)] 
-          hover:bg-accent
-          transition-colors transition-transform duration-300 ease-in-out;
+          shadow-[0_8px_25px_hsla(var(--primary),0.6)] 
+          hover:bg-primary/90
+          transition-all duration-300 ease-in-out;
   border-radius: 50%; /* Ensured perfect circle */
 }
 .central-nav-item.active {
@@ -163,7 +162,7 @@
 }
 
 .app-icon-link {
-    @apply flex cursor-pointer flex-col items-center text-center text-primary transition-transform duration-200 ease-in-out hover:scale-105 hover:text-accent;
+    @apply flex cursor-pointer flex-col items-center text-center text-primary transition-transform duration-200 ease-in-out hover:scale-105 hover:text-ring;
 }
 
 .app-icon-item {
@@ -171,7 +170,7 @@
 }
 
 .app-icon-link:hover .app-icon-item {
-    @apply scale-110 shadow-lg;
+    @apply scale-110 shadow-lg bg-accent;
 }
 
 .app-icon-svg {
@@ -182,7 +181,7 @@
     @apply text-[11px] font-medium text-muted-foreground;
 }
 .app-icon-link:hover .app-icon-label {
-    @apply text-accent;
+    @apply text-accent-foreground;
 }
 
 .leaflet-tooltip-label {
@@ -191,7 +190,7 @@
   color: hsl(var(--primary-foreground));
   font-weight: 600;
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: var(--radius);
   box-shadow: 0 2px 6px rgba(0,0,0,0.2);
   border-width: 0;
 }
