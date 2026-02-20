@@ -533,6 +533,7 @@ function SchedulePageContent() {
               overtimeRules={overtimeRules}
               transfers={transfers}
               roleChanges={roleChanges}
+              shiftPatterns={shiftPatterns || []}
               // Pass state and handlers for dialog to control
               onPrevPeriod={() => setCurrentDate(subMonths(currentDate, 1))}
               onNextPeriod={() => setCurrentDate(addMonths(currentDate, 1))}

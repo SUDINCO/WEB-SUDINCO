@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -50,6 +49,7 @@ interface ScheduleDataSummaryDialogProps {
   overtimeRules: OvertimeRule[];
   transfers: TemporaryTransfer[];
   roleChanges: RoleChange[];
+  shiftPatterns: ShiftPattern[];
   onPrevPeriod: () => void;
   onNextPeriod: () => void;
   locationOptions: Option[];
@@ -166,6 +166,7 @@ export function ScheduleDataSummaryDialog({
     overtimeRules,
     transfers,
     roleChanges,
+    shiftPatterns,
     onPrevPeriod,
     onNextPeriod,
     locationOptions,
@@ -175,11 +176,6 @@ export function ScheduleDataSummaryDialog({
     selectedJobTitle: periodJobTitle,
     onJobTitleChange: onPeriodJobTitleChange,
 }: ScheduleDataSummaryDialogProps) {
-
-  const { data: shiftPatterns } = useCollection<ShiftPattern>(React.useMemo(() => {
-    const firestore = useFirestore();
-    return firestore ? collection(firestore, 'shiftPatterns') : null;
-  }, []));
 
   const [viewMode, setViewMode] = React.useState<'period' | 'annual'>('period');
   const [annualLocation, setAnnualLocation] = React.useState('todos');
