@@ -314,9 +314,17 @@ export function ScheduleDataSummaryDialog({
         });
     });
     
-    let collaboratorData = Array.from(annualData.values());
     const fullCollaboratorMap = new Map(collaborators.map(c => [c.id, c]));
-        
+    
+    annualData.forEach(summary => {
+        const collaborator = fullCollaboratorMap.get(summary.id);
+        if (collaborator) {
+            summary.jobTitle = collaborator.originalJobTitle;
+        }
+    });
+
+    let collaboratorData = Array.from(annualData.values());
+    
     collaboratorData = collaboratorData.filter(summary => {
         const collaborator = fullCollaboratorMap.get(summary.id);
         if (!collaborator) return false;
@@ -341,7 +349,16 @@ export function ScheduleDataSummaryDialog({
     grouped.forEach(group => group.employees.sort((a,b) => a.name.localeCompare(b.name)));
 
     const allShifts = new Set(collaboratorData.flatMap(d => Array.from(d.shiftCounts.keys())));
-    const sortedShifts = ['M8', 'T8', 'N8', 'D12', 'N12', 'TA', 'T24', 'D10', 'D9'].filter(s => allShifts.has(s));
+    const orderedShiftTypes = ['M8', 'T8', 'N8', 'D12', 'N12', 'TA', 'T24', 'D10', 'D9'];
+    const sortedShifts = Array.from(allShifts).sort((a, b) => {
+        const indexA = orderedShiftTypes.indexOf(a);
+        const indexB = orderedShiftTypes.indexOf(b);
+
+        if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+        if (indexA !== -1) return -1;
+        if (indexB !== -1) return 1;
+        return a.localeCompare(b);
+    });
 
     return { groupedData: grouped, uniqueShifts: sortedShifts };
 
