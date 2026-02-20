@@ -17,8 +17,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { format, getDay, isWithinInterval, parseISO, subMonths, eachDayOfInterval, startOfYear, endOfYear, set, startOfMonth, endOfMonth } from 'date-fns';
-import type { Collaborator, Holiday, OvertimeRule, RoleChange, SavedSchedule, TemporaryTransfer } from '@/lib/types';
+import { format, getDay, isWithinInterval, parseISO, subMonths, eachDayOfInterval, startOfYear, endOfYear, set, startOfMonth, endOfMonth, isSaturday, isSunday } from 'date-fns';
+import type { Collaborator, Holiday, OvertimeRule, RoleChange, SavedSchedule, TemporaryTransfer, ShiftPattern } from '@/lib/types';
 import { getShiftDetailsFromRules } from '@/lib/schedule-generator';
 import { getEffectiveDetails } from '@/lib/schedule-utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
@@ -176,6 +176,11 @@ export function ScheduleDataSummaryDialog({
     onJobTitleChange: onPeriodJobTitleChange,
 }: ScheduleDataSummaryDialogProps) {
 
+  const { data: shiftPatterns } = useCollection<ShiftPattern>(React.useMemo(() => {
+    const firestore = useFirestore();
+    return firestore ? collection(firestore, 'shiftPatterns') : null;
+  }, []));
+
   const [viewMode, setViewMode] = React.useState<'period' | 'annual'>('period');
   const [annualLocation, setAnnualLocation] = React.useState('todos');
   const [annualJobTitle, setAnnualJobTitle] = React.useState('todos');
@@ -254,115 +259,79 @@ export function ScheduleDataSummaryDialog({
 
 
   const { groupedData: annualGroupedData, uniqueShifts: annualUniqueShifts } = React.useMemo(() => {
-    const currentYear = format(currentDate, 'yyyy');
-    const yearSchedules = Object.values(savedSchedules).filter(s => s.id.startsWith(currentYear));
+    const yearStart = startOfYear(currentDate);
+    const yearEnd = endOfYear(currentDate);
+    const allYearDays = eachDayOfInterval({ start: yearStart, end: yearEnd });
 
-    if (collaborators.length === 0 || yearSchedules.length === 0) {
+    if (collaborators.length === 0 || allYearDays.length === 0 || !shiftPatterns) {
         return { groupedData: [], uniqueShifts: [] };
     }
+
+    const fullYearSchedule = new Map<string, Map<string, string | null>>();
+    const shiftPatternsByCargo = new Map(shiftPatterns.map(p => [normalizeText(p.jobTitle), p]));
     
-    const annualData = new Map<string, SummaryData>();
-
-    yearSchedules.forEach(periodSchedule => {
-        const periodId = periodSchedule.id.split('_')[0];
-        const [yearStr, monthStr] = periodId.split('-');
-        const year = parseInt(yearStr, 10);
-        const month = parseInt(monthStr, 10);
+    collaborators.forEach(collaborator => {
+        const collabYearSchedule = new Map<string, string | null>();
         
-        if (isNaN(year) || isNaN(month)) return;
+        allYearDays.forEach(day => {
+            const dayKey = format(day, 'yyyy-MM-dd');
+            
+            const periodDate = day.getDate() < 21 ? subMonths(day, 1) : day;
+            const periodId = format(periodDate, 'yyyy-MM');
 
-        const periodDate = set(new Date(), { year, month: month - 1, date: 1 });
-        const prevMonthForPeriod = subMonths(periodDate, 1);
-        const start = new Date(prevMonthForPeriod.getFullYear(), prevMonthForPeriod.getMonth(), 21);
-        const end = new Date(periodDate.getFullYear(), periodDate.getMonth(), 20);
-        const periodDays = eachDayOfInterval({ start, end });
-        
-        if (periodDays.length === 0) return;
+            const { location: effectiveLocation, jobTitle: effectiveJobTitle } = getEffectiveDetails(collaborator, day, transfers, roleChanges);
+            const savedScheduleKey = `${periodId}_${normalizeText(effectiveLocation)}_${normalizeText(effectiveJobTitle)}`;
+            
+            const savedScheduleData = savedSchedules[savedScheduleKey];
+            
+            let shift: string | null | undefined = undefined;
 
-        const periodScheduleMap = new Map<string, Map<string, string | null>>();
-        Object.entries(periodSchedule.schedule).forEach(([collabId, dayMap]) => {
-            periodScheduleMap.set(collabId, new Map(Object.entries(dayMap)));
-        });
-
-        const periodCollaborators = collaborators.filter(c => Object.keys(periodSchedule.schedule).includes(c.id));
-        
-        if (periodCollaborators.length === 0) return;
-
-        const periodSummary = calculateScheduleSummary(periodCollaborators, periodScheduleMap, periodDays, holidays, overtimeRules, transfers, roleChanges);
-
-        periodSummary.groupedData.forEach(group => {
-            group.employees.forEach(employee => {
-                if (!annualData.has(employee.id)) {
-                    annualData.set(employee.id, {
-                        id: employee.id, name: employee.name, jobTitle: employee.jobTitle,
-                        shiftCounts: new Map(),
-                        freeDaysByWeekday: new Array(7).fill(0),
-                        extraHours: { he25: 0, he50: 0, he100: 0 },
-                        compensationHours: 0,
-                        compensationDetails: []
-                    });
+            if (savedScheduleData && savedScheduleData.schedule[collaborator.id]) {
+                shift = savedScheduleData.schedule[collaborator.id][dayKey];
+            }
+            
+            if (shift === undefined) {
+                if (!shiftPatternsByCargo.has(normalizeText(collaborator.originalJobTitle))) {
+                     shift = isSaturday(day) || isSunday(day) ? null : 'N9';
+                } else {
+                    shift = null;
                 }
-                const summary = annualData.get(employee.id)!;
-                employee.shiftCounts.forEach((count, shift) => summary.shiftCounts.set(shift, (summary.shiftCounts.get(shift) || 0) + count));
-                employee.freeDaysByWeekday.forEach((count, i) => summary.freeDaysByWeekday[i] += count);
-                summary.extraHours.he25 += employee.extraHours.he25;
-                summary.extraHours.he50 += employee.extraHours.he50;
-                summary.extraHours.he100 += employee.extraHours.he100;
-                summary.compensationHours += employee.compensationHours;
-                summary.compensationDetails.push(...employee.compensationDetails);
-            });
+            }
+            
+            collabYearSchedule.set(dayKey, shift ?? null);
         });
+
+        fullYearSchedule.set(collaborator.id, collabYearSchedule);
     });
+
+    const { groupedData, uniqueShifts } = calculateScheduleSummary(
+        collaborators, fullYearSchedule, allYearDays, holidays, overtimeRules, transfers, roleChanges
+    );
+
+    if (annualLocation === 'todos' && annualJobTitle === 'todos') {
+      return { groupedData, uniqueShifts };
+    }
     
     const fullCollaboratorMap = new Map(collaborators.map(c => [c.id, c]));
-    
-    annualData.forEach(summary => {
-        const collaborator = fullCollaboratorMap.get(summary.id);
-        if (collaborator) {
-            summary.jobTitle = collaborator.originalJobTitle;
-        }
-    });
 
-    let collaboratorData = Array.from(annualData.values());
-    
-    collaboratorData = collaboratorData.filter(summary => {
-        const collaborator = fullCollaboratorMap.get(summary.id);
-        if (!collaborator) return false;
+    const filteredGroupedData = groupedData.map(group => {
+        const filteredEmployees = group.employees.filter(employee => {
+          const collaborator = fullCollaboratorMap.get(employee.id);
+          if (!collaborator) return false;
+          
+          const locationMatch = annualLocation === 'todos' || collaborator.originalLocation === annualLocation;
+          const jobTitleMatch = annualJobTitle === 'todos' || collaborator.originalJobTitle === annualJobTitle;
 
-        const locationMatch = annualLocation === 'todos' || collaborator.originalLocation === annualLocation;
-        const jobTitleMatch = annualJobTitle === 'todos' || summary.jobTitle === annualJobTitle;
-        
-        return locationMatch && jobTitleMatch;
-    });
-    
-    const grouped = collaboratorData.reduce((acc, data) => {
-        let group = acc.find(g => g.jobTitle === data.jobTitle);
-        if (!group) {
-            group = { jobTitle: data.jobTitle, employees: [] };
-            acc.push(group);
-        }
-        group.employees.push(data);
-        return acc;
-    }, [] as { jobTitle: string, employees: typeof collaboratorData }[]);
-    
-    grouped.sort((a, b) => a.jobTitle.localeCompare(b.jobTitle));
-    grouped.forEach(group => group.employees.sort((a,b) => a.name.localeCompare(b.name)));
+          return locationMatch && jobTitleMatch;
+        });
 
-    const allShifts = new Set(collaboratorData.flatMap(d => Array.from(d.shiftCounts.keys())));
-    const orderedShiftTypes = ['M8', 'T8', 'N8', 'D12', 'N12', 'TA', 'T24', 'D10', 'D9'];
-    const sortedShifts = Array.from(allShifts).sort((a, b) => {
-        const indexA = orderedShiftTypes.indexOf(a);
-        const indexB = orderedShiftTypes.indexOf(b);
+        return { ...group, employees: filteredEmployees };
+      })
+      .filter(group => group.employees.length > 0);
+      
+    return { groupedData: filteredGroupedData, uniqueShifts };
 
-        if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-        if (indexA !== -1) return -1;
-        if (indexB !== -1) return 1;
-        return a.localeCompare(b);
-    });
-
-    return { groupedData: grouped, uniqueShifts: sortedShifts };
-
-  }, [currentDate, savedSchedules, annualLocation, annualJobTitle, collaborators, holidays, overtimeRules, transfers, roleChanges]);
+}, [currentDate, savedSchedules, collaborators, holidays, overtimeRules, transfers, roleChanges, annualLocation, annualJobTitle, shiftPatterns]);
 
 
   return (
