@@ -204,27 +204,7 @@ const initialData = {
         {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"NORMAL","shift":"T8","startTime":"14:00","endTime":"22:00","nightSurcharge":3,"sup50":0,"ext100":0},
         {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"FESTIVO","shift":"M8","startTime":"06:00","endTime":"14:00","nightSurcharge":0,"sup50":0,"ext100":8},
         {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"FESTIVO","shift":"N8","startTime":"22:00","endTime":"06:00","nightSurcharge":6,"sup50":0,"ext100":2},
-        {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"FESTIVO","shift":"T8","startTime":"14:00","endTime":"22:00","nightSurcharge":0,"sup50":0,"ext100":8},
-        {
-            "jobTitle":"_DEFAULT_OFFICE_",
-            "dayType":"NORMAL",
-            "shift":"N9",
-            "startTime":"08:30",
-            "endTime":"17:30",
-            "nightSurcharge":0,
-            "sup50":1,
-            "ext100":0
-        },
-        {
-            "jobTitle":"_DEFAULT_OFFICE_",
-            "dayType":"FESTIVO",
-            "shift":"N9",
-            "startTime":"08:30",
-            "endTime":"17:30",
-            "nightSurcharge":0,
-            "sup50":0,
-            "ext100":9
-        }
+        {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"FESTIVO","shift":"T8","startTime":"14:00","endTime":"22:00","nightSurcharge":0,"sup50":0,"ext100":8}
     ]
 };
 
