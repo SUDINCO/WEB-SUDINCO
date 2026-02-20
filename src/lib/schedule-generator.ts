@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import {
@@ -281,15 +282,12 @@ export const getShiftDetailsFromRules = (shift: string, effectiveJobTitle: strin
         r.dayType === dayType
     );
     
-    if (!rule) {
-        const isOfficeShift = shift === 'N9';
-        if (isOfficeShift) {
-            rule = overtimeRules.find(r => 
-                r.jobTitle === '_DEFAULT_OFFICE_' &&
-                r.shift === shift &&
-                r.dayType === dayType
-            );
-        }
+    if (!rule && shift === 'N9') {
+        rule = overtimeRules.find(r => 
+            normalizeText(r.jobTitle) === '_DEFAULT_OFFICE_' &&
+            r.shift === shift &&
+            r.dayType === dayType
+        );
     }
 
     if (!rule) {
@@ -602,6 +600,7 @@ export function calculateScheduleSummary(
             const shift = scheduleToProcess.get(collaborator.id)?.get(dayKey);
 
             if (shift === undefined) {
+                // If a day is not in the schedule, it means it wasn't part of an approved period for this user
                 return;
             }
 
@@ -656,7 +655,7 @@ export function calculateScheduleSummary(
                     const isOfficeShift = shift === 'N9';
                     if (isOfficeShift) {
                         rule = allOvertimeRules.find(r => 
-                            r.jobTitle === '_DEFAULT_OFFICE_' &&
+                            normalizeText(r.jobTitle) === '_DEFAULT_OFFICE_' &&
                             r.shift === shift &&
                             r.dayType === jornada
                         );
