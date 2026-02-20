@@ -66,6 +66,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { useCollection, useFirestore, useAuth, useUser } from '@/firebase';
+import { useUserProfile } from '@/context/user-profile-context';
 import { collection, doc, addDoc, updateDoc, setDoc, query, where, getDocs, writeBatch, deleteDoc } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, getAuth } from 'firebase/auth';
 import { initializeApp, deleteApp } from 'firebase/app';
@@ -204,6 +205,7 @@ export default function StaffPage() {
   const firestore = useFirestore();
   const auth = useAuth();
   const { user: currentUser } = useUser();
+  const { userProfile: currentUserProfile } = useUserProfile();
   const usersCollectionRef = useMemo(() => firestore ? collection(firestore, 'users') : null, [firestore]);
   const rolesCollectionRef = useMemo(() => firestore ? collection(firestore, 'roles') : null, [firestore]);
   const rulesCollectionRef = useMemo(() => firestore ? collection(firestore, 'leaderAssignmentRules') : null, [firestore]);
@@ -220,6 +222,11 @@ export default function StaffPage() {
   const { data: areas, isLoading: areasLoading } = useCollection<GenericOption>(useMemo(() => firestore ? collection(firestore, 'areas') : null, [firestore]));
   const { data: centrosCosto, isLoading: centrosCostoLoading } = useCollection<GenericOption>(useMemo(() => firestore ? collection(firestore, 'centrosCosto') : null, [firestore]));
 
+  const isAdmin = useMemo(() => {
+    if (!currentUserProfile) return false;
+    return currentUserProfile.rol === 'MASTER' || currentUserProfile.rol === 'ADMINISTRADOR';
+  }, [currentUserProfile]);
+  
   const selectedGroup = useMemo(() => {
     if (!selectedGroupId || !consultantGroups) return null;
     return consultantGroups.find(g => g.id === selectedGroupId) || null;
@@ -1715,7 +1722,7 @@ export default function StaffPage() {
                                             <Edit className="mr-2 h-4 w-4" />
                                             <span>Editar</span>
                                         </DropdownMenuItem>
-                                        <DropdownMenuItem onSelect={() => setUserToReset(user)} disabled={currentUser?.email !== 'master@sudinco.com'}>
+                                        <DropdownMenuItem onSelect={() => setUserToReset(user)} disabled={!isAdmin}>
                                             <KeyRound className="mr-2 h-4 w-4" />
                                             <span>Restablecer Contraseña</span>
                                         </DropdownMenuItem>
@@ -1740,5 +1747,6 @@ export default function StaffPage() {
     </>
   );
 }
+
 
 
