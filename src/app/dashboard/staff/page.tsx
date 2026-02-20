@@ -1091,7 +1091,6 @@ export default function StaffPage() {
       <Dialog open={!!userToReset} onOpenChange={(open) => {
         if (!open) {
           setUserToReset(null);
-          // Allow fade out animation to complete before resetting state
           setTimeout(() => {
             setResetStatus('idle');
             setResetError('');
@@ -1141,7 +1140,14 @@ export default function StaffPage() {
                     </Button>
                 </>
             ) : (
-                <Button onClick={() => setUserToReset(null)}>Cerrar</Button>
+                <Button onClick={() => {
+                    setUserToReset(null);
+                    setTimeout(() => {
+                        setResetStatus('idle');
+                        setResetError('');
+                        setIsResetting(false);
+                    }, 300);
+                }}>Cerrar</Button>
             )}
           </DialogFooter>
         </DialogContent>
@@ -1780,6 +1786,7 @@ export default function StaffPage() {
     </>
   );
 }
+
 
 
 
