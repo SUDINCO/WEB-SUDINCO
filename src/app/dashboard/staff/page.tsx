@@ -72,7 +72,7 @@ import { createUserWithEmailAndPassword, getAuth, sendPasswordResetEmail } from 
 import { initializeApp, deleteApp } from 'firebase/app';
 import { firebaseConfig } from '@/firebase/config';
 import { toast } from '@/hooks/use-toast';
-import { PlusCircle, Search, Edit, UserPlus, LoaderCircle, Check, FileUp, FileDown, ArrowRight, Users, Trash2, KeyRound, MoreHorizontal, Info, UserRound } from 'lucide-react';
+import { PlusCircle, Search, Edit, UserPlus, LoaderCircle, Check, FileUp, FileDown, ArrowRight, Users, Trash2, KeyRound, MoreHorizontal, Info, UserRound, AlertTriangle, CheckCircle } from 'lucide-react';
 import { format, parse } from 'date-fns';
 import { Switch } from '@/components/ui/switch';
 import Papa from 'papaparse';
@@ -195,6 +195,9 @@ export default function StaffPage() {
   const [memberSearch, setMemberSearch] = useState('');
 
   const [userToReset, setUserToReset] = useState<UserProfile | null>(null);
+  const [isResetting, setIsResetting] = useState(false);
+  const [resetStatus, setResetStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [resetError, setResetError] = useState<string>('');
   const migrationCompleted = useRef(false);
 
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
@@ -573,25 +576,23 @@ export default function StaffPage() {
         return;
     }
 
+    setIsResetting(true);
+    setResetStatus('idle');
+    setResetError('');
+
     try {
         await sendPasswordResetEmail(auth, userToReset.email);
-        toast({
-            title: 'Enlace Enviado',
-            description: `Se ha enviado un correo para restablecer la contraseña a ${userToReset.email}.`,
-        });
+        setResetStatus('success');
     } catch (error: any) {
         console.error("Error sending password reset email from staff page:", error);
         let description = 'Ocurrió un error inesperado al enviar el correo.';
         if (error.code === 'auth/user-not-found') {
             description = "Este correo no tiene una cuenta de autenticación asociada. Debes crear el usuario primero.";
         }
-        toast({
-            variant: "destructive",
-            title: "Error al Enviar Correo",
-            description: description
-        });
+        setResetError(description);
+        setResetStatus('error');
     } finally {
-        setUserToReset(null);
+        setIsResetting(false);
     }
   };
 
@@ -1087,23 +1088,65 @@ export default function StaffPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={!!userToReset} onOpenChange={() => setUserToReset(null)}>
-        <AlertDialogContent>
-            <AlertDialogHeader>
-                <AlertDialogTitle>Enviar Correo de Recuperación</AlertDialogTitle>
-                <AlertDialogDescription>
-                    {`¿Estás seguro de que quieres enviar un correo para restablecer la contraseña a ${userToReset?.nombres} ${userToReset?.apellidos} (${userToReset?.email})?`}
-                    <br/><br/>
-                    El usuario recibirá un enlace para crear una nueva contraseña. Esto solo funcionará si el usuario ya tiene una cuenta de autenticación creada.
-                </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={handlePasswordReset}>Sí, Enviar Correo</AlertDialogAction>
-            </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <Dialog open={!!userToReset} onOpenChange={(open) => {
+        if (!open) {
+          setUserToReset(null);
+          // Allow fade out animation to complete before resetting state
+          setTimeout(() => {
+            setResetStatus('idle');
+            setResetError('');
+            setIsResetting(false);
+          }, 300);
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+                {resetStatus === 'success' ? 'Correo Enviado Exitosamente'
+                 : resetStatus === 'error' ? 'Error al Enviar Correo'
+                 : 'Enviar Correo de Recuperación'}
+            </DialogTitle>
+            {resetStatus === 'idle' && (
+              <DialogDescription>
+                  {`¿Estás seguro de que quieres enviar un correo para restablecer la contraseña a ${userToReset?.nombres} ${userToReset?.apellidos} (${userToReset?.email})?`}
+                  <br/><br/>
+                  El usuario recibirá un enlace para crear una nueva contraseña. Esto solo funcionará si el usuario ya tiene una cuenta de autenticación creada.
+              </DialogDescription>
+            )}
+          </DialogHeader>
 
+          {resetStatus === 'success' && (
+              <div className="py-4 text-center flex flex-col items-center gap-2">
+                  <CheckCircle className="h-16 w-16 text-green-500" />
+                  <p className="text-sm text-muted-foreground">
+                      Se ha enviado un correo electrónico a <strong className="text-foreground">{userToReset?.email}</strong>. 
+                      Por favor, indícale al usuario que revise su bandeja de entrada y su carpeta de spam.
+                  </p>
+              </div>
+          )}
+          {resetStatus === 'error' && (
+              <div className="py-4 text-center flex flex-col items-center gap-2">
+                  <AlertTriangle className="h-16 w-16 text-destructive" />
+                  <p className="text-destructive-foreground bg-destructive/10 p-3 rounded-md">{resetError}</p>
+              </div>
+          )}
+
+          <DialogFooter>
+            {resetStatus === 'idle' ? (
+                <>
+                    <Button variant="ghost" onClick={() => setUserToReset(null)} disabled={isResetting}>Cancelar</Button>
+                    <Button onClick={handlePasswordReset} disabled={isResetting}>
+                        {isResetting && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
+                        {isResetting ? 'Enviando...' : 'Sí, Enviar Correo'}
+                    </Button>
+                </>
+            ) : (
+                <Button onClick={() => setUserToReset(null)}>Cerrar</Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
        <Dialog open={isGroupDialogOpen} onOpenChange={setGroupDialogOpen}>
         <DialogContent className="sm:max-w-4xl">
           <DialogHeader>
@@ -1737,6 +1780,7 @@ export default function StaffPage() {
     </>
   );
 }
+
 
 
 
