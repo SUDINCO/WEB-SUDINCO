@@ -1,4 +1,3 @@
-
 "use client";
 import React, { useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
@@ -16,6 +15,7 @@ import type { WorkLocation, AttendanceRecord, LocationReport, UserProfile } from
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
+import { Combobox } from '@/components/ui/combobox';
 
 const AttendanceMap = dynamic(() => import('../../../components/map/attendance-map'), {
     ssr: false,
@@ -27,6 +27,8 @@ export default function AttendanceMapPage() {
   const [viewType, setViewType] = useState<'attendance' | 'reports'>('attendance');
   const [sheetData, setSheetData] = useState<{ title: string; description: string; records: any[] } | null>(null);
   const [sheetFilter, setSheetFilter] = useState('');
+  const [cargoFilter, setCargoFilter] = useState('todos');
+  const [colaboradorFilter, setColaboradorFilter] = useState('todos');
   const firestore = useFirestore();
 
   const { data: workLocations, isLoading: locationsLoading } = useCollection<WorkLocation>(
@@ -44,33 +46,60 @@ export default function AttendanceMapPage() {
   const { data: allUsers, isLoading: usersLoading } = useCollection<UserProfile>(
     useMemo(() => (firestore ? collection(firestore, 'users') : null), [firestore])
   );
+  
+  const { cargoOptions, colaboradorOptions } = useMemo(() => {
+    if (!allUsers) return { cargoOptions: [], colaboradorOptions: [] };
+
+    const uniqueCargos = [...new Set(allUsers.map(u => u.cargo).filter(Boolean))].sort();
+    const cargos = [{ label: 'Todos los Cargos', value: 'todos' }, ...uniqueCargos.map(c => ({ label: c, value: c }))];
+
+    let filteredUsers = allUsers;
+    if (cargoFilter !== 'todos') {
+        filteredUsers = filteredUsers.filter(u => u.cargo === cargoFilter);
+    }
+    const colaboradores = [{ label: 'Todos los Colaboradores', value: 'todos' }, ...filteredUsers.map(u => ({ label: `${u.nombres} ${u.apellidos}`, value: u.id }))];
+    
+    return { cargoOptions: cargos, colaboradorOptions: colaboradores };
+  }, [allUsers, cargoFilter]);
 
   const filteredData = useMemo(() => {
     const selectedDateStr = format(date, 'yyyy-MM-dd');
-    
-    if (viewType === 'attendance') {
-      return allAttendance?.filter(record => {
-        const recordDate = (record.date as any)?.toDate ? (record.date as any).toDate() : new Date(record.date);
-        return format(recordDate, 'yyyy-MM-dd') === selectedDateStr;
-      }) || [];
-    } else {
-      const reports = allReports?.filter(report => {
-        const reportDate = new Date(report.timestamp);
-        return format(reportDate, 'yyyy-MM-dd') === selectedDateStr;
-      }) || [];
+    const userMap = new Map(allUsers?.map(u => [u.id, u]));
 
-      if (allUsers) {
-          return reports.map(report => {
-              const user = allUsers.find(u => u.id === report.userId);
-              return {
-                  ...report,
-                  userCargo: user ? user.cargo : 'N/A'
-              };
-          });
-      }
-      return reports;
+    let baseRecords: (AttendanceRecord | LocationReport)[] = [];
+
+    if (viewType === 'attendance') {
+        baseRecords = allAttendance?.filter(record => {
+            const recordDate = (record.date as any)?.toDate ? (record.date as any).toDate() : new Date(record.date);
+            return format(recordDate, 'yyyy-MM-dd') === selectedDateStr;
+        }) || [];
+    } else {
+        baseRecords = allReports?.filter(report => {
+            const reportDate = new Date(report.timestamp);
+            return format(reportDate, 'yyyy-MM-dd') === selectedDateStr;
+        }) || [];
     }
-  }, [date, viewType, allAttendance, allReports, allUsers]);
+
+    if (!allUsers) return baseRecords;
+    
+    const dataWithUserInfo = baseRecords.map(rec => {
+        const userId = 'collaboratorId' in rec ? rec.collaboratorId : rec.userId;
+        const user = userMap.get(userId!);
+        return {
+            ...rec,
+            userCargo: user?.cargo || 'N/A',
+            userName: user ? `${user.nombres} ${user.apellidos}` : ('userName' in rec ? rec.userName : 'Desconocido'),
+            userId: userId
+        };
+    });
+
+    return dataWithUserInfo.filter(rec => {
+        const cargoMatch = cargoFilter === 'todos' || rec.userCargo === cargoFilter;
+        const colaboradorMatch = colaboradorFilter === 'todos' || rec.userId === colaboradorFilter;
+        return cargoMatch && colaboradorMatch;
+    });
+
+  }, [date, viewType, allAttendance, allReports, allUsers, cargoFilter, colaboradorFilter]);
 
   const handleLocationClick = (locationId: string) => {
     if (!allAttendance || !allUsers) return;
@@ -192,24 +221,30 @@ export default function AttendanceMapPage() {
           <CardTitle>Mapa de Asistencia</CardTitle>
           <CardDescription>Visualiza los registros de asistencia y reportes de ubicación en el mapa.</CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col sm:flex-row items-center gap-4">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="w-[280px] justify-start text-left font-normal">
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {date ? format(date, 'PPP', { locale: es }) : <span>Selecciona una fecha</span>}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar mode="single" selected={date} onSelect={(d) => setDate(d || new Date())} initialFocus />
-            </PopoverContent>
-          </Popover>
-          <Tabs value={viewType} onValueChange={(value) => setViewType(value as 'attendance' | 'reports')} className="w-full sm:w-auto">
-            <TabsList>
-              <TabsTrigger value="attendance">Registros de Asistencia</TabsTrigger>
-              <TabsTrigger value="reports">Reportes de Ubicación</TabsTrigger>
-            </TabsList>
-          </Tabs>
+        <CardContent className="space-y-4">
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+                <Popover>
+                    <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full sm:w-[280px] justify-start text-left font-normal">
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {date ? format(date, 'PPP', { locale: es }) : <span>Selecciona una fecha</span>}
+                    </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                    <Calendar mode="single" selected={date} onSelect={(d) => setDate(d || new Date())} initialFocus />
+                    </PopoverContent>
+                </Popover>
+                <Tabs value={viewType} onValueChange={(value) => setViewType(value as 'attendance' | 'reports')} className="w-full sm:w-auto">
+                    <TabsList>
+                    <TabsTrigger value="attendance">Registros de Asistencia</TabsTrigger>
+                    <TabsTrigger value="reports">Reportes de Ubicación</TabsTrigger>
+                    </TabsList>
+                </Tabs>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Combobox options={cargoOptions} value={cargoFilter} onChange={setCargoFilter} placeholder="Filtrar por cargo..." />
+                <Combobox options={colaboradorOptions} value={colaboradorFilter} onChange={setColaboradorFilter} placeholder="Filtrar por colaborador..." />
+            </div>
         </CardContent>
       </Card>
 
