@@ -592,8 +592,6 @@ export function calculateScheduleSummary(
         return { groupedData: [], uniqueShifts: [] };
     }
 
-    const shiftPatternsByCargo = new Map(shiftPatterns.map(p => [normalizeText(p.jobTitle), p]));
-
     const collaboratorData = collaboratorsToProcess.map(collaborator => {
         const shiftCounts = new Map<string, number>();
         const freeDaysByWeekday = new Array(7).fill(0);
@@ -601,16 +599,10 @@ export function calculateScheduleSummary(
         
         daysToProcess.forEach(day => {
             const dayKey = format(day, 'yyyy-MM-dd');
-            let shift = scheduleToProcess.get(collaborator.id)?.get(dayKey);
+            const shift = scheduleToProcess.get(collaborator.id)?.get(dayKey);
 
             if (shift === undefined) {
-                const { jobTitle: effectiveJobTitle } = getEffectiveDetails(collaborator, day, allTransfers, allRoleChanges);
-                const pattern = shiftPatternsByCargo.get(normalizeText(effectiveJobTitle));
-                if (!pattern) {
-                    shift = isSaturday(day) || isSunday(day) ? null : 'N9';
-                } else {
-                    shift = null;
-                }
+                return;
             }
 
             if (shift && shift !== 'LIB' && shift !== 'VAC' && shift !== 'TRA' && !['PM', 'LIC', 'SUS', 'RET', 'FI'].includes(shift)) {
