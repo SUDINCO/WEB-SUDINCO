@@ -118,7 +118,7 @@ export function LoginForm() {
     <Card className="w-full max-w-sm shadow-2xl">
       <CardHeader className="text-center items-center">
         <Image
-          src="https://i.imgur.com/6V3WsMA.png"
+          src="https://i.postimg.cc/kGQrqkFv/login_performa.png"
           alt="Acceso PERFORMA"
           width={300}
           height={100}
