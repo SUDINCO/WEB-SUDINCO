@@ -1,6 +1,28 @@
 
 {
   "entities": {
+    "Holiday": {
+        "title": "Holiday",
+        "type": "object",
+        "description": "Represents a public holiday.",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The name of the holiday."
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date",
+            "description": "The start date of the holiday."
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date",
+            "description": "The end date of the holiday."
+          }
+        },
+        "required": ["name", "startDate", "endDate"]
+    },
     "UserProfile": {
       "title": "User Profile",
       "type": "object",
@@ -814,6 +836,10 @@
     "/simpleEvents/{eventId}": {
       "schema": { "$ref": "#/entities/SimpleEvent" },
       "description": "Stores simple calendar events and meetings, like personal reminders or team meetings."
+    },
+    "/holidays/{holidayId}": {
+      "schema": { "$ref": "#/entities/Holiday" },
+      "description": "Stores all public holidays for overtime calculations."
     },
     "/attendance/{attendanceId}": {
       "schema": { "$ref": "#/entities/AttendanceRecord" },
