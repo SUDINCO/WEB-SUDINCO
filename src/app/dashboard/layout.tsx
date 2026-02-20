@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import Link from "next/link";
@@ -168,7 +167,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     <nav className="grid gap-2 text-lg font-medium">
       <Link href="/dashboard" className="flex items-center justify-center gap-2 text-lg font-semibold">
         <Image
-          src="https://i.postimg.cc/jSvfPdzH/LOGO1.png"
+          src="https://i.postimg.cc/MGdx1gn6/performa.png"
           alt="Acceso PERFORMA"
           width={150}
           height={50}
@@ -259,7 +258,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
               <div className="app-header-content">
                 <Link href="/dashboard">
                   <Image
-                    src="https://i.postimg.cc/jSvfPdzH/LOGO1.png"
+                    src="https://i.postimg.cc/MGdx1gn6/performa.png"
                     alt="Acceso PERFORMA"
                     width={100}
                     height={35}
@@ -333,7 +332,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
             
             <div className="flex items-center">
               <Image
-                src="https://i.postimg.cc/jSvfPdzH/LOGO1.png"
+                src="https://i.postimg.cc/MGdx1gn6/performa.png"
                 alt="PERFORMA Logo"
                 width={120}
                 height={40}
