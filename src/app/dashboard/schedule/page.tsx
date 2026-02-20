@@ -222,21 +222,22 @@ function SchedulePageContent() {
       if (!users) return { ubicacionesOptions: [], cargosOptions: [], trabajadoresOptions: [] };
       
       const allActiveUsers = users.filter(u => u.Status === 'active');
-      let filteredUsers = [...allActiveUsers];
-  
+      
       const allUbicaciones = [...new Set(allActiveUsers.map(u => normalizeText(u.ubicacion)).filter(Boolean))].sort();
-  
+
+      let filteredByUbicacion = allActiveUsers;
       if (selectedUbicacion !== 'todos') {
-          filteredUsers = filteredUsers.filter(u => normalizeText(u.ubicacion) === selectedUbicacion);
+          filteredByUbicacion = allActiveUsers.filter(u => normalizeText(u.ubicacion) === selectedUbicacion);
       }
       
-      const relevantCargos = [...new Set(filteredUsers.map(u => normalizeText(u.cargo)).filter(Boolean))].sort();
+      const relevantCargos = [...new Set(filteredByUbicacion.map(u => normalizeText(u.cargo)).filter(Boolean))].sort();
       
+      let filteredByCargo = filteredByUbicacion;
       if (selectedCargo !== 'todos') {
-          filteredUsers = filteredUsers.filter(u => normalizeText(u.cargo) === selectedCargo);
+          filteredByCargo = filteredByUbicacion.filter(u => normalizeText(u.cargo) === selectedCargo);
       }
   
-      const relevantTrabajadores = filteredUsers.map(u => ({label: `${u.nombres} ${u.apellidos}`, value: u.id}));
+      const relevantTrabajadores = filteredByCargo.map(u => ({label: `${u.nombres} ${u.apellidos}`, value: u.id}));
   
       return { 
           ubicacionesOptions: [{ label: 'Todas las Ubicaciones', value: 'todos' }, ...allUbicaciones.map(u => ({label: u, value: u}))], 
@@ -523,7 +524,6 @@ function SchedulePageContent() {
           <ScheduleDataSummaryDialog
               open={isDataSummaryOpen}
               onOpenChange={setIsDataSummaryOpen}
-              schedule={schedule}
               savedSchedules={savedSchedules}
               collaborators={collaborators} // Pass all collaborators
               days={days}

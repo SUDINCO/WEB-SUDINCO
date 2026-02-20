@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -39,7 +40,6 @@ type Option = {
 interface ScheduleDataSummaryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  schedule: Map<string, Map<string, string | null>>;
   savedSchedules: { [key: string]: SavedSchedule };
   collaborators: Collaborator[];
   days: Date[];
@@ -201,30 +201,28 @@ export function ScheduleDataSummaryDialog({
       return { groupedData: [], uniqueShifts: [] };
     }
 
-    const allPeriodCollaboratorIds = new Set<string>();
     const unifiedSchedule = new Map<string, Map<string, string | null>>();
-
     periodSchedules.forEach(s => {
       Object.entries(s.schedule).forEach(([collabId, dayMap]) => {
-        allPeriodCollaboratorIds.add(collabId);
         if (!unifiedSchedule.has(collabId)) {
-          unifiedSchedule.set(collabId, new Map(Object.entries(dayMap)));
-        } else {
-          const existingMap = unifiedSchedule.get(collabId)!;
-          Object.entries(dayMap).forEach(([dayKey, shift]) => {
-            existingMap.set(dayKey, shift);
-          });
+          unifiedSchedule.set(collabId, new Map());
         }
+        const userSchedule = unifiedSchedule.get(collabId)!;
+        Object.entries(dayMap).forEach(([dayKey, shift]) => {
+          userSchedule.set(dayKey, shift);
+        });
       });
     });
 
-    const allPeriodCollaborators = collaborators.filter(c => allPeriodCollaboratorIds.has(c.id));
-    if (allPeriodCollaborators.length === 0) {
+    const periodCollaboratorIds = new Set(Array.from(unifiedSchedule.keys()));
+    const relevantCollaborators = collaborators.filter(c => periodCollaboratorIds.has(c.id));
+    
+    if (relevantCollaborators.length === 0) {
       return { groupedData: [], uniqueShifts: [] };
     }
-    
+
     const { groupedData: allGroupedData, uniqueShifts } = calculateScheduleSummary(
-        allPeriodCollaborators, unifiedSchedule, days, holidays, overtimeRules, transfers, roleChanges
+      relevantCollaborators, unifiedSchedule, days, holidays, overtimeRules, transfers, roleChanges, shiftPatterns
     );
 
     if (periodLocation === 'todos' && periodJobTitle === 'todos') {
@@ -251,68 +249,46 @@ export function ScheduleDataSummaryDialog({
 
     return { groupedData: filteredGroupedData, uniqueShifts };
 
-  }, [periodIdentifier, periodLocation, periodJobTitle, savedSchedules, collaborators, days, holidays, overtimeRules, transfers, roleChanges]);
+  }, [periodIdentifier, periodLocation, periodJobTitle, savedSchedules, collaborators, days, holidays, overtimeRules, transfers, roleChanges, shiftPatterns]);
 
 
   const { groupedData: annualGroupedData, uniqueShifts: annualUniqueShifts } = React.useMemo(() => {
     const yearStart = startOfYear(currentDate);
     const yearEnd = endOfYear(currentDate);
     const allYearDays = eachDayOfInterval({ start: yearStart, end: yearEnd });
-
-    if (collaborators.length === 0 || allYearDays.length === 0 || !shiftPatterns) {
+    
+    if (collaborators.length === 0) {
         return { groupedData: [], uniqueShifts: [] };
     }
 
     const fullYearSchedule = new Map<string, Map<string, string | null>>();
-    const shiftPatternsByCargo = new Map(shiftPatterns.map(p => [normalizeText(p.jobTitle), p]));
-    
-    collaborators.forEach(collaborator => {
-        const collabYearSchedule = new Map<string, string | null>();
-        
-        allYearDays.forEach(day => {
-            const dayKey = format(day, 'yyyy-MM-dd');
-            
-            const periodDate = day.getDate() < 21 ? subMonths(day, 1) : day;
-            const periodId = format(periodDate, 'yyyy-MM');
+    const allSavedSchedules = Object.values(savedSchedules);
 
-            const { location: effectiveLocation, jobTitle: effectiveJobTitle } = getEffectiveDetails(collaborator, day, transfers, roleChanges);
-            const savedScheduleKey = `${periodId}_${normalizeText(effectiveLocation)}_${normalizeText(effectiveJobTitle)}`;
-            
-            const savedScheduleData = savedSchedules[savedScheduleKey];
-            
-            let shift: string | null | undefined = undefined;
-
-            if (savedScheduleData && savedScheduleData.schedule[collaborator.id]) {
-                shift = savedScheduleData.schedule[collaborator.id][dayKey];
+    allSavedSchedules.forEach(saved => {
+        Object.entries(saved.schedule).forEach(([collabId, dayMap]) => {
+            if (!fullYearSchedule.has(collabId)) {
+                fullYearSchedule.set(collabId, new Map());
             }
-            
-            if (shift === undefined) {
-                if (!shiftPatternsByCargo.has(normalizeText(collaborator.originalJobTitle))) {
-                     shift = isSaturday(day) || isSunday(day) ? null : 'N9';
-                } else {
-                    shift = null;
+            const userSchedule = fullYearSchedule.get(collabId)!;
+            Object.entries(dayMap).forEach(([dayKey, shift]) => {
+                if (isWithinInterval(parseISO(dayKey), { start: yearStart, end: yearEnd })) {
+                    userSchedule.set(dayKey, shift);
                 }
-            }
-            
-            collabYearSchedule.set(dayKey, shift ?? null);
+            });
         });
-
-        fullYearSchedule.set(collaborator.id, collabYearSchedule);
     });
 
     const { groupedData, uniqueShifts } = calculateScheduleSummary(
-        collaborators, fullYearSchedule, allYearDays, holidays, overtimeRules, transfers, roleChanges
+        collaborators, fullYearSchedule, allYearDays, holidays, overtimeRules, transfers, roleChanges, shiftPatterns
     );
-
+    
     if (annualLocation === 'todos' && annualJobTitle === 'todos') {
       return { groupedData, uniqueShifts };
     }
     
-    const fullCollaboratorMap = new Map(collaborators.map(c => [c.id, c]));
-
     const filteredGroupedData = groupedData.map(group => {
         const filteredEmployees = group.employees.filter(employee => {
-          const collaborator = fullCollaboratorMap.get(employee.id);
+          const collaborator = collaborators.find(c => c.id === employee.id);
           if (!collaborator) return false;
           
           const locationMatch = annualLocation === 'todos' || collaborator.originalLocation === annualLocation;

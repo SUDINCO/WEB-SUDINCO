@@ -585,23 +585,33 @@ export function calculateScheduleSummary(
     allHolidays: Holiday[],
     allOvertimeRules: OvertimeRule[],
     allTransfers: TemporaryTransfer[],
-    allRoleChanges: RoleChange[]
+    allRoleChanges: RoleChange[],
+    shiftPatterns: ShiftPattern[]
 ) {
     if (collaboratorsToProcess.length === 0 || daysToProcess.length === 0) {
         return { groupedData: [], uniqueShifts: [] };
     }
 
-    const collaboratorData = collaboratorsToProcess.map(collaborator => {
-        const collaboratorSchedule = scheduleToProcess.get(collaborator.id);
-        if (!collaboratorSchedule) return null;
+    const shiftPatternsByCargo = new Map(shiftPatterns.map(p => [normalizeText(p.jobTitle), p]));
 
+    const collaboratorData = collaboratorsToProcess.map(collaborator => {
         const shiftCounts = new Map<string, number>();
         const freeDaysByWeekday = new Array(7).fill(0);
         let workedDayKeys: string[] = [];
         
         daysToProcess.forEach(day => {
             const dayKey = format(day, 'yyyy-MM-dd');
-            const shift = collaboratorSchedule.get(dayKey);
+            let shift = scheduleToProcess.get(collaborator.id)?.get(dayKey);
+
+            if (shift === undefined) {
+                const { jobTitle: effectiveJobTitle } = getEffectiveDetails(collaborator, day, allTransfers, allRoleChanges);
+                const pattern = shiftPatternsByCargo.get(normalizeText(effectiveJobTitle));
+                if (!pattern) {
+                    shift = isSaturday(day) || isSunday(day) ? null : 'N9';
+                } else {
+                    shift = null;
+                }
+            }
 
             if (shift && shift !== 'LIB' && shift !== 'VAC' && shift !== 'TRA' && !['PM', 'LIC', 'SUS', 'RET', 'FI'].includes(shift)) {
                 workedDayKeys.push(dayKey);
@@ -621,7 +631,7 @@ export function calculateScheduleSummary(
 
             compensationDayKeys.forEach(dayKey => {
                 const day = new Date(`${dayKey}T00:00:00`);
-                const shift = collaboratorSchedule.get(dayKey);
+                const shift = scheduleToProcess.get(collaborator.id)?.get(dayKey);
                 if (shift) {
                     const { jobTitle } = getEffectiveDetails(collaborator, day, allTransfers, allRoleChanges);
                     const dayIsHoliday = allHolidays.some(h => isWithinInterval(day, { start: h.startDate, end: h.endDate }));
@@ -639,7 +649,7 @@ export function calculateScheduleSummary(
             const day = new Date(`${dayKey}T00:00:00`);
             const dayIsHoliday = allHolidays.some(h => isWithinInterval(day, { start: h.startDate, end: h.endDate }));
             const jornada = dayIsHoliday ? "FESTIVO" : "NORMAL"; 
-            const shift = collaboratorSchedule.get(dayKey);
+            const shift = scheduleToProcess.get(collaborator.id)?.get(dayKey);
 
             if (shift) {
                 const { jobTitle: effectiveJobTitle } = getEffectiveDetails(collaborator, day, allTransfers, allRoleChanges);
@@ -696,7 +706,7 @@ export function calculateScheduleSummary(
     grouped.forEach(group => group.employees.sort((a,b) => a.name.localeCompare(b.name)));
 
     const allShifts = new Set(collaboratorData.flatMap(d => Array.from(d.shiftCounts.keys())));
-    const orderedShiftTypes = ['M8', 'T8', 'N8', 'D12', 'N12', 'TA', 'T24', 'D10', 'D9'];
+    const orderedShiftTypes = ['M8', 'T8', 'N8', 'D12', 'N12', 'TA', 'T24', 'D10', 'D9', 'N9'];
     const sortedShifts = Array.from(allShifts).sort((a, b) => {
         const indexA = orderedShiftTypes.indexOf(a);
         const indexB = orderedShiftTypes.indexOf(b);
