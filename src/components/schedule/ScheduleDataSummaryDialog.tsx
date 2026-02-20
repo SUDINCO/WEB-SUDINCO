@@ -263,19 +263,39 @@ export function ScheduleDataSummaryDialog({
 
     const fullYearSchedule = new Map<string, Map<string, string | null>>();
     const allSavedSchedules = Object.values(savedSchedules);
+    const shiftPatternsByCargo = new Map(shiftPatterns.map(p => [normalizeText(p.jobTitle), p]));
 
+    // Step 1: Populate schedule from saved/approved periods for everyone
     allSavedSchedules.forEach(saved => {
+        const savedPeriodYear = parseInt(saved.id.split('_')[0].substring(0, 4));
+        if(savedPeriodYear !== yearStart.getFullYear()) return;
+
         Object.entries(saved.schedule).forEach(([collabId, dayMap]) => {
             if (!fullYearSchedule.has(collabId)) {
                 fullYearSchedule.set(collabId, new Map());
             }
             const userSchedule = fullYearSchedule.get(collabId)!;
             Object.entries(dayMap).forEach(([dayKey, shift]) => {
-                if (isWithinInterval(parseISO(dayKey), { start: yearStart, end: yearEnd })) {
-                    userSchedule.set(dayKey, shift);
-                }
+                userSchedule.set(dayKey, shift);
             });
         });
+    });
+
+    // Step 2: For office staff, generate their full year schedule, completely overwriting their schedule map.
+    collaborators.forEach(collaborator => {
+        const { jobTitle } = collaborator;
+        const normalizedJobTitle = normalizeText(jobTitle);
+        
+        // Definition of "office staff": no specific shift pattern defined for their role.
+        if (!shiftPatternsByCargo.has(normalizedJobTitle)) {
+            const userSchedule = new Map<string, string | null>();
+            allYearDays.forEach(day => {
+                const dayKey = format(day, 'yyyy-MM-dd');
+                const isWeekend = isSaturday(day) || isSunday(day);
+                userSchedule.set(dayKey, isWeekend ? null : 'N9');
+            });
+            fullYearSchedule.set(collaborator.id, userSchedule);
+        }
     });
 
     const { groupedData, uniqueShifts } = calculateScheduleSummary(
