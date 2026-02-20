@@ -478,7 +478,7 @@ function SchedulePageContent() {
               transfers={transfers}
               onTransfersChange={setTransfers}
               collaborators={collaborators}
-              locations={allUbicaciones.map(u => u.label).filter(l => l !== 'Todas las Ubicaciones')}
+              locations={ubicacionesOptions.map(u => u.label).filter(l => l !== 'Todas las Ubicaciones')}
           />
           <VacationManager
               open={isVacationModalOpen}
