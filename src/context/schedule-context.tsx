@@ -5,6 +5,7 @@ import * as React from 'react';
 import { useCollection, useFirestore } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import type { Holiday, OvertimeRule, ShiftPattern, ManualOverrides, Notification, SavedSchedule, Fine, GenericOption } from '@/lib/types';
+import { parseISO } from 'date-fns';
 
 // Define el tipo para el estado del contexto
 interface ScheduleState {
@@ -40,11 +41,20 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const { data: locationsData, isLoading: locationsLoading } = useCollection<GenericOption>(React.useMemo(() => firestore ? collection(firestore, 'ubicaciones') : null, [firestore]));
   const { data: cargosData, isLoading: cargosLoading } = useCollection<GenericOption>(React.useMemo(() => firestore ? collection(firestore, 'cargos') : null, [firestore]));
   const { data: overtimeRulesData, isLoading: overtimeRulesLoading } = useCollection<OvertimeRule>(React.useMemo(() => firestore ? collection(firestore, 'overtimeRules') : null, [firestore]));
+  const { data: rawHolidays, isLoading: holidaysLoading } = useCollection<{id: string, name: string, startDate: string, endDate: string}>(React.useMemo(() => firestore ? collection(firestore, 'holidays') : null, [firestore]));
   
   // Para los siguientes, como no tenemos colecciones, usamos datos de ejemplo.
   // En una implementación real, cargaríamos esto desde Firestore también.
   const fines: Fine[] = []; 
-  const holidays: Holiday[] = [];
+
+  const holidays = React.useMemo(() => {
+    if (!rawHolidays) return [];
+    return rawHolidays.map(h => ({
+      ...h,
+      startDate: parseISO(h.startDate),
+      endDate: parseISO(h.endDate),
+    }));
+  }, [rawHolidays]);
 
   const { data: shiftPatternsData, isLoading: patternsLoading } = useCollection<ShiftPattern>(React.useMemo(() => firestore ? collection(firestore, 'shiftPatterns') : null, [firestore]));
   const { data: savedSchedulesData, isLoading: savedSchedulesLoading } = useCollection<SavedSchedule>(React.useMemo(() => firestore ? collection(firestore, 'savedSchedules') : null, [firestore]));
@@ -74,7 +84,7 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     savedSchedules: savedSchedulesMap,
     manualOverrides,
     notifications,
-    loading: locationsLoading || cargosLoading || patternsLoading || savedSchedulesLoading || overtimeRulesLoading,
+    loading: locationsLoading || cargosLoading || patternsLoading || savedSchedulesLoading || overtimeRulesLoading || holidaysLoading,
   };
 
   return (
