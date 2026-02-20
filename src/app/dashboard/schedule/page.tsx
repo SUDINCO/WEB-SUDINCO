@@ -205,42 +205,45 @@ function SchedulePageContent() {
     return obtenerHorarioUnificado(days, context, 'coordinator');
   }, [collaborators, days, vacationRequests, transfers, lactations, roleChanges, manualOverrides, shiftPatterns, contextLoading, isAutomatic, draftConditioning, selectedUbicacion, selectedCargo, selectedTrabajador, savedSchedules, periodIdentifier]);
 
-  const dynamicFilterOptions = useMemo(() => {
-    if (!users) return { cargos: [], ubicaciones: [], trabajadores: [] };
-    const activeUsers = users.filter(u => u.Status === 'active');
-    
-    const uniqueCargos = [...new Set(activeUsers.map(u => normalizeText(u.cargo)).filter(Boolean))].sort();
-    const cargosConStatus = uniqueCargos.map(cargo => {
-        const isSaved = selectedUbicacion !== 'todos' && !!savedSchedules[`${periodIdentifier}_${normalizeText(selectedUbicacion)}_${normalizeText(cargo)}`];
-        return { label: cargo, value: cargo, isSaved };
-    });
-
-    const uniqueUbicaciones = [...new Set(activeUsers.map(u => normalizeText(u.ubicacion)).filter(Boolean))].sort();
-    const ubicacionesConStatus = uniqueUbicaciones.map(ubicacion => {
-        const isSaved = selectedCargo !== 'todos' && !!savedSchedules[`${periodIdentifier}_${normalizeText(ubicacion)}_${normalizeText(selectedCargo)}`];
-        return { label: ubicacion, value: ubicacion, isSaved };
-    });
-
-    const trabajadoresUnicos = activeUsers.map(u => ({label: `${u.nombres} ${u.apellidos}`, value: u.id}));
-
-    return { 
-        cargos: [{ label: 'Todos los Cargos', value: 'todos', isSaved: false }, ...cargosConStatus], 
-        ubicaciones: [{ label: 'Todas las Ubicaciones', value: 'todos', isSaved: false }, ...ubicacionesConStatus], 
-        trabajadores: [{ label: 'Todos los Trabajadores', value: 'todos', isSaved: false }, ...trabajadoresUnicos] 
-    };
-  }, [users, periodIdentifier, savedSchedules, selectedUbicacion, selectedCargo]);
+  const handleFilterChange = (filterName: 'ubicacion' | 'cargo' | 'trabajador', value: string) => {
+    if (filterName === 'ubicacion') {
+      setSelectedUbicacion(value);
+      setSelectedCargo('todos');
+      setSelectedTrabajador('todos');
+    } else if (filterName === 'cargo') {
+      setSelectedCargo(value);
+      setSelectedTrabajador('todos');
+    } else {
+      setSelectedTrabajador(value);
+    }
+  };
   
-  const ubicacionesOptions = useMemo<Option[]>(() => {
-    return dynamicFilterOptions.ubicaciones;
-  }, [dynamicFilterOptions.ubicaciones]);
+  const { ubicacionesOptions, cargosOptions, trabajadoresOptions } = useMemo(() => {
+      if (!users) return { ubicacionesOptions: [], cargosOptions: [], trabajadoresOptions: [] };
+      
+      const allActiveUsers = users.filter(u => u.Status === 'active');
+      let filteredUsers = [...allActiveUsers];
   
-  const cargosOptions = useMemo<Option[]>(() => {
-    return dynamicFilterOptions.cargos;
-  }, [dynamicFilterOptions.cargos]);
-
-  const trabajadoresOptions = useMemo<Option[]>(() => {
-    return dynamicFilterOptions.trabajadores;
-  }, [dynamicFilterOptions.trabajadores]);
+      const allUbicaciones = [...new Set(allActiveUsers.map(u => normalizeText(u.ubicacion)).filter(Boolean))].sort();
+  
+      if (selectedUbicacion !== 'todos') {
+          filteredUsers = filteredUsers.filter(u => normalizeText(u.ubicacion) === selectedUbicacion);
+      }
+      
+      const relevantCargos = [...new Set(filteredUsers.map(u => normalizeText(u.cargo)).filter(Boolean))].sort();
+      
+      if (selectedCargo !== 'todos') {
+          filteredUsers = filteredUsers.filter(u => normalizeText(u.cargo) === selectedCargo);
+      }
+  
+      const relevantTrabajadores = filteredUsers.map(u => ({label: `${u.nombres} ${u.apellidos}`, value: u.id}));
+  
+      return { 
+          ubicacionesOptions: [{ label: 'Todas las Ubicaciones', value: 'todos' }, ...allUbicaciones.map(u => ({label: u, value: u}))], 
+          cargosOptions: [{ label: 'Todos los Cargos', value: 'todos' }, ...relevantCargos.map(c => ({label: c, value: c}))], 
+          trabajadoresOptions: [{ label: 'Todos los Trabajadores', value: 'todos' }, ...relevantTrabajadores] 
+      };
+    }, [users, selectedUbicacion, selectedCargo]);
 
 
  const handleSaveSchedule = async () => {
@@ -381,7 +384,7 @@ function SchedulePageContent() {
                   <Combobox
                       options={ubicacionesOptions}
                       value={selectedUbicacion}
-                      onChange={setSelectedUbicacion}
+                      onChange={(value) => handleFilterChange('ubicacion', value)}
                       placeholder="Filtrar por ubicación..."
                       searchPlaceholder="Buscar ubicación..."
                       notFoundMessage="No se encontró la ubicación."
@@ -389,7 +392,7 @@ function SchedulePageContent() {
                   <Combobox
                       options={cargosOptions}
                       value={selectedCargo}
-                      onChange={setSelectedCargo}
+                      onChange={(value) => handleFilterChange('cargo', value)}
                       placeholder="Filtrar por cargo..."
                       searchPlaceholder="Buscar cargo..."
                       notFoundMessage="No se encontró el cargo."
@@ -397,7 +400,7 @@ function SchedulePageContent() {
                   <Combobox
                       options={trabajadoresOptions}
                       value={selectedTrabajador}
-                      onChange={setSelectedTrabajador}
+                      onChange={(value) => handleFilterChange('trabajador', value)}
                       placeholder="Filtrar por trabajador..."
                       searchPlaceholder="Buscar trabajador..."
                       notFoundMessage="No se encontró el trabajador."
@@ -475,7 +478,7 @@ function SchedulePageContent() {
               transfers={transfers}
               onTransfersChange={setTransfers}
               collaborators={collaborators}
-              locations={dynamicFilterOptions.ubicaciones.map(u => u.label).filter((l): l is string => !!l)}
+              locations={allUbicaciones.map(u => u.label).filter(l => l !== 'Todas las Ubicaciones')}
           />
           <VacationManager
               open={isVacationModalOpen}
@@ -504,8 +507,8 @@ function SchedulePageContent() {
               roleChanges={roleChanges}
               onRoleChangesChange={setRoleChanges}
               collaborators={collaborators}
-              jobTitles={dynamicFilterOptions.cargos.map(c => c.label).filter((l): l is string => !!l)}
-              locations={dynamicFilterOptions.ubicaciones.map(u => u.label).filter((l): l is string => !!l)}
+              jobTitles={cargosOptions.map(c => c.label).filter(l => l !== 'Todos los Cargos')}
+              locations={ubicacionesOptions.map(u => u.label).filter(l => l !== 'Todas las Ubicaciones')}
           />
           <ScheduleSummary
               open={isSummaryModalOpen}
@@ -536,9 +539,9 @@ function SchedulePageContent() {
               locationOptions={ubicacionesOptions}
               jobTitleOptions={cargosOptions}
               selectedLocation={selectedUbicacion}
-              onLocationChange={setSelectedUbicacion}
+              onLocationChange={(value) => handleFilterChange('ubicacion', value)}
               selectedJobTitle={selectedCargo}
-              onJobTitleChange={setSelectedCargo}
+              onJobTitleChange={(value) => handleFilterChange('cargo', value)}
           />
       </div>
     </>

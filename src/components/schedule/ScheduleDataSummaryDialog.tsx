@@ -27,6 +27,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Combobox } from '@/components/ui/combobox';
 import { Label } from '@/components/ui/label';
+import { normalizeText } from '@/lib/utils';
 
 type Option = {
   value: string;
@@ -133,7 +134,24 @@ function calculateScheduleSummary(
 
             if (shift) {
                 const { jobTitle: effectiveJobTitle } = getEffectiveDetails(collaborator, day, allTransfers, allRoleChanges);
-                const rule = allOvertimeRules.find(r => r.jobTitle === effectiveJobTitle && r.dayType === jornada && r.shift === shift);
+                
+                let rule = allOvertimeRules.find(r => 
+                    normalizeText(r.jobTitle) === normalizeText(effectiveJobTitle) && 
+                    r.shift === shift && 
+                    r.dayType === jornada
+                );
+    
+                if (!rule) {
+                    const isOfficeShift = shift === 'N9';
+                    if (isOfficeShift) {
+                        rule = allOvertimeRules.find(r => 
+                            r.jobTitle === '_DEFAULT_OFFICE_' &&
+                            r.shift === shift &&
+                            r.dayType === jornada
+                        );
+                    }
+                }
+
                 if (rule) {
                     acc.he25 += rule.nightSurcharge || 0;
                     acc.he50 += rule.sup50 || 0;
