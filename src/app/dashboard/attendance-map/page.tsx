@@ -11,10 +11,11 @@ import { useCollection, useFirestore } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import { format, startOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Calendar as CalendarIcon, LoaderCircle } from 'lucide-react';
+import { Calendar as CalendarIcon, LoaderCircle, Search } from 'lucide-react';
 import type { WorkLocation, AttendanceRecord, LocationReport, UserProfile } from '@/lib/types';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Input } from '@/components/ui/input';
 
 const AttendanceMap = dynamic(() => import('../../../components/map/attendance-map'), {
     ssr: false,
@@ -25,6 +26,7 @@ export default function AttendanceMapPage() {
   const [date, setDate] = useState<Date>(startOfDay(new Date()));
   const [viewType, setViewType] = useState<'attendance' | 'reports'>('attendance');
   const [sheetData, setSheetData] = useState<{ title: string; description: string; records: any[] } | null>(null);
+  const [sheetFilter, setSheetFilter] = useState('');
   const firestore = useFirestore();
 
   const { data: workLocations, isLoading: locationsLoading } = useCollection<WorkLocation>(
@@ -52,18 +54,30 @@ export default function AttendanceMapPage() {
         return format(recordDate, 'yyyy-MM-dd') === selectedDateStr;
       }) || [];
     } else {
-      return allReports?.filter(report => {
+      const reports = allReports?.filter(report => {
         const reportDate = new Date(report.timestamp);
         return format(reportDate, 'yyyy-MM-dd') === selectedDateStr;
       }) || [];
+
+      if (allUsers) {
+          return reports.map(report => {
+              const user = allUsers.find(u => u.id === report.userId);
+              return {
+                  ...report,
+                  userCargo: user ? user.cargo : 'N/A'
+              };
+          });
+      }
+      return reports;
     }
-  }, [date, viewType, allAttendance, allReports]);
+  }, [date, viewType, allAttendance, allReports, allUsers]);
 
   const handleLocationClick = (locationId: string) => {
     if (!allAttendance || !allUsers) return;
 
     const location = workLocations?.find(l => l.id === locationId);
     if (location) {
+        setSheetFilter(''); // Reset filter on new sheet open
         const recordsForLocation = allAttendance
             .filter(record => {
                 const recordDate = (record.date as any)?.toDate ? (record.date as any).toDate() : new Date(record.date);
@@ -72,9 +86,11 @@ export default function AttendanceMapPage() {
             .map(record => {
                 const user = allUsers.find(u => u.id === record.collaboratorId);
                 const userName = user ? `${user.nombres} ${user.apellidos}` : record.userName || 'Desconocido';
+                const userCargo = user ? user.cargo : 'N/A';
                 return {
                     ...record,
                     userName,
+                    userCargo,
                     entryTime: record.entryTime && (record.entryTime as any)?.toDate ? (record.entryTime as any).toDate() : null,
                     exitTime: record.exitTime && (record.exitTime as any)?.toDate ? (record.exitTime as any).toDate() : null,
                 };
@@ -95,16 +111,29 @@ export default function AttendanceMapPage() {
     const enrichedRecord = {
         ...record,
         userName: user ? `${user.nombres} ${user.apellidos}` : record.userName || 'Desconocido',
+        userCargo: user ? user.cargo : 'N/A',
         entryTime: record.entryTime && (record.entryTime as any)?.toDate ? (record.entryTime as any).toDate() : null,
         exitTime: record.exitTime && (record.exitTime as any)?.toDate ? (record.exitTime as any).toDate() : null,
     };
     
+    setSheetFilter(''); // Reset filter
     setSheetData({
         title: `Detalle de Timbre Fuera de Zona`,
         description: `Registro de ${enrichedRecord.userName} el día ${format(date, 'dd MMMM, yyyy', { locale: es })}.`,
         records: [enrichedRecord]
     });
   };
+  
+  const filteredSheetRecords = useMemo(() => {
+    if (!sheetData?.records) return [];
+    if (!sheetFilter) return sheetData.records;
+
+    const lowercasedFilter = sheetFilter.toLowerCase();
+    return sheetData.records.filter(record =>
+        record.userName?.toLowerCase().includes(lowercasedFilter) ||
+        record.userCargo?.toLowerCase().includes(lowercasedFilter)
+    );
+  }, [sheetData, sheetFilter]);
 
   const isLoading = locationsLoading || attendanceLoading || reportsLoading || usersLoading;
 
@@ -116,27 +145,38 @@ export default function AttendanceMapPage() {
                 <SheetTitle>{sheetData?.title}</SheetTitle>
                 <SheetDescription>{sheetData?.description}</SheetDescription>
             </SheetHeader>
-            <div className="py-4">
+            <div className="py-4 space-y-4">
+                <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Buscar por nombre o cargo..."
+                        value={sheetFilter}
+                        onChange={(e) => setSheetFilter(e.target.value)}
+                        className="pl-10"
+                    />
+                </div>
                 <Table>
                     <TableHeader>
                         <TableRow>
                             <TableHead>Persona</TableHead>
+                            <TableHead>Cargo</TableHead>
                             <TableHead>Entrada</TableHead>
                             <TableHead>Salida</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {sheetData?.records && sheetData.records.length > 0 ? (
-                            sheetData.records.map(record => (
+                        {filteredSheetRecords && filteredSheetRecords.length > 0 ? (
+                            filteredSheetRecords.map(record => (
                                 <TableRow key={record.id}>
                                     <TableCell>{record.userName}</TableCell>
+                                    <TableCell>{record.userCargo}</TableCell>
                                     <TableCell>{record.entryTime ? format(record.entryTime, 'HH:mm:ss') : '-'}</TableCell>
                                     <TableCell>{record.exitTime ? format(record.exitTime, 'HH:mm:ss') : '-'}</TableCell>
                                 </TableRow>
                             ))
                         ) : (
                             <TableRow>
-                                <TableCell colSpan={3} className="text-center h-24">
+                                <TableCell colSpan={4} className="text-center h-24">
                                     No hay registros para esta selección.
                                 </TableCell>
                             </TableRow>
