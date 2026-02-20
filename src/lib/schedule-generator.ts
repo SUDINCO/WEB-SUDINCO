@@ -273,11 +273,6 @@ export function applyConditioningRebalance(
 
 
 export const getShiftDetailsFromRules = (shift: string, effectiveJobTitle: string, dayType: "NORMAL" | "FESTIVO", overtimeRules: OvertimeRule[]): { start: { h: number; m: number }; hours: number } | null => {
-    // Hardcoded fallback for N9 shift
-    if (shift === 'N9') {
-        return { start: { h: 8, m: 30 }, hours: 9 };
-    }
-
     const normalizedJobTitle = normalizeText(effectiveJobTitle);
     
     let rule = overtimeRules.find(r => 
@@ -286,7 +281,17 @@ export const getShiftDetailsFromRules = (shift: string, effectiveJobTitle: strin
         r.dayType === dayType
     );
     
-    // Fallback logic for other common shifts if no specific rule is found
+    if (!rule) {
+        const isOfficeShift = shift === 'N9';
+        if (isOfficeShift) {
+            rule = overtimeRules.find(r => 
+                r.jobTitle === '_DEFAULT_OFFICE_' &&
+                r.shift === shift &&
+                r.dayType === dayType
+            );
+        }
+    }
+
     if (!rule) {
         switch (shift) {
             case 'N12':
@@ -571,4 +576,136 @@ export function obtenerHorarioUnificado(
 
 
   return schedule;
+}
+
+export function calculateScheduleSummary(
+    collaboratorsToProcess: Collaborator[],
+    scheduleToProcess: Map<string, Map<string, string | null>>,
+    daysToProcess: Date[],
+    allHolidays: Holiday[],
+    allOvertimeRules: OvertimeRule[],
+    allTransfers: TemporaryTransfer[],
+    allRoleChanges: RoleChange[]
+) {
+    if (collaboratorsToProcess.length === 0 || daysToProcess.length === 0) {
+        return { groupedData: [], uniqueShifts: [] };
+    }
+
+    const collaboratorData = collaboratorsToProcess.map(collaborator => {
+        const collaboratorSchedule = scheduleToProcess.get(collaborator.id);
+        if (!collaboratorSchedule) return null;
+
+        const shiftCounts = new Map<string, number>();
+        const freeDaysByWeekday = new Array(7).fill(0);
+        let workedDayKeys: string[] = [];
+        
+        daysToProcess.forEach(day => {
+            const dayKey = format(day, 'yyyy-MM-dd');
+            const shift = collaboratorSchedule.get(dayKey);
+
+            if (shift && shift !== 'LIB' && shift !== 'VAC' && shift !== 'TRA' && !['PM', 'LIC', 'SUS', 'RET', 'FI'].includes(shift)) {
+                workedDayKeys.push(dayKey);
+                shiftCounts.set(shift, (shiftCounts.get(shift) || 0) + 1);
+            } else if (shift === 'LIB' || shift === null) {
+                const dayOfWeek = getDay(day);
+                freeDaysByWeekday[dayOfWeek]++;
+            }
+        });
+        
+        let compensationHours = 0;
+        let compensationDetails: { day: Date, shift: string | null }[] = [];
+
+        if (workedDayKeys.length > 22) {
+            const extraDaysCount = workedDayKeys.length - 22;
+            const compensationDayKeys = workedDayKeys.slice(-extraDaysCount);
+
+            compensationDayKeys.forEach(dayKey => {
+                const day = new Date(`${dayKey}T00:00:00`);
+                const shift = collaboratorSchedule.get(dayKey);
+                if (shift) {
+                    const { jobTitle } = getEffectiveDetails(collaborator, day, allTransfers, allRoleChanges);
+                    const dayIsHoliday = allHolidays.some(h => isWithinInterval(day, { start: h.startDate, end: h.endDate }));
+                    const jornada = dayIsHoliday ? "FESTIVO" : "NORMAL"; 
+                    const shiftDetails = getShiftDetailsFromRules(shift, jobTitle, jornada, allOvertimeRules);
+                    if (shiftDetails) {
+                        compensationHours += shiftDetails.hours;
+                        compensationDetails.push({ day, shift });
+                    }
+                }
+            });
+        }
+        
+        const extraHours = workedDayKeys.reduce((acc, dayKey) => {
+            const day = new Date(`${dayKey}T00:00:00`);
+            const dayIsHoliday = allHolidays.some(h => isWithinInterval(day, { start: h.startDate, end: h.endDate }));
+            const jornada = dayIsHoliday ? "FESTIVO" : "NORMAL"; 
+            const shift = collaboratorSchedule.get(dayKey);
+
+            if (shift) {
+                const { jobTitle: effectiveJobTitle } = getEffectiveDetails(collaborator, day, allTransfers, allRoleChanges);
+                
+                let rule = allOvertimeRules.find(r => 
+                    normalizeText(r.jobTitle) === normalizeText(effectiveJobTitle) && 
+                    r.shift === shift && 
+                    r.dayType === jornada
+                );
+    
+                if (!rule) {
+                    const isOfficeShift = shift === 'N9';
+                    if (isOfficeShift) {
+                        rule = allOvertimeRules.find(r => 
+                            r.jobTitle === '_DEFAULT_OFFICE_' &&
+                            r.shift === shift &&
+                            r.dayType === jornada
+                        );
+                    }
+                }
+
+                if (rule) {
+                    acc.he25 += rule.nightSurcharge || 0;
+                    acc.he50 += rule.sup50 || 0;
+                    acc.he100 += rule.ext100 || 0;
+                }
+            }
+            return acc;
+        }, { he25: 0, he50: 0, he100: 0 });
+
+        return {
+            id: collaborator.id,
+            name: collaborator.name,
+            jobTitle: getEffectiveDetails(collaborator, daysToProcess[0], allTransfers, allRoleChanges).jobTitle,
+            shiftCounts,
+            freeDaysByWeekday,
+            extraHours,
+            compensationHours,
+            compensationDetails,
+        };
+    }).filter((c): c is NonNullable<typeof c> => c !== null);
+
+    const grouped = collaboratorData.reduce((acc, data) => {
+        let group = acc.find(g => g.jobTitle === data.jobTitle);
+        if (!group) {
+            group = { jobTitle: data.jobTitle, employees: [] };
+            acc.push(group);
+        }
+        group.employees.push(data);
+        return acc;
+    }, [] as { jobTitle: string, employees: typeof collaboratorData }[]);
+    
+    grouped.sort((a, b) => a.jobTitle.localeCompare(b.jobTitle));
+    grouped.forEach(group => group.employees.sort((a,b) => a.name.localeCompare(b.name)));
+
+    const allShifts = new Set(collaboratorData.flatMap(d => Array.from(d.shiftCounts.keys())));
+    const orderedShiftTypes = ['M8', 'T8', 'N8', 'D12', 'N12', 'TA', 'T24', 'D10', 'D9'];
+    const sortedShifts = Array.from(allShifts).sort((a, b) => {
+        const indexA = orderedShiftTypes.indexOf(a);
+        const indexB = orderedShiftTypes.indexOf(b);
+
+        if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+        if (indexA !== -1) return -1;
+        if (indexB !== -1) return 1;
+        return a.localeCompare(b);
+    });
+    
+    return { groupedData: grouped, uniqueShifts: sortedShifts };
 }

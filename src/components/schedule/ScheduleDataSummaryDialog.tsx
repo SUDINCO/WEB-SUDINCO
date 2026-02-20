@@ -28,6 +28,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Combobox } from '@/components/ui/combobox';
 import { Label } from '@/components/ui/label';
 import { normalizeText } from '@/lib/utils';
+import { calculateScheduleSummary } from '@/lib/schedule-generator';
+
 
 type Option = {
   value: string;
@@ -67,129 +69,6 @@ interface SummaryData {
     extraHours: { he25: number; he50: number; he100: number; };
     compensationHours: number;
     compensationDetails: { day: Date, shift: string | null }[];
-}
-
-function calculateScheduleSummary(
-    collaboratorsToProcess: Collaborator[],
-    scheduleToProcess: Map<string, Map<string, string | null>>,
-    daysToProcess: Date[],
-    allHolidays: Holiday[],
-    allOvertimeRules: OvertimeRule[],
-    allTransfers: TemporaryTransfer[],
-    allRoleChanges: RoleChange[]
-) {
-    if (collaboratorsToProcess.length === 0 || daysToProcess.length === 0) {
-        return { groupedData: [], uniqueShifts: [] };
-    }
-
-    const collaboratorData = collaboratorsToProcess.map(collaborator => {
-        const collaboratorSchedule = scheduleToProcess.get(collaborator.id);
-        if (!collaboratorSchedule) return null;
-
-        const shiftCounts = new Map<string, number>();
-        const freeDaysByWeekday = new Array(7).fill(0);
-        let workedDayKeys: string[] = [];
-        
-        daysToProcess.forEach(day => {
-            const dayKey = format(day, 'yyyy-MM-dd');
-            const shift = collaboratorSchedule.get(dayKey);
-
-            if (shift && shift !== 'LIB' && shift !== 'VAC' && shift !== 'TRA' && !['PM', 'LIC', 'SUS', 'RET', 'FI'].includes(shift)) {
-                workedDayKeys.push(dayKey);
-                shiftCounts.set(shift, (shiftCounts.get(shift) || 0) + 1);
-            } else if (shift === 'LIB' || shift === null) {
-                const dayOfWeek = getDay(day);
-                freeDaysByWeekday[dayOfWeek]++;
-            }
-        });
-        
-        let compensationHours = 0;
-        let compensationDetails: { day: Date, shift: string | null }[] = [];
-
-        if (workedDayKeys.length > 22) {
-            const extraDaysCount = workedDayKeys.length - 22;
-            const compensationDayKeys = workedDayKeys.slice(-extraDaysCount);
-
-            compensationDayKeys.forEach(dayKey => {
-                const day = new Date(`${dayKey}T00:00:00`);
-                const shift = collaboratorSchedule.get(dayKey);
-                if (shift) {
-                    const { jobTitle } = getEffectiveDetails(collaborator, day, allTransfers, allRoleChanges);
-                    const dayIsHoliday = allHolidays.some(h => isWithinInterval(day, { start: h.startDate, end: h.endDate }));
-                    const jornada = dayIsHoliday ? "FESTIVO" : "NORMAL"; 
-                    const shiftDetails = getShiftDetailsFromRules(shift, jobTitle, jornada, allOvertimeRules);
-                    if (shiftDetails) {
-                        compensationHours += shiftDetails.hours;
-                        compensationDetails.push({ day, shift });
-                    }
-                }
-            });
-        }
-        
-        const extraHours = workedDayKeys.reduce((acc, dayKey) => {
-            const day = new Date(`${dayKey}T00:00:00`);
-            const dayIsHoliday = allHolidays.some(h => isWithinInterval(day, { start: h.startDate, end: h.endDate }));
-            const jornada = dayIsHoliday ? "FESTIVO" : "NORMAL"; 
-            const shift = collaboratorSchedule.get(dayKey);
-
-            if (shift) {
-                const { jobTitle: effectiveJobTitle } = getEffectiveDetails(collaborator, day, allTransfers, allRoleChanges);
-                
-                let rule = allOvertimeRules.find(r => 
-                    normalizeText(r.jobTitle) === normalizeText(effectiveJobTitle) && 
-                    r.shift === shift && 
-                    r.dayType === jornada
-                );
-    
-                if (!rule) {
-                    const isOfficeShift = shift === 'N9';
-                    if (isOfficeShift) {
-                        rule = allOvertimeRules.find(r => 
-                            r.jobTitle === '_DEFAULT_OFFICE_' &&
-                            r.shift === shift &&
-                            r.dayType === jornada
-                        );
-                    }
-                }
-
-                if (rule) {
-                    acc.he25 += rule.nightSurcharge || 0;
-                    acc.he50 += rule.sup50 || 0;
-                    acc.he100 += rule.ext100 || 0;
-                }
-            }
-            return acc;
-        }, { he25: 0, he50: 0, he100: 0 });
-
-        return {
-            id: collaborator.id,
-            name: collaborator.name,
-            jobTitle: getEffectiveDetails(collaborator, daysToProcess[0], allTransfers, allRoleChanges).jobTitle,
-            shiftCounts,
-            freeDaysByWeekday,
-            extraHours,
-            compensationHours,
-            compensationDetails,
-        };
-    }).filter((c): c is NonNullable<typeof c> => c !== null);
-
-    const grouped = collaboratorData.reduce((acc, data) => {
-        let group = acc.find(g => g.jobTitle === data.jobTitle);
-        if (!group) {
-            group = { jobTitle: data.jobTitle, employees: [] };
-            acc.push(group);
-        }
-        group.employees.push(data);
-        return acc;
-    }, [] as { jobTitle: string, employees: typeof collaboratorData }[]);
-    
-    grouped.sort((a, b) => a.jobTitle.localeCompare(b.jobTitle));
-    grouped.forEach(group => group.employees.sort((a,b) => a.name.localeCompare(b.name)));
-
-    const allShifts = new Set(collaboratorData.flatMap(d => Array.from(d.shiftCounts.keys())));
-    const sortedShifts = ['M8', 'T8', 'N8', 'D12', 'N12', 'TA', 'T24', 'D10', 'D9'].filter(s => allShifts.has(s));
-    
-    return { groupedData: grouped, uniqueShifts: sortedShifts };
 }
 
 const SummaryTable = ({ groupedData, uniqueShifts }: { groupedData: any[], uniqueShifts: string[] }) => {
@@ -312,34 +191,65 @@ export function ScheduleDataSummaryDialog({
   }, [open, viewMode]);
 
   const { groupedData: periodGroupedData, uniqueShifts: periodUniqueShifts } = React.useMemo(() => {
-    if (collaborators.length === 0 || days.length === 0) {
+    if (collaborators.length === 0 || days.length === 0 || Object.keys(savedSchedules).length === 0) {
       return { groupedData: [], uniqueShifts: [] };
     }
 
     const periodSchedules = Object.values(savedSchedules).filter(s => s.id.startsWith(periodIdentifier));
+    if (periodSchedules.length === 0) {
+      return { groupedData: [], uniqueShifts: [] };
+    }
+
+    const allPeriodCollaboratorIds = new Set<string>();
+    const unifiedSchedule = new Map<string, Map<string, string | null>>();
+
+    periodSchedules.forEach(s => {
+      Object.entries(s.schedule).forEach(([collabId, dayMap]) => {
+        allPeriodCollaboratorIds.add(collabId);
+        if (!unifiedSchedule.has(collabId)) {
+          unifiedSchedule.set(collabId, new Map(Object.entries(dayMap)));
+        } else {
+          const existingMap = unifiedSchedule.get(collabId)!;
+          Object.entries(dayMap).forEach(([dayKey, shift]) => {
+            existingMap.set(dayKey, shift);
+          });
+        }
+      });
+    });
+
+    const allPeriodCollaborators = collaborators.filter(c => allPeriodCollaboratorIds.has(c.id));
+    if (allPeriodCollaborators.length === 0) {
+      return { groupedData: [], uniqueShifts: [] };
+    }
     
-    const relevantSchedules = periodSchedules.filter(s => 
-        (periodLocation === 'todos' || s.location === periodLocation) &&
-        (periodJobTitle === 'todos' || s.jobTitle === periodJobTitle)
+    const { groupedData: allGroupedData, uniqueShifts } = calculateScheduleSummary(
+        allPeriodCollaborators, unifiedSchedule, days, holidays, overtimeRules, transfers, roleChanges
     );
 
-    const relevantCollaboratorIds = new Set<string>();
-    relevantSchedules.forEach(s => {
-        Object.keys(s.schedule).forEach(id => relevantCollaboratorIds.add(id));
-    });
+    if (periodLocation === 'todos' && periodJobTitle === 'todos') {
+      return { groupedData: allGroupedData, uniqueShifts };
+    }
+    
+    const fullCollaboratorMap = new Map(collaborators.map(c => [c.id, c]));
 
-    const unifiedSchedule = new Map<string, Map<string, string | null>>();
-    relevantSchedules.forEach(s => {
-        Object.entries(s.schedule).forEach(([collabId, dayMap]) => {
-            if (!unifiedSchedule.has(collabId)) unifiedSchedule.set(collabId, new Map());
-            const userSchedule = unifiedSchedule.get(collabId)!;
-            Object.entries(dayMap).forEach(([dayKey, shift]) => userSchedule.set(dayKey, shift));
+    const filteredGroupedData = allGroupedData
+      .map(group => {
+        const filteredEmployees = group.employees.filter(employee => {
+          const collaborator = fullCollaboratorMap.get(employee.id);
+          if (!collaborator) return false;
+          
+          const locationMatch = periodLocation === 'todos' || collaborator.originalLocation === periodLocation;
+          const jobTitleMatch = periodJobTitle === 'todos' || employee.jobTitle === periodJobTitle;
+
+          return locationMatch && jobTitleMatch;
         });
-    });
 
-    const relevantCollaborators = collaborators.filter(c => relevantCollaboratorIds.has(c.id));
+        return { ...group, employees: filteredEmployees };
+      })
+      .filter(group => group.employees.length > 0);
 
-    return calculateScheduleSummary(relevantCollaborators, unifiedSchedule, days, holidays, overtimeRules, transfers, roleChanges);
+    return { groupedData: filteredGroupedData, uniqueShifts };
+
   }, [periodIdentifier, periodLocation, periodJobTitle, savedSchedules, collaborators, days, holidays, overtimeRules, transfers, roleChanges]);
 
 
