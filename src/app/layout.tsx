@@ -11,8 +11,8 @@ export const metadata: Metadata = {
   },
   description: 'Página de acceso para la aplicación PERFORMA',
   icons: {
-    icon: 'https://i.postimg.cc/VkbXZDKb/LOGO-PERF1.png',
-    apple: 'https://i.postimg.cc/VkbXZDKb/LOGO-PERF1.png',
+    icon: 'https://i.postimg.cc/sgYg2NKd/icono-performa.png',
+    apple: 'https://i.postimg.cc/sgYg2NKd/icono-performa.png',
   },
 };
 
