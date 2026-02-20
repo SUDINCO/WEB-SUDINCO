@@ -7,11 +7,12 @@ import { useAuth, useUser, useFirestore, useDoc } from '@/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Mail, Phone, UserCircle, QrCode, Briefcase, Building, MapPin, Camera, Edit3 } from 'lucide-react';
+import { Mail, Phone, UserCircle, QrCode, Briefcase, Building, MapPin, Camera, Edit3, UserRound } from 'lucide-react';
 import Image from 'next/image';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useToast } from "@/hooks/use-toast";
 import { cn } from '@/lib/utils';
 import { signOut } from 'firebase/auth';
@@ -67,21 +68,50 @@ export default function ProfilePage() {
 
   const handleFileSelect = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      if (file.size > MAX_AVATAR_SIZE_BYTES) {
+    if (!file) return;
+
+    if (file.size > MAX_AVATAR_SIZE_BYTES) {
         toast({ variant: "destructive", title: "Imagen Demasiado Grande", description: `El tamaño máximo es ${MAX_AVATAR_SIZE_MB}MB.` });
         return;
-      }
-      if (!file.type.startsWith('image/')) {
+    }
+    if (!file.type.startsWith('image/')) {
         toast({ variant: "destructive", title: "Archivo no válido", description: "Selecciona una imagen." });
         return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
     }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const img = document.createElement('img');
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const MAX_WIDTH = 512;
+            const MAX_HEIGHT = 512;
+            let width = img.width;
+            let height = img.height;
+
+            if (width > height) {
+                if (width > MAX_WIDTH) {
+                    height *= MAX_WIDTH / width;
+                    width = MAX_WIDTH;
+                }
+            } else {
+                if (height > MAX_HEIGHT) {
+                    width *= MAX_HEIGHT / height;
+                    height = MAX_HEIGHT;
+                }
+            }
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+            setImagePreview(dataUrl);
+        };
+        img.src = e.target?.result as string;
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSavePhoto = async () => {
@@ -132,7 +162,7 @@ export default function ProfilePage() {
                 <AvatarImage src={user.photoUrl} alt={`${user.nombres} ${user.apellidos}`} />
                 <AvatarFallback className="text-4xl">{getInitials(user.nombres, user.apellidos)}</AvatarFallback>
               </Avatar>
-              <Button variant="outline" size="icon" className="absolute bottom-1 right-1 h-8 w-8 rounded-full bg-background/80 text-primary opacity-0 group-hover:opacity-100" onClick={openEditPhotoDialog} title="Cambiar foto">
+              <Button variant="outline" size="icon" className="absolute bottom-1 right-1 h-8 w-8 rounded-full bg-background/80 text-primary" onClick={openEditPhotoDialog} title="Cambiar foto">
                 <Camera className="h-4 w-4" />
               </Button>
             </div>
@@ -171,18 +201,40 @@ export default function ProfilePage() {
 
       <Dialog open={isEditPhotoModalOpen} onOpenChange={(open) => !open && closeEditPhotoModal()}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle className="font-headline">Cambiar Foto de Perfil</DialogTitle></DialogHeader>
-          <div className="space-y-4 py-4">
-            {imagePreview && <div className="mx-auto w-40 h-40 rounded-full overflow-hidden border-2"><Image src={imagePreview} alt="Vista previa" width={160} height={160} className="object-cover w-full h-full" /></div>}
-            <Input id="avatarUpload" ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
-            <Button type="button" variant="outline" className="w-full gap-2" onClick={() => fileInputRef.current?.click()}><Edit3 className="h-4 w-4" /> Seleccionar Archivo</Button>
-            <p className="text-xs text-muted-foreground text-center">Máx {MAX_AVATAR_SIZE_MB}MB.</p>
-          </div>
-          <DialogFooter>
-            <Button onClick={handleSavePhoto} disabled={!imagePreview || imagePreview === user?.photoUrl}>Guardar</Button>
-            <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
-          </DialogFooter>
-        </DialogContent>
+            <DialogHeader><DialogTitle className="font-headline">Cambiar Foto de Perfil</DialogTitle></DialogHeader>
+              <div className="py-4">
+                  <div className="flex items-center gap-4">
+                      <div className="w-24 text-center">
+                        <Label htmlFor="avatarUpload" className="cursor-pointer flex flex-col items-center gap-1">
+                          <span className="text-xs text-muted-foreground">Vista previa</span>
+                          {imagePreview ? (
+                              <Image
+                                  src={imagePreview}
+                                  alt="Vista previa"
+                                  width={80}
+                                  height={80}
+                                  className="rounded-full aspect-square object-cover border"
+                                  unoptimized
+                              />
+                          ) : (
+                              <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center border">
+                                  <UserRound className="w-10 h-10 text-muted-foreground" />
+                              </div>
+                          )}
+                        </Label>
+                      </div>
+                      <div className="flex-1 space-y-2">
+                          <Input id="avatarUpload" ref={fileInputRef} type="file" accept="image/png, image/jpeg" onChange={handleFileSelect} className="hidden" />
+                          <Button type="button" variant="outline" className="w-full gap-2" onClick={() => fileInputRef.current?.click()}><Edit3 className="h-4 w-4" /> Seleccionar Archivo</Button>
+                          <p className="text-xs text-muted-foreground">La imagen se redimensionará a 512x512 y se comprimirá.</p>
+                      </div>
+                  </div>
+              </div>
+            <DialogFooter>
+              <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
+              <Button onClick={handleSavePhoto} disabled={!imagePreview || imagePreview === user?.photoUrl}>Guardar Foto</Button>
+            </DialogFooter>
+          </DialogContent>
       </Dialog>
     </div>
   );
