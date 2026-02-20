@@ -68,7 +68,7 @@ import {
 import { useCollection, useFirestore, useAuth, useUser } from '@/firebase';
 import { useUserProfile } from '@/context/user-profile-context';
 import { collection, doc, addDoc, updateDoc, setDoc, query, where, getDocs, writeBatch, deleteDoc } from 'firebase/firestore';
-import { createUserWithEmailAndPassword, getAuth } from 'firebase/auth';
+import { createUserWithEmailAndPassword, getAuth, sendPasswordResetEmail } from 'firebase/auth';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { firebaseConfig } from '@/firebase/config';
 import { toast } from '@/hooks/use-toast';
@@ -574,26 +574,22 @@ export default function StaffPage() {
     }
 
     try {
-        await createUserWithEmailAndPassword(auth, userToReset.email, userToReset.cedula);
+        await sendPasswordResetEmail(auth, userToReset.email);
         toast({
-            title: 'Cuenta de Acceso Creada/Restablecida',
-            description: `Se ha creado una cuenta para ${userToReset.email} con su número de cédula como contraseña.`,
+            title: 'Enlace Enviado',
+            description: `Se ha enviado un correo para restablecer la contraseña a ${userToReset.email}.`,
         });
     } catch (error: any) {
-        if (error.code === 'auth/email-already-in-use') {
-            toast({
-                variant: 'destructive',
-                title: 'La Cuenta ya Existe',
-                description: 'La cuenta de autenticación para este correo electrónico ya existe. Para restablecerla, debe eliminarla primero desde la Consola de Firebase.',
-                duration: 10000,
-            });
-        } else {
-            toast({
-                variant: 'destructive',
-                title: 'Error al Crear Cuenta',
-                description: `Ocurrió un error: ${error.message}`,
-            });
+        console.error("Error sending password reset email from staff page:", error);
+        let description = 'Ocurrió un error inesperado al enviar el correo.';
+        if (error.code === 'auth/user-not-found') {
+            description = "Este correo no tiene una cuenta de autenticación asociada. Debes crear el usuario primero.";
         }
+        toast({
+            variant: "destructive",
+            title: "Error al Enviar Correo",
+            description: description
+        });
     } finally {
         setUserToReset(null);
     }
@@ -1094,16 +1090,16 @@ export default function StaffPage() {
       <AlertDialog open={!!userToReset} onOpenChange={() => setUserToReset(null)}>
         <AlertDialogContent>
             <AlertDialogHeader>
-                <AlertDialogTitle>Restablecer Contraseña</AlertDialogTitle>
+                <AlertDialogTitle>Enviar Correo de Recuperación</AlertDialogTitle>
                 <AlertDialogDescription>
-                    {`¿Estás seguro de que quieres restablecer la contraseña para ${userToReset?.nombres} ${userToReset?.apellidos}?`}
+                    {`¿Estás seguro de que quieres enviar un correo para restablecer la contraseña a ${userToReset?.nombres} ${userToReset?.apellidos} (${userToReset?.email})?`}
                     <br/><br/>
-                    Esto intentará crear una nueva cuenta de autenticación con la contraseña establecida a su número de cédula. Si la cuenta ya existe, esta acción no tendrá efecto.
+                    El usuario recibirá un enlace para crear una nueva contraseña. Esto solo funcionará si el usuario ya tiene una cuenta de autenticación creada.
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={handlePasswordReset}>Sí, Restablecer</AlertDialogAction>
+                <AlertDialogAction onClick={handlePasswordReset}>Sí, Enviar Correo</AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -1741,6 +1737,7 @@ export default function StaffPage() {
     </>
   );
 }
+
 
 
 
