@@ -93,6 +93,16 @@ interface AttendanceMapProps {
   onOutOfBoundsRecordClick?: (record: AttendanceRecord) => void;
 }
 
+// Type guard to check if a record is an AttendanceRecord
+function isAttendanceRecord(record: RecordWithUser): record is AttendanceRecord & { userName?: string; userCargo?: string; userPhotoUrl?: string; initials?: string; } {
+    return 'entryLatitude' in record;
+}
+
+// Type guard to check if a record is a LocationReport
+function isLocationReport(record: RecordWithUser): record is LocationReport & { userName?: string; userCargo?: string; userPhotoUrl?: string; initials?: string; } {
+    return 'timestamp' in record && 'photoUrl' in record;
+}
+
 export default function AttendanceMap({ workLocations, records, viewType, onLocationClick, onOutOfBoundsRecordClick }: AttendanceMapProps) {
     const defaultCenter: [number, number] = [-2.14, -79.9]; // Guayaquil
     
@@ -102,23 +112,22 @@ export default function AttendanceMap({ workLocations, records, viewType, onLoca
 
         const counts = new Map<string, number>();
         const outOfBounds: RecordWithUser[] = [];
-        const attendanceRecords = records as AttendanceRecord[];
-
-        attendanceRecords.forEach(record => {
-            if (!record.entryLatitude || !record.entryLongitude) return;
-
-            let isInside = false;
-            for (const location of workLocations) {
-                const distance = getDistance(record.entryLatitude, record.entryLongitude, location.latitude, location.longitude);
-                if (distance <= location.radius) {
-                    counts.set(location.id, (counts.get(location.id) || 0) + 1);
-                    isInside = true;
-                    break;
+        
+        records.forEach(record => {
+            if (isAttendanceRecord(record) && record.entryLatitude && record.entryLongitude) {
+                let isInside = false;
+                for (const location of workLocations) {
+                    const distance = getDistance(record.entryLatitude, record.entryLongitude, location.latitude, location.longitude);
+                    if (distance <= location.radius) {
+                        counts.set(location.id, (counts.get(location.id) || 0) + 1);
+                        isInside = true;
+                        break;
+                    }
                 }
-            }
 
-            if (!isInside) {
-                outOfBounds.push(record as RecordWithUser);
+                if (!isInside) {
+                    outOfBounds.push(record);
+                }
             }
         });
 
@@ -128,27 +137,22 @@ export default function AttendanceMap({ workLocations, records, viewType, onLoca
     const bounds = React.useMemo(() => {
         const points: L.LatLngTuple[] = [];
 
+        records.forEach(rec => {
+            if (isAttendanceRecord(rec) && rec.entryLatitude && rec.entryLongitude) {
+                points.push([rec.entryLatitude, rec.entryLongitude]);
+            } else if (isLocationReport(rec) && rec.latitude && rec.longitude) {
+                points.push([rec.latitude, rec.longitude]);
+            }
+        });
+
         if (viewType === 'attendance') {
-            const attendanceRecords = records as AttendanceRecord[];
             workLocations.forEach(loc => {
                 if (loc.latitude && loc.longitude) {
                     points.push([loc.latitude, loc.longitude]);
                 }
             });
-            attendanceRecords.forEach(rec => {
-                if (rec.entryLatitude && rec.entryLongitude) {
-                    points.push([rec.entryLatitude, rec.entryLongitude]);
-                }
-            });
-        } else { // 'reports'
-            const locationReports = records as LocationReport[];
-            locationReports.forEach(rep => {
-                if (rep.latitude && rep.longitude) {
-                    points.push([rep.latitude, rep.longitude]);
-                }
-            });
         }
-
+        
         if (points.length === 0) {
             return null;
         }
@@ -213,6 +217,8 @@ export default function AttendanceMap({ workLocations, records, viewType, onLoca
 
             {/* Render out-of-bounds records for attendance view */}
             {viewType === 'attendance' && outOfBoundsRecords.map(record => {
+                if (!isAttendanceRecord(record)) return null;
+
                 const userPhoto = record.userPhotoUrl;
                 const userInitials = record.initials || 'U';
                 const icon = createAvatarIcon(userPhoto, userInitials, 'red');
@@ -224,7 +230,7 @@ export default function AttendanceMap({ workLocations, records, viewType, onLoca
                         icon={icon}
                         eventHandlers={{
                             click: () => {
-                                if (onOutOfBoundsRecordClick) onOutOfBoundsRecordClick(record as AttendanceRecord);
+                                if (onOutOfBoundsRecordClick) onOutOfBoundsRecordClick(record);
                             },
                         }}
                     >
@@ -240,7 +246,9 @@ export default function AttendanceMap({ workLocations, records, viewType, onLoca
             })}
 
             {/* Render location reports */}
-            {viewType === 'reports' && (records as RecordWithUser[]).map(report => {
+            {viewType === 'reports' && records.map(report => {
+                if (!isLocationReport(report)) return null;
+
                 const userPhoto = report.userPhotoUrl;
                 const userInitials = report.initials || 'U';
                 const icon = createAvatarIcon(userPhoto, userInitials, 'hsl(var(--primary))');
@@ -256,7 +264,7 @@ export default function AttendanceMap({ workLocations, records, viewType, onLoca
                             <strong>Cargo:</strong> {report.userCargo || 'N/A'}<br/>
                             <strong>Hora:</strong> {format(new Date(report.timestamp), 'HH:mm:ss')}<br/>
                             {report.notes && `<strong>Comentario:</strong> ${report.notes}`}<br/>
-                            {(report as LocationReport).photoUrl && <img src={(report as LocationReport).photoUrl} alt="Evidencia" style={{ width: '150px', marginTop: '5px' }} />}
+                            {report.photoUrl && <img src={report.photoUrl} alt="Evidencia" style={{ width: '150px', marginTop: '5px' }} />}
                         </Popup>
                     </Marker>
                 )

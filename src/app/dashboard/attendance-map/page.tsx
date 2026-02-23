@@ -18,7 +18,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { Combobox } from '@/components/ui/combobox';
 
-const AttendanceMap = dynamic(() => import('@/components/map/attendance-map'), {
+const AttendanceMap = dynamic(() => import('../../../components/map/attendance-map'), {
     ssr: false,
     loading: () => <div className="h-full w-full bg-muted flex items-center justify-center"><LoaderCircle className="h-6 w-6 animate-spin" /> <p className="ml-2">Cargando mapa...</p></div>
 });
@@ -73,7 +73,7 @@ export default function AttendanceMapPage() {
             return format(recordDate, 'yyyy-MM-dd') === selectedDateStr;
         }) || [];
 
-        const dataWithUserInfo = attendanceForDay.map(rec => {
+        return attendanceForDay.map(rec => {
             const user = allUsers.find(u => u.id === rec.collaboratorId);
             return {
                 ...rec,
@@ -82,9 +82,7 @@ export default function AttendanceMapPage() {
                 userPhotoUrl: user?.photoUrl,
                 initials: user ? `${user.nombres?.[0] || ''}${user.apellidos?.[0] || ''}` : 'U'
             };
-        });
-
-        return dataWithUserInfo.filter(rec => {
+        }).filter(rec => {
             const cargoMatch = cargoFilter === 'todos' || rec.userCargo === cargoFilter;
             const colaboradorMatch = colaboradorFilter === 'todos' || rec.collaboratorId === colaboradorFilter;
             return cargoMatch && colaboradorMatch;
@@ -96,7 +94,7 @@ export default function AttendanceMapPage() {
             return format(reportDate, 'yyyy-MM-dd') === selectedDateStr;
         }) || [];
 
-        const dataWithUserInfo = reportsForDay.map(rec => {
+        return reportsForDay.map(rec => {
             const user = allUsers.find(u => u.id === rec.userId);
             return {
                 ...rec,
@@ -105,9 +103,7 @@ export default function AttendanceMapPage() {
                 userPhotoUrl: user?.photoUrl,
                 initials: user ? `${user.nombres?.[0] || ''}${user.apellidos?.[0] || ''}` : 'U'
             };
-        });
-
-        return dataWithUserInfo.filter(rec => {
+        }).filter(rec => {
             const cargoMatch = cargoFilter === 'todos' || rec.userCargo === cargoFilter;
             const colaboradorMatch = colaboradorFilter === 'todos' || rec.userId === colaboradorFilter;
             return cargoMatch && colaboradorMatch;
