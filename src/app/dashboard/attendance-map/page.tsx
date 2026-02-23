@@ -1,3 +1,4 @@
+
 "use client";
 import React, { useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
@@ -17,7 +18,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { Combobox } from '@/components/ui/combobox';
 
-const AttendanceMap = dynamic(() => import('../../../components/map/attendance-map'), {
+const AttendanceMap = dynamic(() => import('@/components/map/attendance-map'), {
     ssr: false,
     loading: () => <div className="h-full w-full bg-muted flex items-center justify-center"><LoaderCircle className="h-6 w-6 animate-spin" /> <p className="ml-2">Cargando mapa...</p></div>
 });
@@ -83,7 +84,13 @@ export default function AttendanceMapPage() {
     if (!allUsers) return baseRecords;
     
     const dataWithUserInfo = baseRecords.map(rec => {
-        const userId = viewType === 'attendance' ? (rec as AttendanceRecord).collaboratorId : (rec as LocationReport).userId;
+        let userId: string | undefined;
+        if ('collaboratorId' in rec && rec.collaboratorId) {
+            userId = rec.collaboratorId;
+        } else if ('userId' in rec && rec.userId) {
+            userId = rec.userId;
+        }
+
         const user = userMap.get(userId!);
         return {
             ...rec,
@@ -97,7 +104,7 @@ export default function AttendanceMapPage() {
 
     return dataWithUserInfo.filter(rec => {
         const cargoMatch = cargoFilter === 'todos' || rec.userCargo === cargoFilter;
-        const colaboradorMatch = colaboradorFilter === 'todos' || rec.userId === colaboradorMatch;
+        const colaboradorMatch = colaboradorFilter === 'todos' || rec.userId === colaboradorFilter;
         return cargoMatch && colaboradorMatch;
     });
 
@@ -116,7 +123,7 @@ export default function AttendanceMapPage() {
             })
             .map(record => {
                 const user = allUsers.find(u => u.id === record.collaboratorId);
-                const userName = user ? `${user.nombres} ${user.apellidos}` : record.userName || 'Desconocido';
+                const userName = user ? `${user.nombres} ${user.apellidos}` : (record as any).userName || 'Desconocido';
                 const userCargo = user ? user.cargo : 'N/A';
                 return {
                     ...record,
@@ -141,7 +148,7 @@ export default function AttendanceMapPage() {
     const user = allUsers.find(u => u.id === record.collaboratorId);
     const enrichedRecord = {
         ...record,
-        userName: user ? `${user.nombres} ${user.apellidos}` : record.userName || 'Desconocido',
+        userName: user ? `${user.nombres} ${user.apellidos}` : (record as any).userName || 'Desconocido',
         userCargo: user ? user.cargo : 'N/A',
         entryTime: record.entryTime && (record.entryTime as any)?.toDate ? (record.entryTime as any).toDate() : null,
         exitTime: record.exitTime && (record.exitTime as any)?.toDate ? (record.exitTime as any).toDate() : null,
