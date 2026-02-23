@@ -17,7 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { Combobox } from '@/components/ui/combobox';
 
-const AttendanceMap = dynamic(() => import('../../../components/map/attendance-map'), {
+const AttendanceMap = dynamic(() => import('@/components/map/attendance-map'), {
     ssr: false,
     loading: () => <div className="h-full w-full bg-muted flex items-center justify-center"><LoaderCircle className="h-6 w-6 animate-spin" /> <p className="ml-2">Cargando mapa...</p></div>
 });
