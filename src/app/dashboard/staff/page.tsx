@@ -260,101 +260,11 @@ export default function StaffPage() {
 
   const { watch, setValue } = form;
   const watchedFields = watch(['empresa', 'cargo', 'ubicacion', 'departamento', 'centroCosto']);
-  const watchedEmpresa = watch('empresa');
-  const watchedUbicacion = watch('ubicacion');
-
+  
   const toOptions = (data: GenericOption[] | null | undefined) => {
     if (!data) return [];
     return data.map(item => ({ label: item.name, value: item.name }));
   }
-
-  const cascadedUbicacionOptions = useMemo(() => {
-    if (!watchedEmpresa || !users) return toOptions(ubicaciones);
-    const relevantUbicaciones = new Set(
-        users
-            .filter(u => normalizeText(u.empresa) === normalizeText(watchedEmpresa))
-            .map(u => u.ubicacion)
-            .filter(Boolean) as string[]
-    );
-    return Array.from(relevantUbicaciones).sort().map(name => ({ label: name, value: name }));
-  }, [watchedEmpresa, users, ubicaciones]);
-
-
-  const cascadedCargoOptions = useMemo(() => {
-    if (!watchedEmpresa || !users) return toOptions(cargos);
-    
-    let filteredUsers = users;
-    if (watchedEmpresa) {
-        filteredUsers = users.filter(u => normalizeText(u.empresa) === normalizeText(watchedEmpresa));
-    }
-
-    if (watchedUbicacion) {
-        filteredUsers = filteredUsers.filter(u => normalizeText(u.ubicacion) === normalizeText(watchedUbicacion));
-    }
-    
-    const relevantCargos = new Set(
-        filteredUsers
-            .map(u => u.cargo)
-            .filter(Boolean) as string[]
-    );
-    return Array.from(relevantCargos).sort().map(name => ({ label: name, value: name }));
-  }, [watchedEmpresa, watchedUbicacion, users, cargos]);
-
-  useEffect(() => {
-    if (migrationCompleted.current || !firestore || !users || users.length === 0) return;
-
-    const usersToUpdate = users.filter(u => !u.fechaNacimiento);
-    if (usersToUpdate.length > 0) {
-      migrationCompleted.current = true; // Prevent re-running
-      console.log(`Found ${usersToUpdate.length} users missing date of birth. Updating...`);
-      const batch = writeBatch(firestore);
-      usersToUpdate.forEach(user => {
-        const userDocRef = doc(firestore, 'users', user.id);
-        // Generate a random birth date between 20 and 60 years ago
-        const birthYear = new Date().getFullYear() - (20 + Math.floor(Math.random() * 40));
-        const birthMonth = Math.floor(Math.random() * 12);
-        const birthDay = Math.floor(Math.random() * 28) + 1; // Avoid issues with month lengths
-        const birthDate = new Date(birthYear, birthMonth, birthDay);
-        batch.update(userDocRef, { fechaNacimiento: format(birthDate, 'yyyy-MM-dd') });
-      });
-
-      batch.commit().then(() => {
-        toast({
-          title: 'Datos de Usuario Completados',
-          description: `Se ha añadido una fecha de nacimiento ficticia a ${usersToUpdate.length} usuarios.`,
-        });
-      }).catch(error => {
-        console.error("Error auto-filling birth dates:", error);
-        toast({
-            variant: "destructive",
-            title: "Error al autocompletar datos",
-            description: "No se pudieron añadir las fechas de nacimiento.",
-        });
-      });
-    }
-  }, [firestore, users]);
-
-  useEffect(() => {
-    if (users && users.some(u => !u.tipoContrato)) {
-      const batch = writeBatch(firestore);
-      let updatedCount = 0;
-      users.forEach(user => {
-        if (!user.tipoContrato) {
-          const userDocRef = doc(firestore, 'users', user.id);
-          const randomContract = Math.random() < 0.5 ? 'INDEFINIDO' : 'EMERGENTE';
-          batch.update(userDocRef, { tipoContrato: randomContract });
-          updatedCount++;
-        }
-      });
-      if (updatedCount > 0) {
-        batch.commit().then(() => {
-          toast({ title: 'Datos Actualizados', description: `${updatedCount} usuarios han sido actualizados con un tipo de contrato aleatorio.`});
-        }).catch(err => {
-          console.error("Error updating random contracts:", err);
-        });
-      }
-    }
-  }, [users, firestore]);
 
   useEffect(() => {
     if (!editingUser && leaderRules && !rulesLoading) {
@@ -1466,13 +1376,13 @@ export default function StaffPage() {
                          )} />
                           <FormField control={form.control} name="ubicacion" render={({ field }) => (
                             <FormItem><FormLabel>Ubicación</FormLabel>
-                                <Combobox options={cascadedUbicacionOptions} placeholder="Seleccionar ubicación" {...field} allowCreate />
+                                <Combobox options={toOptions(ubicaciones)} placeholder="Seleccionar ubicación" {...field} allowCreate />
                                 <FormMessage />
                             </FormItem>
                          )} />
                          <FormField control={form.control} name="cargo" render={({ field }) => (
                             <FormItem><FormLabel>Cargo</FormLabel>
-                                <Combobox options={cascadedCargoOptions} placeholder="Seleccionar cargo" {...field} allowCreate />
+                                <Combobox options={toOptions(cargos)} placeholder="Seleccionar cargo" {...field} allowCreate />
                                 <FormMessage />
                             </FormItem>
                          )} />
@@ -1807,12 +1717,3 @@ export default function StaffPage() {
     </>
   );
 }
-
-
-
-
-
-
-
-
-
