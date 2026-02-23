@@ -103,13 +103,15 @@ function SchedulePageContent() {
   const [roleChanges, setRoleChanges] = useState<RoleChange[]>([]);
   
   const { days, monthName, periodIdentifier } = useMemo(() => {
-    const prevMonth = subMonths(currentDate, 1);
+    const referenceDate = currentDate.getDate() < 21 ? currentDate : addMonths(currentDate, 1);
+    
+    const prevMonth = subMonths(referenceDate, 1);
     const start = new Date(prevMonth.getFullYear(), prevMonth.getMonth(), 21);
-    const end = new Date(currentDate.getFullYear(), currentDate.getMonth(), 20);
+    const end = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), 20);
 
     const days = eachDayOfInterval({ start, end });
     const monthName = `${format(start, 'MMMM', { locale: es })} / ${format(end, 'MMMM yyyy', { locale: es })}`;
-    const periodId = format(currentDate, 'yyyy-MM');
+    const periodId = format(referenceDate, 'yyyy-MM');
     return { days, monthName, periodIdentifier: periodId };
   }, [currentDate]);
   

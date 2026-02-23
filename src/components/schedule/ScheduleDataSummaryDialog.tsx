@@ -17,7 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { format, getDay, isWithinInterval, parseISO, subMonths, eachDayOfInterval, startOfYear, endOfYear, set, startOfMonth, endOfMonth, isSaturday, isSunday } from 'date-fns';
+import { format, getDay, isWithinInterval, parseISO, subMonths, eachDayOfInterval, startOfYear, endOfYear, set, startOfMonth, endOfMonth, isSaturday, isSunday, addMonths } from 'date-fns';
 import type { Collaborator, Holiday, OvertimeRule, RoleChange, SavedSchedule, TemporaryTransfer, ShiftPattern } from '@/lib/types';
 import { getShiftDetailsFromRules } from '@/lib/schedule-generator';
 import { getEffectiveDetails } from '@/lib/schedule-utils';
@@ -181,7 +181,11 @@ export function ScheduleDataSummaryDialog({
   const [annualLocation, setAnnualLocation] = React.useState('todos');
   const [annualJobTitle, setAnnualJobTitle] = React.useState('todos');
 
-  const periodIdentifier = React.useMemo(() => format(currentDate, 'yyyy-MM'), [currentDate]);
+  const periodIdentifier = React.useMemo(() => {
+    const referenceDate = currentDate.getDate() < 21 ? currentDate : addMonths(currentDate, 1);
+    return format(referenceDate, 'yyyy-MM');
+  }, [currentDate]);
+  
   const yearTitle = React.useMemo(() => format(currentDate, 'yyyy'), [currentDate]);
 
   React.useEffect(() => {
