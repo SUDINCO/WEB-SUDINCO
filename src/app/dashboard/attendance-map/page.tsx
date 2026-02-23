@@ -18,7 +18,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { Combobox } from '@/components/ui/combobox';
 
-const AttendanceMap = dynamic(() => import('@/components/map/attendance-map'), {
+const AttendanceMap = dynamic(() => import('../../../components/map/attendance-map'), {
     ssr: false,
     loading: () => <div className="h-full w-full bg-muted flex items-center justify-center"><LoaderCircle className="h-6 w-6 animate-spin" /> <p className="ml-2">Cargando mapa...</p></div>
 });
@@ -65,7 +65,6 @@ export default function AttendanceMapPage() {
 
   const filteredData = useMemo(() => {
     const selectedDateStr = format(date, 'yyyy-MM-dd');
-    const userMap = new Map(allUsers?.map(u => [u.id, u]));
 
     let baseRecords: (AttendanceRecord | LocationReport)[] = [];
 
@@ -81,8 +80,10 @@ export default function AttendanceMapPage() {
         }) || [];
     }
 
-    if (!allUsers) return baseRecords;
+    if (!allUsers) return [];
     
+    const userMap = new Map(allUsers.map(u => [u.id, u]));
+
     const dataWithUserInfo = baseRecords.map(rec => {
         let userId: string | undefined;
         if ('collaboratorId' in rec && rec.collaboratorId) {
@@ -275,4 +276,3 @@ export default function AttendanceMapPage() {
     </div>
   );
 }
-    
