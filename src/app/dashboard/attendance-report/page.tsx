@@ -107,8 +107,8 @@ function AttendanceReportPage() {
 
         return activeUsers.map(collaborator => {
             if (
-                (filters.ubicacion !== 'todos' && collaborator.ubicacion !== filters.ubicacion) ||
-                (filters.cargo !== 'todos' && collaborator.cargo !== filters.cargo) ||
+                (filters.ubicacion !== 'todos' && normalizeText(collaborator.ubicacion) !== normalizeText(filters.ubicacion)) ||
+                (filters.cargo !== 'todos' && normalizeText(collaborator.cargo) !== normalizeText(filters.cargo)) ||
                 (filters.colaborador !== 'todos' && collaborator.id !== filters.colaborador)
             ) {
                 return null;
@@ -176,7 +176,7 @@ function AttendanceReportPage() {
 
     return (
         <div className="space-y-6">
-            <h1 className="text-lg font-semibold md:text-2xl">Detalle de Asistencia</h1>
+            <h1 className="text-lg font-semibold md:text-2xl">Resumen de Asistencia</h1>
             <Card>
                 <CardHeader>
                     <div className="flex justify-between items-center">
