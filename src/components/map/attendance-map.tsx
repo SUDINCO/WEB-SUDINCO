@@ -36,6 +36,21 @@ const locationIcon = new L.Icon({
     shadowSize: [41, 41]
 });
 
+const createAvatarIcon = (photoUrl: string | undefined, initials: string, borderColor: string = 'red') => {
+  const avatarHtml = photoUrl
+    ? `<img src="${photoUrl}" alt="${initials}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;" />`
+    : `<div style="width: 100%; height: 100%; border-radius: 50%; background-color: #cbd5e1; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; color: #475569;">${initials}</div>`;
+
+  return new L.DivIcon({
+    html: `<div style="width: 36px; height: 36px; border-radius: 50%; border: 2px solid ${borderColor}; background-color: white; padding: 2px; box-shadow: 0 2px 5px rgba(0,0,0,0.3);">${avatarHtml}</div>`,
+    className: '', // important to have an empty className
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -40]
+  });
+};
+
+
 // Utility function to calculate distance between two lat-lon points in meters
 function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
     const R = 6371e3; // metres
@@ -63,9 +78,16 @@ function BoundsFitter({ bounds }: { bounds: L.LatLngBounds | null }) {
     return null;
 }
 
+type RecordWithUser = (AttendanceRecord | LocationReport) & {
+    userName?: string;
+    userCargo?: string;
+    userPhotoUrl?: string;
+    initials?: string;
+};
+
 interface AttendanceMapProps {
   workLocations: WorkLocation[];
-  records: (AttendanceRecord | LocationReport)[];
+  records: RecordWithUser[];
   viewType: 'attendance' | 'reports';
   onLocationClick?: (locationId: string) => void;
   onOutOfBoundsRecordClick?: (record: AttendanceRecord) => void;
@@ -79,7 +101,7 @@ export default function AttendanceMap({ workLocations, records, viewType, onLoca
         if (viewType !== 'attendance') return { locationCounts: new Map(), outOfBoundsRecords: [] };
 
         const counts = new Map<string, number>();
-        const outOfBounds: AttendanceRecord[] = [];
+        const outOfBounds: RecordWithUser[] = [];
         const attendanceRecords = records as AttendanceRecord[];
 
         attendanceRecords.forEach(record => {
@@ -96,7 +118,7 @@ export default function AttendanceMap({ workLocations, records, viewType, onLoca
             }
 
             if (!isInside) {
-                outOfBounds.push(record);
+                outOfBounds.push(record as RecordWithUser);
             }
         });
 
@@ -190,42 +212,55 @@ export default function AttendanceMap({ workLocations, records, viewType, onLoca
             })}
 
             {/* Render out-of-bounds records for attendance view */}
-            {viewType === 'attendance' && outOfBoundsRecords.map(record => (
-                <Marker 
-                    key={record.id} 
-                    position={[record.entryLatitude!, record.entryLongitude!]} 
-                    icon={outOfBoundsIcon}
-                    eventHandlers={{
-                        click: () => {
-                            if (onOutOfBoundsRecordClick) onOutOfBoundsRecordClick(record as AttendanceRecord);
-                        },
-                    }}
-                >
-                    <Popup>
-                        <strong>Fuera de Zona</strong><br />
-                        <strong>Empleado:</strong> {record.userName}<br />
-                        <strong>Hora:</strong> {safelyFormatDate(record.entryTime)}<br/>
-                        <strong>Ubicación Registrada:</strong> {record.entryWorkLocationName}
-                    </Popup>
-                </Marker>
-            ))}
+            {viewType === 'attendance' && outOfBoundsRecords.map(record => {
+                const userPhoto = record.userPhotoUrl;
+                const userInitials = record.initials || 'U';
+                const icon = createAvatarIcon(userPhoto, userInitials, 'red');
+
+                return (
+                    <Marker 
+                        key={record.id} 
+                        position={[record.entryLatitude!, record.entryLongitude!]} 
+                        icon={icon}
+                        eventHandlers={{
+                            click: () => {
+                                if (onOutOfBoundsRecordClick) onOutOfBoundsRecordClick(record as AttendanceRecord);
+                            },
+                        }}
+                    >
+                        <Popup>
+                            <strong>Fuera de Zona</strong><br />
+                            <strong>Empleado:</strong> {record.userName}<br />
+                            <strong>Cargo:</strong> {record.userCargo || 'N/A'}<br/>
+                            <strong>Hora:</strong> {safelyFormatDate(record.entryTime)}<br/>
+                            <strong>Ubicación Registrada:</strong> {record.entryWorkLocationName}
+                        </Popup>
+                    </Marker>
+                );
+            })}
 
             {/* Render location reports */}
-            {viewType === 'reports' && (records as LocationReport[]).map(report => (
-                 <Marker 
-                    key={report.id} 
-                    position={[report.latitude, report.longitude]} 
-                    icon={defaultIcon}
-                >
-                    <Popup>
-                        <strong>Reporte de Ubicación</strong><br />
-                        <strong>Empleado:</strong> {report.userName}<br />
-                        <strong>Hora:</strong> {format(new Date(report.timestamp), 'HH:mm:ss')}<br/>
-                        {report.notes && `<strong>Comentario:</strong> ${report.notes}`}<br/>
-                        {report.photoUrl && <img src={report.photoUrl} alt="Evidencia" style={{ width: '150px', marginTop: '5px' }} />}
-                    </Popup>
-                </Marker>
-            ))}
+            {viewType === 'reports' && (records as RecordWithUser[]).map(report => {
+                const userPhoto = report.userPhotoUrl;
+                const userInitials = report.initials || 'U';
+                const icon = createAvatarIcon(userPhoto, userInitials, 'hsl(var(--primary))');
+                 return (
+                     <Marker 
+                        key={report.id} 
+                        position={[report.latitude, report.longitude]} 
+                        icon={icon}
+                    >
+                        <Popup>
+                            <strong>Reporte de Ubicación</strong><br />
+                            <strong>Empleado:</strong> {report.userName}<br />
+                            <strong>Cargo:</strong> {report.userCargo || 'N/A'}<br/>
+                            <strong>Hora:</strong> {format(new Date(report.timestamp), 'HH:mm:ss')}<br/>
+                            {report.notes && `<strong>Comentario:</strong> ${report.notes}`}<br/>
+                            {(report as LocationReport).photoUrl && <img src={(report as LocationReport).photoUrl} alt="Evidencia" style={{ width: '150px', marginTop: '5px' }} />}
+                        </Popup>
+                    </Marker>
+                )
+            })}
         </MapContainer>
     );
 }
