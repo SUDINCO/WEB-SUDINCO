@@ -48,7 +48,7 @@ import { toast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import type { WorkLocation } from '@/lib/types';
 
-const LocationsMap = dynamic(() => import('../../../../components/map/locations-map'), {
+const LocationsMap = dynamic(() => import('@/components/map/locations-map'), {
     ssr: false,
     loading: () => <div className="h-full w-full bg-muted flex items-center justify-center"><LoaderCircle className="h-6 w-6 animate-spin" /> <p className="ml-2">Cargando mapa...</p></div>
 });

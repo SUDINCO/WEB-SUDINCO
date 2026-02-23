@@ -18,7 +18,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { Combobox } from '@/components/ui/combobox';
 
-const AttendanceMap = dynamic(() => import('../../../components/map/attendance-map'), {
+const AttendanceMap = dynamic(() => import('@/components/map/attendance-map'), {
     ssr: false,
     loading: () => <div className="h-full w-full bg-muted flex items-center justify-center"><LoaderCircle className="h-6 w-6 animate-spin" /> <p className="ml-2">Cargando mapa...</p></div>
 });
@@ -65,51 +65,55 @@ export default function AttendanceMapPage() {
 
   const filteredData = useMemo(() => {
     const selectedDateStr = format(date, 'yyyy-MM-dd');
-
-    let baseRecords: (AttendanceRecord | LocationReport)[] = [];
+    if (!allUsers) return [];
 
     if (viewType === 'attendance') {
-        baseRecords = allAttendance?.filter(record => {
+        const attendanceForDay = allAttendance?.filter(record => {
             const recordDate = (record.date as any)?.toDate ? (record.date as any).toDate() : new Date(record.date);
             return format(recordDate, 'yyyy-MM-dd') === selectedDateStr;
         }) || [];
-    } else {
-        baseRecords = allReports?.filter(report => {
+
+        const dataWithUserInfo = attendanceForDay.map(rec => {
+            const user = allUsers.find(u => u.id === rec.collaboratorId);
+            return {
+                ...rec,
+                userCargo: user?.cargo || 'N/A',
+                userName: user ? `${user.nombres} ${user.apellidos}` : ('userName' in rec ? rec.userName : 'Desconocido'),
+                userPhotoUrl: user?.photoUrl,
+                initials: user ? `${user.nombres?.[0] || ''}${user.apellidos?.[0] || ''}` : 'U'
+            };
+        });
+
+        return dataWithUserInfo.filter(rec => {
+            const cargoMatch = cargoFilter === 'todos' || rec.userCargo === cargoFilter;
+            const colaboradorMatch = colaboradorFilter === 'todos' || rec.collaboratorId === colaboradorFilter;
+            return cargoMatch && colaboradorMatch;
+        });
+
+    } else { // 'reports'
+        const reportsForDay = allReports?.filter(report => {
             const reportDate = new Date(report.timestamp);
             return format(reportDate, 'yyyy-MM-dd') === selectedDateStr;
         }) || [];
+
+        const dataWithUserInfo = reportsForDay.map(rec => {
+            const user = allUsers.find(u => u.id === rec.userId);
+            return {
+                ...rec,
+                userCargo: user?.cargo || 'N/A',
+                userName: user ? `${user.nombres} ${user.apellidos}` : rec.userName,
+                userPhotoUrl: user?.photoUrl,
+                initials: user ? `${user.nombres?.[0] || ''}${user.apellidos?.[0] || ''}` : 'U'
+            };
+        });
+
+        return dataWithUserInfo.filter(rec => {
+            const cargoMatch = cargoFilter === 'todos' || rec.userCargo === cargoFilter;
+            const colaboradorMatch = colaboradorFilter === 'todos' || rec.userId === colaboradorFilter;
+            return cargoMatch && colaboradorMatch;
+        });
     }
-
-    if (!allUsers) return [];
-    
-    const userMap = new Map(allUsers.map(u => [u.id, u]));
-
-    const dataWithUserInfo = baseRecords.map(rec => {
-        let userId: string | undefined;
-        if ('collaboratorId' in rec && rec.collaboratorId) {
-            userId = rec.collaboratorId;
-        } else if ('userId' in rec && rec.userId) {
-            userId = rec.userId;
-        }
-
-        const user = userMap.get(userId!);
-        return {
-            ...rec,
-            userCargo: user?.cargo || 'N/A',
-            userName: user ? `${user.nombres} ${user.apellidos}` : ('userName' in rec ? rec.userName : 'Desconocido'),
-            userId: userId,
-            userPhotoUrl: user?.photoUrl,
-            initials: user ? `${user.nombres?.[0] || ''}${user.apellidos?.[0] || ''}` : 'U'
-        };
-    });
-
-    return dataWithUserInfo.filter(rec => {
-        const cargoMatch = cargoFilter === 'todos' || rec.userCargo === cargoFilter;
-        const colaboradorMatch = colaboradorFilter === 'todos' || rec.userId === colaboradorFilter;
-        return cargoMatch && colaboradorMatch;
-    });
-
-  }, [date, viewType, allAttendance, allReports, allUsers, cargoFilter, colaboradorFilter]);
+}, [date, viewType, allAttendance, allReports, allUsers, cargoFilter, colaboradorFilter]);
 
   const handleLocationClick = (locationId: string) => {
     if (!allAttendance || !allUsers) return;
