@@ -409,7 +409,7 @@ function EvaluationForm({ workerId, reviewEvaluationId }: { workerId: string, re
             <div className="flex justify-between items-center">
                 <div className="flex-1">
                     <Image 
-                        src="https://core.gruposudinco.com/_images/companies/company.png"
+                        src="https://i.postimg.cc/KY7x0Py9/Logo-sudinc.png"
                         alt="Grupo Sudinco Logo"
                         width={250}
                         height={125}
@@ -785,7 +785,7 @@ function EvaluationHistorySheet({ open, onOpenChange, worker, allEvaluations, al
     
      const handleDownloadPdf = async (evaluation: PerformanceEvaluation) => {
         if(!worker) return;
-        const { generateEvaluationPDF } = await import('@/lib/pdf-generator');
+        const { generateEvaluationPDF } = await import('../../../lib/pdf-generator');
         const evaluator = allWorkers?.find(w => w.id === evaluation.evaluatorId);
         if (!evaluator) {
              toast({
