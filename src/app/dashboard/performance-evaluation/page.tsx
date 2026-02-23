@@ -412,7 +412,7 @@ function EvaluationForm({ workerId, reviewEvaluationId }: { workerId: string, re
                         src="https://i.postimg.cc/KY7x0Py9/Logo-sudinc.png"
                         alt="Grupo Sudinco Logo"
                         width={184}
-                        height={50}
+                        height={200}
                     />
                 </div>
                 <div className="flex-1 text-center font-bold">
