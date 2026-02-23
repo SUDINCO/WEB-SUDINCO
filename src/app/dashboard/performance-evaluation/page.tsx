@@ -104,7 +104,6 @@ const evaluationSchema = z.object({
     compromisoCompaniaJustification: z.string().optional(),
     observations: z.string().min(1, "Las observaciones generales son obligatorias."),
     messageForWorker: z.string().optional(),
-    observerId: z.string().optional(),
     reinforcementPlan: z.object({
         requiresReinforcement: z.boolean().default(false),
         skillType: z.enum(['tecnica', 'blanda']).optional(),
@@ -306,32 +305,74 @@ function EvaluationForm({ workerId, reviewEvaluationId }: { workerId: string, re
         const observer = allUsers?.find(u => u.email === worker.observerEmail);
         const hasObserver = !!worker.observerEmail;
         
-        const evaluationData: any = {
-            ...data,
+        // Explicitly build the object to avoid `undefined` values from `...data` spread.
+        const evaluationData = {
+            // IDs and Date
             workerId: worker.id,
             evaluatorId: evaluator.id,
             evaluationDate: new Date().toISOString().split('T')[0],
             generalEvaluation: generalEvaluation,
+    
+            // Observer fields
             observerId: observer?.id || null,
             observerEmail: worker.observerEmail || null,
-            observerStatus: hasObserver ? 'pending' : 'approved' as 'pending' | 'approved' | 'review_requested',
+            observerStatus: hasObserver ? 'pending' as const : 'approved' as const,
             observerComments: '',
+    
+            // Criteria
+            conocimientosTecnicos: data.conocimientosTecnicos,
+            calidadTrabajo: data.calidadTrabajo,
+            cumplimientoPoliticas: data.cumplimientoPoliticas,
+            proactividad: data.proactividad,
+            comunicacion: data.comunicacion,
+            integridad: data.integridad,
+            adaptabilidad: data.adaptabilidad,
+            servicioCliente: data.servicioCliente,
+            compromisoCompania: data.compromisoCompania,
+    
+            // Justifications (ensure they are null if empty/undefined)
+            conocimientosTecnicosJustification: data.conocimientosTecnicosJustification || null,
+            calidadTrabajoJustification: data.calidadTrabajoJustification || null,
+            cumplimientoPoliticasJustification: data.cumplimientoPoliticasJustification || null,
+            proactividadJustification: data.proactividadJustification || null,
+            comunicacionJustification: data.comunicacionJustification || null,
+            integridadJustification: data.integridadJustification || null,
+            adaptabilidadJustification: data.adaptabilidadJustification || null,
+            servicioClienteJustification: data.servicioClienteJustification || null,
+            compromisoCompaniaJustification: data.compromisoCompaniaJustification || null,
+    
+            // Final observations
+            observations: data.observations,
+            messageForWorker: data.messageForWorker || null,
+    
+            // Reinforcement Plan (handle complex object)
+            reinforcementPlan: {
+                requiresReinforcement: data.reinforcementPlan?.requiresReinforcement || false,
+                skillType: data.reinforcementPlan?.skillType || null,
+                specificSkills: data.reinforcementPlan?.specificSkills || [],
+                reinforcementType: data.reinforcementPlan?.reinforcementType || null,
+                reinforcementDescription: data.reinforcementPlan?.reinforcementDescription || null,
+            }
         };
-
-        if (!evaluationData.reinforcementPlan?.requiresReinforcement) {
+        
+        // If reinforcement is not required, set the whole object to a simpler, clean state.
+        if (!evaluationData.reinforcementPlan.requiresReinforcement) {
             evaluationData.reinforcementPlan = {
                 requiresReinforcement: false,
-                skillType: '',
+                skillType: null,
                 specificSkills: [],
-                reinforcementType: '',
-                reinforcementDescription: ''
+                reinforcementType: null,
+                reinforcementDescription: null,
             };
         }
-
+    
         try {
             if (reviewEvaluationId) {
                 const evalDocRef = doc(firestore, 'performanceEvaluations', reviewEvaluationId);
-                await updateDoc(evalDocRef, {...evaluationData, observerStatus: 'pending' as const });
+                await updateDoc(evalDocRef, {
+                    ...evaluationData,
+                    observerStatus: 'pending' as const
+                });
                 toast({
                     title: "Re-evaluación Guardada",
                     description: `La evaluación para ${worker.nombres} ${worker.apellidos} ha sido actualizada y enviada nuevamente al observador.`,
@@ -345,10 +386,10 @@ function EvaluationForm({ workerId, reviewEvaluationId }: { workerId: string, re
                 });
             }
             router.push('/dashboard/my-evaluations');
-
-        } catch (error) {
+    
+        } catch (error: any) {
             console.error("Failed to save evaluation", error);
-            toast({ variant: "destructive", title: "Error", description: "No se pudo guardar la evaluación." });
+            toast({ variant: "destructive", title: "Error", description: `No se pudo guardar la evaluación. (${error.message})` });
         }
     };
     
@@ -409,7 +450,7 @@ function EvaluationForm({ workerId, reviewEvaluationId }: { workerId: string, re
             <div className="flex justify-between items-center">
                 <div className="flex-1">
                     <Image 
-                        src="https://i.postimg.cc/dVNnyXXt/Logo-sudinc.png"
+                        src="https://i.postimg.cc/KY7x0Py9/Logo-sudinc.png"
                         alt="Grupo Sudinco Logo"
                         width={500}
                         height={150}
