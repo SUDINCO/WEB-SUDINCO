@@ -122,14 +122,19 @@ function AttendanceReportPage() {
             if (!scheduledShift || scheduledShift === 'LIB') {
                 status = 'Día Libre';
             } else if (record && record.entryTime && record.exitTime) {
-                const shiftDetails = getShiftDetailsFromRules(scheduledShift, collaborator.cargo, 'NORMAL', overtimeRules);
+                const shiftDetails = getShiftDetailsFromRules(scheduledShift, collaborator.cargo, jornada, overtimeRules);
                 if (shiftDetails) {
-                    const scheduledHours = shiftDetails.hours;
-                    const workedHours = differenceInMinutes(record.exitTime, record.entryTime) / 60;
-                    // Using 5 minute tolerance
-                    status = workedHours < scheduledHours - (5 / 60) ? 'Incompleto' : 'Completo';
+                    const scheduledMinutes = shiftDetails.hours * 60;
+                    const workedMinutes = differenceInMinutes(record.exitTime, record.entryTime);
+                    // Using a 5-minute tolerance
+                    if (workedMinutes >= scheduledMinutes - 5) {
+                        status = 'Completo';
+                    } else {
+                        status = 'Incompleto';
+                    }
                 } else {
-                    status = 'Completo'; // Has records, but can't verify hours, assume complete
+                    // If shift details (like duration) cannot be determined, it's incomplete by default.
+                    status = 'Incompleto';
                 }
             } else if (record && record.entryTime) {
                 status = 'Incompleto'; // Clocked in, but not out

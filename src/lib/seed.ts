@@ -220,7 +220,9 @@ const initialData = {
         {"jobTitle":"GUARDIA DE SEGURIDAD","dayType":"FESTIVO","shift":"D12","startTime":"06:00","endTime":"18:00","nightSurcharge":0,"sup50":0,"ext100":12},
         {"jobTitle":"GUARDIA DE SEGURIDAD","dayType":"FESTIVO","shift":"N12","startTime":"18:00","endTime":"06:00","nightSurcharge":0,"sup50":0,"ext100":6},
         {"jobTitle":"GUARDIA DE SEGURIDAD","dayType":"NORMAL","shift":"D12","startTime":"06:00","endTime":"18:00","nightSurcharge":0,"sup50":0,"ext100":0},
-        {"jobTitle":"GUARDIA DE SEGURIDAD","dayType":"NORMAL","shift":"N12","startTime":"18:00","endTime":"06:00","nightSurcharge":7,"sup50":0,"ext100":0}
+        {"jobTitle":"GUARDIA DE SEGURIDAD","dayType":"NORMAL","shift":"N12","startTime":"18:00","endTime":"06:00","nightSurcharge":7,"sup50":0,"ext100":0},
+        {"jobTitle":"_DEFAULT_OFFICE_","dayType":"NORMAL","shift":"N9","startTime":"08:30","endTime":"17:30","nightSurcharge":0,"sup50":1,"ext100":0},
+        {"jobTitle":"_DEFAULT_OFFICE_","dayType":"FESTIVO","shift":"N9","startTime":"08:30","endTime":"17:30","nightSurcharge":0,"sup50":0,"ext100":9}
     ]
 };
 
