@@ -15,7 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useCollection, useFirestore } from '@/firebase';
 import { collection } from 'firebase/firestore';
-import { format, isSameDay, isWithinInterval, set, isAfter, addMonths, isSaturday, isSunday } from 'date-fns';
+import { format, isSameDay, isWithinInterval, set, isAfter, addMonths, isSaturday, isSunday, differenceInMinutes } from 'date-fns';
 import { es } from 'date-fns/locale';
 import * as XLSX from 'xlsx';
 import {
@@ -29,7 +29,7 @@ import { normalizeText } from '@/lib/utils';
 type DailySummaryRow = {
     collaborator: UserProfile;
     scheduledShift: string | null;
-    status: 'A Tiempo' | 'Atraso';
+    status: 'Completo' | 'Incompleto' | 'Falta';
     extraHours: { he25: number; he50: number; he100: number; };
 }
 
@@ -99,12 +99,12 @@ function AttendanceReportPage() {
 
     const dailySummaryData = useMemo((): DailySummaryRow[] => {
         if (isLoading || !users || !attendanceRecords || !overtimeRules || !savedSchedules || !shiftPatterns || !holidays) return [];
-
+    
         const activeUsers = users.filter(u => u.Status === 'active');
         
         const dayIsHoliday = holidays.some(h => isWithinInterval(selectedDate, { start: h.startDate, end: h.endDate }));
         const jornada = dayIsHoliday ? "FESTIVO" : "NORMAL";
-
+    
         return activeUsers.map(collaborator => {
             if (
                 (filters.ubicacion !== 'todos' && normalizeText(collaborator.ubicacion) !== normalizeText(filters.ubicacion)) ||
@@ -113,26 +113,37 @@ function AttendanceReportPage() {
             ) {
                 return null;
             }
-
+    
             const record = attendanceRecords.find(ar => ar.collaboratorId === collaborator.id && ar.date && isSameDay(ar.date, selectedDate));
-            if (!record || !record.entryTime || !record.exitTime) return null;
-
             const scheduledShift = findScheduledShift(collaborator, selectedDate, savedSchedules, shiftPatterns);
-
-            let status: 'A Tiempo' | 'Atraso' = 'A Tiempo';
-            if (scheduledShift) {
-                const shiftDetails = getShiftDetailsFromRules(scheduledShift, collaborator.cargo, 'NORMAL', overtimeRules); // 'NORMAL' is ok for start time check
+    
+            let status: 'Completo' | 'Incompleto' | 'Falta' | 'Día Libre' = 'Falta';
+    
+            if (!scheduledShift || scheduledShift === 'LIB') {
+                status = 'Día Libre';
+            } else if (record && record.entryTime && record.exitTime) {
+                const shiftDetails = getShiftDetailsFromRules(scheduledShift, collaborator.cargo, 'NORMAL', overtimeRules);
                 if (shiftDetails) {
-                    const shiftStart = set(selectedDate, { hours: shiftDetails.start.h, minutes: shiftDetails.start.m });
-                    if (isAfter(record.entryTime, shiftStart)) {
-                        status = 'Atraso';
-                    }
+                    const scheduledHours = shiftDetails.hours;
+                    const workedHours = differenceInMinutes(record.exitTime, record.entryTime) / 60;
+                    // Using 5 minute tolerance
+                    status = workedHours < scheduledHours - (5 / 60) ? 'Incompleto' : 'Completo';
+                } else {
+                    status = 'Completo'; // Has records, but can't verify hours, assume complete
                 }
+            } else if (record && record.entryTime) {
+                status = 'Incompleto'; // Clocked in, but not out
+            } else {
+                status = 'Falta'; // Has a shift, but no record or entry time
+            }
+    
+            // Filter out free days as they don't need to be in this report
+            if (status === 'Día Libre') {
+                return null;
             }
             
-
             const extraHours = { he25: 0, he50: 0, he100: 0 };
-            if (scheduledShift) {
+            if (scheduledShift && record && record.entryTime && record.exitTime) {
                  const rule = overtimeRules.find(r => 
                     normalizeText(r.jobTitle) === normalizeText(collaborator.cargo) && 
                     r.shift === scheduledShift && 
@@ -231,7 +242,15 @@ function AttendanceReportPage() {
                                             <TableCell>{`${item.collaborator.nombres} ${item.collaborator.apellidos}`}</TableCell>
                                             <TableCell>{item.collaborator.cargo}</TableCell>
                                             <TableCell>{item.scheduledShift || 'N/A'}</TableCell>
-                                            <TableCell><Badge variant={item.status === 'Atraso' ? 'destructive' : 'default'}>{item.status}</Badge></TableCell>
+                                            <TableCell>
+                                                <Badge variant={
+                                                    item.status === 'Completo' ? 'default' : 
+                                                    item.status === 'Incompleto' ? 'secondary' : 
+                                                    'destructive'
+                                                }>
+                                                    {item.status}
+                                                </Badge>
+                                            </TableCell>
                                             <TableCell>{item.extraHours.he25 > 0 ? item.extraHours.he25.toFixed(2) : ''}</TableCell>
                                             <TableCell>{item.extraHours.he50 > 0 ? item.extraHours.he50.toFixed(2) : ''}</TableCell>
                                             <TableCell>{item.extraHours.he100 > 0 ? item.extraHours.he100.toFixed(2) : ''}</TableCell>
