@@ -205,6 +205,11 @@ export default function StaffPage() {
 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
+  const normalizeCedulaForMatch = (cedula: string | undefined | null): string => {
+    if (!cedula) return '';
+    return String(cedula).replace(/[^0-9]/g, ''); // Remove non-digit characters
+  };
+
   const firestore = useFirestore();
   const auth = useAuth();
   const { user: currentUser } = useUser();
@@ -749,7 +754,7 @@ export default function StaffPage() {
   const analyzeImportData = (importedData: any[]) => {
     if (!users) return;
 
-    const usersByCedula = new Map(users.map(u => [u.cedula, u]));
+    const usersByCedula = new Map(users.map(u => [normalizeCedulaForMatch(u.cedula), u]));
     const usersByEmail = new Map(users.map(u => [normalizeEmail(u.email), u]));
     
     const seenInFile = new Map<string, 'cedula' | 'email'>();
@@ -757,10 +762,11 @@ export default function StaffPage() {
     let duplicatesFound = false;
 
     importedData.forEach((row, index) => {
-        const cedula = String(row.cedula || '').trim();
+        const cedulaFromFile = String(row.cedula || '').trim();
+        const normalizedCedula = normalizeCedulaForMatch(cedulaFromFile);
         const email = normalizeEmail(row.email);
         
-        if (!cedula || !email) {
+        if (!normalizedCedula || !email) {
             toast({
                 variant: 'destructive',
                 title: `Fila ${index + 2} omitida`,
@@ -770,7 +776,7 @@ export default function StaffPage() {
             return;
         }
 
-        const existingUserByCedula = usersByCedula.get(cedula);
+        const existingUserByCedula = usersByCedula.get(normalizedCedula);
         const existingUserByEmail = usersByEmail.get(email);
         
         let fechaIngreso = row.fecha_ingreso;
@@ -793,7 +799,7 @@ export default function StaffPage() {
 
         const importUser: Omit<UserProfile, 'id' | 'isLeader' | 'photoUrl'> = {
             codigo: String(row.codigo || ''),
-            cedula: cedula,
+            cedula: cedulaFromFile,
             apellidos: normalizeText(row.apellidos),
             nombres: normalizeText(row.nombres),
             fechaIngreso: fechaIngreso,
@@ -850,18 +856,18 @@ export default function StaffPage() {
                 duplicatesFound = true;
                 return;
             }
-            if (seenInFile.has(cedula) || seenInFile.has(email)) {
+            if (seenInFile.has(normalizedCedula) || seenInFile.has(email)) {
                  toast({
                     variant: 'destructive',
                     title: `Duplicado en Archivo Omitido (Fila ${index + 2})`,
-                    description: `La cédula '${cedula}' o el email '${row.email}' está repetido en el archivo de importación.`,
+                    description: `La cédula '${cedulaFromFile}' o el email '${row.email}' está repetido en el archivo de importación.`,
                 });
                 duplicatesFound = true;
                 return;
             }
 
             // If no duplicates, mark as new and add to seen list
-            seenInFile.set(cedula, 'cedula');
+            seenInFile.set(normalizedCedula, 'cedula');
             seenInFile.set(email, 'email');
             analysisResult.push({ user: importUser, status: 'new', changes: [] });
         }
@@ -1801,6 +1807,7 @@ export default function StaffPage() {
     </>
   );
 }
+
 
 
 
