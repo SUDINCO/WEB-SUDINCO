@@ -63,7 +63,7 @@ const initialData = {
         "DIRECTOR DE RECURSOS HUMANOS", "DIRECTOR TECNICO", "DISEÑADOR GRAFICO", "ELECTROMECANICO", 
         "ENCARGADO DE LIMPIEZA", "ENDEREZADOR PINTOR", "ESPECIALISTA AMBIENTAL", "ESPECIALISTA DE SSA", 
         "ESPECIALISTA TECNICO", "FISCALIZADOR VIAL", "GERENTE DE PROYECTOS", 
-        "GERENTE DE TI Y SEGURIDAD DE LA INFORMACION", "GERENTE GENERAL", "GERENTE TECNICO", 
+        "GERENTE DE TI Y SEGURIDAD DE LA INFORMACION", "GERENTE GENERAL", "GERENTE TECNICO", "GUARDIA DE SEGURIDAD",
         "INGENIERO - TOPOGRAFO", "INSPECTOR DE SSA", "JEFE ADMINISTRATIVO", "JEFE DE ADQUISICIONES", 
         "JEFE DE BIENESTAR SOCIAL", "JEFE DE BODEGA", "JEFE DE COMUNICACIONES Y RELACIONES PUBLICAS", 
         "JEFE DE CONTABILIDAD REGIONAL", "JEFE DE CONTROL AMBIENTAL Y MINAS", "JEFE DE COSTOS", 
@@ -152,7 +152,9 @@ const initialData = {
         { jobTitle: "RESPONSABLE DE ATENCION PREHOSPITALARIA", scheduleType: "ROTATING", cycle: ["T24", "LIB", "LIB"] },
         { jobTitle: "OPERADOR DE VEHICULO DE EMERGENCIA", scheduleType: "ROTATING", cycle: ["T24", "LIB", "LIB"] },
         { jobTitle: "SERVICIOS GENERALES", scheduleType: "ROTATING", cycle: ["M8", "M8", "M8", "M8", "M8", "LIB", "LIB"] },
-        { jobTitle: "AUXILIAR DE MANTENIMIENTO", scheduleType: "ROTATING", cycle: ["M8", "M8", "M8", "M8", "M8", "LIB", "LIB"] }
+        { jobTitle: "AUXILIAR DE MANTENIMIENTO", scheduleType: "ROTATING", cycle: ["M8", "M8", "M8", "M8", "M8", "LIB", "LIB"] },
+        { jobTitle: "SUPERVISOR VIAL", scheduleType: "ROTATING", cycle: ["D12", "D12", "N12", "N12", "LIB", "LIB", "LIB", "LIB"] },
+        { jobTitle: "GUARDIA DE SEGURIDAD", scheduleType: "ROTATING", cycle: ["D12", "D12", "N12", "N12", "LIB", "LIB", "LIB", "LIB"] }
     ],
     overtimeRules: [
         {"jobTitle":"ADMINISTRADOR DE PEAJE","dayType":"NORMAL","shift":"D12","startTime":"06:00","endTime":"18:00","nightSurcharge":0,"sup50":0,"ext100":0},
@@ -204,7 +206,15 @@ const initialData = {
         {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"NORMAL","shift":"T8","startTime":"14:00","endTime":"22:00","nightSurcharge":3,"sup50":0,"ext100":0},
         {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"FESTIVO","shift":"M8","startTime":"06:00","endTime":"14:00","nightSurcharge":0,"sup50":0,"ext100":8},
         {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"FESTIVO","shift":"N8","startTime":"22:00","endTime":"06:00","nightSurcharge":6,"sup50":0,"ext100":2},
-        {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"FESTIVO","shift":"T8","startTime":"14:00","endTime":"22:00","nightSurcharge":0,"sup50":0,"ext100":8}
+        {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"FESTIVO","shift":"T8","startTime":"14:00","endTime":"22:00","nightSurcharge":0,"sup50":0,"ext100":8},
+        {"jobTitle":"SUPERVISOR VIAL","dayType":"FESTIVO","shift":"D12","startTime":"06:00","endTime":"18:00","nightSurcharge":0,"sup50":0,"ext100":12},
+        {"jobTitle":"SUPERVISOR VIAL","dayType":"FESTIVO","shift":"N12","startTime":"18:00","endTime":"06:00","nightSurcharge":0,"sup50":0,"ext100":6},
+        {"jobTitle":"SUPERVISOR VIAL","dayType":"NORMAL","shift":"D12","startTime":"06:00","endTime":"18:00","nightSurcharge":0,"sup50":0,"ext100":0},
+        {"jobTitle":"SUPERVISOR VIAL","dayType":"NORMAL","shift":"N12","startTime":"18:00","endTime":"06:00","nightSurcharge":7,"sup50":0,"ext100":0},
+        {"jobTitle":"GUARDIA DE SEGURIDAD","dayType":"FESTIVO","shift":"D12","startTime":"06:00","endTime":"18:00","nightSurcharge":0,"sup50":0,"ext100":12},
+        {"jobTitle":"GUARDIA DE SEGURIDAD","dayType":"FESTIVO","shift":"N12","startTime":"18:00","endTime":"06:00","nightSurcharge":0,"sup50":0,"ext100":6},
+        {"jobTitle":"GUARDIA DE SEGURIDAD","dayType":"NORMAL","shift":"D12","startTime":"06:00","endTime":"18:00","nightSurcharge":0,"sup50":0,"ext100":0},
+        {"jobTitle":"GUARDIA DE SEGURIDAD","dayType":"NORMAL","shift":"N12","startTime":"18:00","endTime":"06:00","nightSurcharge":7,"sup50":0,"ext100":0}
     ]
 };
 
