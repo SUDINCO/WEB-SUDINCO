@@ -1,3 +1,4 @@
+
 "use client";
 import React, { useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
@@ -83,7 +84,7 @@ export default function AttendanceMapPage() {
     if (!allUsers) return baseRecords;
     
     const dataWithUserInfo = baseRecords.map(rec => {
-        const userId = 'collaboratorId' in rec ? rec.collaboratorId : rec.userId;
+        const userId = viewType === 'attendance' ? (rec as AttendanceRecord).collaboratorId : (rec as LocationReport).userId;
         const user = userMap.get(userId!);
         return {
             ...rec,
