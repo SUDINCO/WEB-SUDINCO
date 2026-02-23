@@ -1,5 +1,6 @@
 
 import { collection, getDocs, writeBatch, Firestore, doc } from 'firebase/firestore';
+import { parse, format } from 'date-fns';
 
 const initialData = {
     roles: [
@@ -207,6 +208,11 @@ const initialData = {
         {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"FESTIVO","shift":"M8","startTime":"06:00","endTime":"14:00","nightSurcharge":0,"sup50":0,"ext100":8},
         {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"FESTIVO","shift":"N8","startTime":"22:00","endTime":"06:00","nightSurcharge":6,"sup50":0,"ext100":2},
         {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"FESTIVO","shift":"T8","startTime":"14:00","endTime":"22:00","nightSurcharge":0,"sup50":0,"ext100":8},
+        {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"FESTIVO","shift":"D12","startTime":"06:00","endTime":"18:00","nightSurcharge":0,"sup50":0,"ext100":12},
+        {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"FESTIVO","shift":"MYT","startTime":"06:00","endTime":"22:00","nightSurcharge":0,"sup50":0,"ext100":16},
+        {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"FESTIVO","shift":"N12","startTime":"18:00","endTime":"06:00","nightSurcharge":2,"sup50":0,"ext100":10},
+        {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"FESTIVO","shift":"NYM","startTime":"22:00","endTime":"14:00","nightSurcharge":6,"sup50":4,"ext100":6},
+        {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"FESTIVO","shift":"TYN","startTime":"14:00","endTime":"06:00","nightSurcharge":2,"sup50":0,"ext100":14},
         {"jobTitle":"SUPERVISOR VIAL","dayType":"FESTIVO","shift":"D12","startTime":"06:00","endTime":"18:00","nightSurcharge":0,"sup50":0,"ext100":12},
         {"jobTitle":"SUPERVISOR VIAL","dayType":"FESTIVO","shift":"N12","startTime":"18:00","endTime":"06:00","nightSurcharge":0,"sup50":0,"ext100":6},
         {"jobTitle":"SUPERVISOR VIAL","dayType":"NORMAL","shift":"D12","startTime":"06:00","endTime":"18:00","nightSurcharge":0,"sup50":0,"ext100":0},
