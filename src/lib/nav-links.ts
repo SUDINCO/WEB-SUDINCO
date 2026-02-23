@@ -19,6 +19,7 @@ import {
   UserCheck as UserCheckIcon,
   UserCog,
   Users,
+  BarChart,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -57,6 +58,7 @@ export const allNavLinks = [
               { name: "Mapa de Asistencia", href: "/dashboard/attendance-map", icon: Map, id: "attendance-map" },
               { name: "Cronograma", href: "/dashboard/schedule", icon: CalendarCheck, id: "schedule" },
               { name: "Control de Asistencia", href: "/dashboard/attendance-summary", icon: ClipboardCheck, id: "attendance-summary" },
+              { name: "Resumen de Asistencia", href: "/dashboard/attendance-report", icon: BarChart, id: "attendance-report" },
               { name: "Reportar Ubicación", href: "/dashboard/report-location", icon: MapPin, id: "report-location" },
           ]
       },
