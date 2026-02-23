@@ -51,8 +51,8 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (!rawHolidays) return [];
     return rawHolidays.map(h => ({
       ...h,
-      startDate: parseISO(h.startDate),
-      endDate: parseISO(h.endDate),
+      startDate: new Date(`${h.startDate}T00:00:00`),
+      endDate: new Date(`${h.endDate}T23:59:59`),
     }));
   }, [rawHolidays]);
 
