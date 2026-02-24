@@ -450,7 +450,7 @@ function EvaluationForm({ workerId, reviewEvaluationId }: { workerId: string, re
             <div className="flex justify-between items-center">
                 <div className="flex-1">
                     <Image 
-                        src="https://i.postimg.cc/KY7x0Py9/Logo-sudinc.png"
+                        src="https://i.postimg.cc/dVNnyXXt/Logo_sudinc.png"
                         alt="Grupo Sudinco Logo"
                         width={500}
                         height={150}
