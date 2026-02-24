@@ -17,7 +17,7 @@ const defaultLinks: NavLink[] = [
 
 
 export function useRecentLinks() {
-  const [recentLinks, setRecentLinks] = useState<NavLink[]>(defaultLinks);
+  const [recentLinks, setRecentLinks] = useState<NavLink[]>([]);
 
   const { allLinksMap } = useMemo(() => {
     const flatLinks = allNavLinks.flatMap(module => 
@@ -40,11 +40,14 @@ export function useRecentLinks() {
         const hydratedLinks = hrefs.map(href => allLinksMap.get(href)).filter((l): l is NavLink => !!l);
         if (hydratedLinks.length > 0) {
             setRecentLinks(hydratedLinks);
+            return;
         }
       }
     } catch (error) {
       console.error("Failed to parse recent links from localStorage", error);
     }
+    // If nothing in storage or there was an error, set the default links
+    setRecentLinks(defaultLinks);
   }, [allLinksMap]);
 
   const addRecentLink = useCallback((pathname: string) => {
@@ -55,6 +58,11 @@ export function useRecentLinks() {
     }
     
     setRecentLinks(prevLinks => {
+      // Prevent adding if it's already the first one
+      if(prevLinks.length > 0 && prevLinks[0].href === newLink.href) {
+        return prevLinks;
+      }
+
       const filteredLinks = prevLinks.filter(link => link.href !== newLink.href);
       const updatedLinks = [newLink, ...filteredLinks];
       const finalLinks = updatedLinks.slice(0, MAX_RECENT_LINKS);
