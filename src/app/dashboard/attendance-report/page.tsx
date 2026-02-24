@@ -105,69 +105,69 @@ function AttendanceReportPage() {
     }, [attendanceRecordsData]);
 
     const dailySummaryData = useMemo((): DailySummaryRow[] => {
-        if (isLoading || !users || !attendanceRecords || !overtimeRules || !savedSchedules || !shiftPatterns || !holidays) return [];
-    
-        const activeUsers = users.filter(u => u.Status === 'active');
-        
-        const dayIsHoliday = holidays.some(h => isWithinInterval(selectedDate, { start: h.startDate, end: h.endDate }));
-        const jornada = dayIsHoliday ? "FESTIVO" : "NORMAL";
-    
-        const mappedData = activeUsers.map(collaborator => {
-            if (
-                (filters.ubicacion !== 'todos' && normalizeText(collaborator.ubicacion) !== normalizeText(filters.ubicacion)) ||
-                (filters.cargo !== 'todos' && normalizeText(collaborator.cargo) !== normalizeText(filters.cargo)) ||
-                (filters.colaborador !== 'todos' && collaborator.id !== filters.colaborador)
-            ) {
-                return null;
-            }
-    
-            const record = attendanceRecords.find(ar => ar.collaboratorId === collaborator.id && ar.date && isSameDay(ar.date, selectedDate));
-            const scheduledShift = findScheduledShift(collaborator, selectedDate, savedSchedules, shiftPatterns);
-    
-            let status: 'Completo' | 'Incompleto' | 'Falta' = 'Falta';
-    
-            if (!scheduledShift || scheduledShift === 'LIB') {
-                 return null; // Don't show free days in this report
-            }
-    
-            if (record && record.entryTime && record.exitTime) {
-                const shiftDetails = getShiftDetailsFromRules(scheduledShift, collaborator.cargo, jornada, overtimeRules);
-                if (shiftDetails) {
-                    const scheduledMinutes = shiftDetails.hours * 60;
-                    const workedMinutes = differenceInMinutes(record.exitTime, record.entryTime);
-                    // Using a 5-minute tolerance
-                    if (workedMinutes >= scheduledMinutes - 5) {
-                        status = 'Completo';
-                    } else {
-                        status = 'Incompleto';
-                    }
-                } else {
-                    // If shift duration cannot be determined, it's incomplete by default.
-                    status = 'Incompleto';
-                }
-            } else if (record && record.entryTime) {
-                status = 'Incompleto'; // Clocked in, but not out
-            }
-            
-            const extraHours = { he25: 0, he50: 0, he100: 0 };
-            if (status === 'Completo' && scheduledShift && record && record.entryTime && record.exitTime) {
-                 const rule = overtimeRules.find(r => 
-                    normalizeText(r.jobTitle) === normalizeText(collaborator.cargo) && 
-                    r.shift === scheduledShift && 
-                    r.dayType === jornada
-                );
-                if (rule) {
-                    extraHours.he25 = rule.nightSurcharge || 0;
-                    extraHours.he50 = rule.sup50 || 0;
-                    extraHours.he100 = rule.ext100 || 0;
-                }
-            }
-            
-            return { collaborator, scheduledShift, status, extraHours };
-        });
-
-        return mappedData.filter((item): item is DailySummaryRow => !!item);
-    }, [selectedDate, filters, isLoading, users, attendanceRecords, overtimeRules, savedSchedules, shiftPatterns, holidays]);
+      if (isLoading || !users || !attendanceRecords || !overtimeRules || !savedSchedules || !shiftPatterns || !holidays) return [];
+  
+      const activeUsers = users.filter(u => u.Status === 'active');
+      
+      const dayIsHoliday = holidays.some(h => isWithinInterval(selectedDate, { start: h.startDate, end: h.endDate }));
+      const jornada = dayIsHoliday ? "FESTIVO" : "NORMAL";
+  
+      const summaryRows: DailySummaryRow[] = [];
+  
+      activeUsers.forEach(collaborator => {
+          if (
+              (filters.ubicacion !== 'todos' && normalizeText(collaborator.ubicacion) !== normalizeText(filters.ubicacion)) ||
+              (filters.cargo !== 'todos' && normalizeText(collaborator.cargo) !== normalizeText(filters.cargo)) ||
+              (filters.colaborador !== 'todos' && collaborator.id !== filters.colaborador)
+          ) {
+              return;
+          }
+  
+          const record = attendanceRecords.find(ar => ar.collaboratorId === collaborator.id && ar.date && isSameDay(ar.date, selectedDate));
+          const scheduledShift = findScheduledShift(collaborator, selectedDate, savedSchedules, shiftPatterns);
+  
+          let status: 'Completo' | 'Incompleto' | 'Falta' = 'Falta';
+  
+          if (!scheduledShift || scheduledShift === 'LIB') {
+              return;
+          }
+  
+          if (record && record.entryTime && record.exitTime) {
+              const shiftDetails = getShiftDetailsFromRules(scheduledShift, collaborator.cargo, jornada, overtimeRules);
+              if (shiftDetails) {
+                  const scheduledMinutes = shiftDetails.hours * 60;
+                  const workedMinutes = differenceInMinutes(record.exitTime, record.entryTime);
+                  if (workedMinutes >= scheduledMinutes - 5) {
+                      status = 'Completo';
+                  } else {
+                      status = 'Incompleto';
+                  }
+              } else {
+                  status = 'Incompleto';
+              }
+          } else if (record && record.entryTime) {
+              status = 'Incompleto';
+          }
+          
+          const extraHours = { he25: 0, he50: 0, he100: 0 };
+          if (status === 'Completo' && scheduledShift && record && record.entryTime && record.exitTime) {
+               const rule = overtimeRules.find(r => 
+                  normalizeText(r.jobTitle) === normalizeText(collaborator.cargo) && 
+                  r.shift === scheduledShift && 
+                  r.dayType === jornada
+              );
+              if (rule) {
+                  extraHours.he25 = rule.nightSurcharge || 0;
+                  extraHours.he50 = rule.sup50 || 0;
+                  extraHours.he100 = rule.ext100 || 0;
+              }
+          }
+          
+          summaryRows.push({ collaborator, scheduledShift, status, extraHours });
+      });
+  
+      return summaryRows;
+  }, [selectedDate, filters, isLoading, users, attendanceRecords, overtimeRules, savedSchedules, shiftPatterns, holidays]);
     
     const { days: periodDays, monthName: periodMonthName } = useMemo(() => {
         const referenceDate = selectedDate.getDate() < 21 ? selectedDate : addMonths(selectedDate, 1);
