@@ -112,7 +112,7 @@ function AttendanceReportPage() {
         const dayIsHoliday = holidays.some(h => isWithinInterval(selectedDate, { start: h.startDate, end: h.endDate }));
         const jornada = dayIsHoliday ? "FESTIVO" : "NORMAL";
     
-        return activeUsers.map(collaborator => {
+        const mappedData = activeUsers.map(collaborator => {
             if (
                 (filters.ubicacion !== 'todos' && normalizeText(collaborator.ubicacion) !== normalizeText(filters.ubicacion)) ||
                 (filters.cargo !== 'todos' && normalizeText(collaborator.cargo) !== normalizeText(filters.cargo)) ||
@@ -164,7 +164,9 @@ function AttendanceReportPage() {
             }
             
             return { collaborator, scheduledShift, status, extraHours };
-        }).filter((item): item is DailySummaryRow => !!item);
+        });
+
+        return mappedData.filter((item): item is DailySummaryRow => !!item);
     }, [selectedDate, filters, isLoading, users, attendanceRecords, overtimeRules, savedSchedules, shiftPatterns, holidays]);
     
     const { days: periodDays, monthName: periodMonthName } = useMemo(() => {
