@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import dynamic from 'next/dynamic';
+import L from 'leaflet';
 import {
   Card,
   CardContent,
@@ -77,11 +78,20 @@ export default function WorkLocationsPage() {
   const locationsCollectionRef = useMemo(() => firestore ? collection(firestore, 'workLocations') : null, [firestore]);
   
   const { data: locations, isLoading: locationsLoading } = useCollection<WorkLocation>(locationsCollectionRef);
+  
+  const bounds = useMemo(() => {
+    if (!locations || locations.length === 0) {
+      return null;
+    }
+    const points = locations
+      .map(loc => (loc.latitude && loc.longitude ? [loc.latitude, loc.longitude] : null))
+      .filter((p): p is [number, number] => p !== null);
+      
+    if (points.length === 0) return null;
+    
+    return L.latLngBounds(points);
+  }, [locations]);
 
-  const form = useForm<LocationFormData>({
-    resolver: zodResolver(locationSchema),
-    defaultValues: { name: '', latitude: 0, longitude: 0, radius: 50 },
-  });
 
   const handleAddNew = useCallback(() => {
     setEditingLocation(null);
@@ -314,6 +324,7 @@ export default function WorkLocationsPage() {
                 locations={locations || []}
                 center={mapCenter}
                 zoom={mapZoom}
+                bounds={viewMode === 'list' ? bounds : null}
                 onMapDoubleClick={handleMapDoubleClick}
                 onMarkerClick={handleMarkerClick}
                 selectedLocationId={editingLocation?.id || null}

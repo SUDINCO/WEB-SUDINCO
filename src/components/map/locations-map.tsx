@@ -1,3 +1,4 @@
+
 'use client';
 
 import { MapContainer, TileLayer, Marker, Popup, useMap, Circle, useMapEvents } from 'react-leaflet';
@@ -16,18 +17,15 @@ const customIcon = new L.Icon({
     shadowSize: [41, 41]
 });
 
-interface MapControllerProps {
-    center: [number, number];
-    zoom: number;
-}
-
-function MapController({ center, zoom }: MapControllerProps) {
+function ViewManager({ center, zoom, bounds }: { center: [number, number], zoom: number, bounds: L.LatLngBounds | null }) {
     const map = useMap();
     useEffect(() => {
-        if (center && zoom) {
+        if (bounds && bounds.isValid()) {
+            map.fitBounds(bounds, { padding: [50, 50] });
+        } else if (center && zoom) {
             map.setView(center, zoom);
         }
-    }, [center, zoom, map]);
+    }, [center, zoom, bounds, map]);
     return null;
 }
 
@@ -44,12 +42,13 @@ interface LocationsMapProps {
     locations: WorkLocation[];
     center: [number, number];
     zoom: number;
+    bounds?: L.LatLngBounds | null;
     onMapDoubleClick: (latlng: { lat: number, lng: number }) => void;
     onMarkerClick: (locationId: string) => void;
     selectedLocationId: string | null;
 }
 
-export default function LocationsMap({ locations, center, zoom, onMapDoubleClick, onMarkerClick, selectedLocationId }: LocationsMapProps) {
+export default function LocationsMap({ locations, center, zoom, bounds, onMapDoubleClick, onMarkerClick, selectedLocationId }: LocationsMapProps) {
     const validLocations = locations
         .map(l => ({
             ...l,
@@ -65,7 +64,7 @@ export default function LocationsMap({ locations, center, zoom, onMapDoubleClick
 
     return (
         <MapContainer center={center} zoom={zoom} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }} doubleClickZoom={false}>
-            <MapController center={center} zoom={zoom} />
+            <ViewManager center={center} zoom={zoom} bounds={bounds || null} />
             <TileLayer
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
