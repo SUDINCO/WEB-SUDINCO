@@ -29,8 +29,8 @@ import {
 } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { useAuth, useUser, useFirestore } from "@/firebase";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc } from 'firebase/firestore';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "firebase/auth";
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useEffect } from "react";
 
 
@@ -39,7 +39,12 @@ const formSchema = z.object({
   password: z.string().min(1, "La contraseña es obligatoria"),
 });
 
-export function LoginForm() {
+interface LoginFormProps {
+    selectedAccountEmail: string | null;
+    onLoginSuccess: (user: any, profile: any) => void;
+}
+
+export function LoginForm({ selectedAccountEmail, onLoginSuccess }: LoginFormProps) {
   const router = useRouter();
   const auth = useAuth();
   const firestore = useFirestore();
@@ -48,10 +53,16 @@ export function LoginForm() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      email: "",
+      email: selectedAccountEmail || "",
       password: "", 
     },
   });
+  
+  useEffect(() => {
+    if(selectedAccountEmail) {
+        form.setValue('email', selectedAccountEmail);
+    }
+  }, [selectedAccountEmail, form]);
 
   useEffect(() => {
     if (!loading && user) {
@@ -66,12 +77,23 @@ export function LoginForm() {
       return;
     }
     try {
-      await signInWithEmailAndPassword(auth, values.email, values.password);
-      toast({
-        title: "Inicio de sesión exitoso",
-        description: "Bienvenido de nuevo.",
-      });
-      router.push('/dashboard');
+        const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
+        const loggedInUser = userCredential.user;
+
+        const userDocRef = doc(firestore, 'users', loggedInUser.uid);
+        const userDoc = await getDoc(userDocRef);
+
+        if (userDoc.exists()) {
+            const userProfile = { id: userDoc.id, ...userDoc.data() };
+            toast({
+                title: "Inicio de sesión exitoso",
+                description: "Bienvenido de nuevo.",
+            });
+            onLoginSuccess(loggedInUser, userProfile);
+        } else {
+            toast({ variant: 'destructive', title: 'Error de perfil', description: 'No se encontró tu perfil de usuario. Contacta a soporte.' });
+            await signOut(auth);
+        }
     } catch (error: any) {
         // Handle admin creation on first login with emulator
         if (error.code === 'auth/invalid-credential' && values.email === 'jaespinoza@sudinco.com') {
@@ -124,27 +146,35 @@ export function LoginForm() {
           height={100}
           className="mb-4"
         />
-        <CardDescription>¡Bienvenido de nuevo! Por favor, inicie sesión para continuar.</CardDescription>
+        {selectedAccountEmail ? (
+            <div className="flex flex-col items-center gap-2">
+                <p className="font-semibold">{selectedAccountEmail}</p>
+            </div>
+        ) : (
+            <CardDescription>¡Bienvenido de nuevo! Por favor, inicie sesión para continuar.</CardDescription>
+        )}
       </CardHeader>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <CardContent className="space-y-4">
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Correo Electrónico</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input placeholder="nombre@ejemplo.com" {...field} className="pl-10" />
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {!selectedAccountEmail && (
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Correo Electrónico</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input placeholder="nombre@ejemplo.com" {...field} className="pl-10" />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+            )}
             <FormField
               control={form.control}
               name="password"
