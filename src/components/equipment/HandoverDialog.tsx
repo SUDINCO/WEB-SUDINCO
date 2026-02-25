@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
@@ -23,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Check, Eraser, LoaderCircle, Shield, User, Camera, X } from 'lucide-react';
+import { Check, Eraser, LoaderCircle, Shield, User, Camera, X, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { useFirestore } from '@/firebase';
@@ -111,7 +110,6 @@ export function HandoverDialog({ open, onOpenChange, location, currentUser, sugg
     setItems(newItems);
   };
 
-  // --- Image Compression Logic ---
   const handlePhotoCapture = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file && activePhotoIndex !== null) {
@@ -152,7 +150,6 @@ export function HandoverDialog({ open, onOpenChange, location, currentUser, sugg
     setActivePhotoIndex(null);
   };
 
-  // --- Signature Drawing Logic ---
   const startDrawing = (ref: React.RefObject<HTMLCanvasElement>, setDrawing: (val: boolean) => void, e: React.MouseEvent | React.TouchEvent) => {
     setDrawing(true);
     draw(ref, true, e);

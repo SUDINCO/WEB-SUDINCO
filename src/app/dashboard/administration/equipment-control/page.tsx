@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo, useState } from 'react';
@@ -35,6 +34,7 @@ import {
   Eye,
   MapPin,
   Camera,
+  X,
 } from 'lucide-react';
 import { useCollection, useFirestore } from '@/firebase';
 import { collection, query, orderBy, limit } from 'firebase/firestore';
@@ -55,7 +55,7 @@ export default function EquipmentControlPage() {
     return query(collection(firestore, 'equipmentHandovers'), orderBy('timestamp', 'desc'), limit(100));
   }, [firestore]);
 
-  const { data: handovers, isLoading } = useCollection<EquipmentHandover>(handoversQuery);
+  const { data: handovers, isLoading: handoversLoading } = useCollection<EquipmentHandover>(handoversQuery);
 
   const filteredHandovers = useMemo(() => {
     if (!handovers) return [];
@@ -83,7 +83,7 @@ export default function EquipmentControlPage() {
       Ubicación: h.location,
       'Guardia Saliente': h.outgoingGuardName,
       'Guardia Entrante': h.incomingGuardName,
-      'Novedades': h.items.filter(i => i.status === 'issue').map(i => `${i.name} (${i.issueType}): ${i.notes}`).join('; ') || 'Ninguna'
+      'Novedades': h.items.filter(i => i.status === 'issue').map(i => `${i.name} (${i.issueType || 'Novedad'}): ${i.notes || ''}`).join('; ') || 'Ninguna'
     }));
 
     const ws = XLSX.utils.json_to_sheet(dataToExport);
@@ -156,7 +156,7 @@ export default function EquipmentControlPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading ? (
+              {handoversLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={`skel-${i}`}>
                     <TableCell colSpan={6} className="h-12"><div className="h-6 bg-muted rounded animate-pulse" /></TableCell>
@@ -242,7 +242,7 @@ export default function EquipmentControlPage() {
                     <p className="font-bold">{selectedHandover.outgoingGuardName}</p>
                   </div>
                   <div className="col-span-2 pt-2 border-t">
-                    <p className="text-[10px] text-emerald-600 font-bold uppercase">Entrante (Recibió)</p>
+                    <p className="text-[10px] text-emerald-600 font-bold uppercase">Entrante (Recibe)</p>
                     <p className="font-bold">{selectedHandover.incomingGuardName}</p>
                   </div>
                 </div>
@@ -269,8 +269,8 @@ export default function EquipmentControlPage() {
                           <div className="pl-7 grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-1">
                               <p className="text-[10px] font-bold text-red-700 uppercase">Problema Reportado</p>
-                              <p className="text-sm font-semibold">{item.issueType}</p>
-                              <p className="text-xs text-muted-foreground italic">"{item.notes}"</p>
+                              <p className="text-sm font-semibold">{item.issueType || 'Novedad'}</p>
+                              <p className="text-xs text-muted-foreground italic">"{item.notes || 'Sin notas'}"</p>
                             </div>
                             {item.photoUrl && (
                               <div className="flex justify-end">
