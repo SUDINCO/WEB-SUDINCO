@@ -20,6 +20,7 @@ import {
   UserCog,
   Users,
   BarChart,
+  ShieldCheck,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -83,10 +84,11 @@ export const allNavLinks = [
     sublinks: [
       { name: "Aprobación de Publicaciones", href: "/dashboard/administration/evaluation-percentages", icon: Megaphone, id: "publications" },
       { name: "Calendario", href: "/dashboard/administration/calendar", icon: CalendarDays, id: "calendar" },
-      { name: "Evaluación de Desempeño", href: "/dashboard/performance-evaluation", icon: ClipboardCheck, id: "performance-evaluation" },
+      { name: "Evaluación de Desempeño (Admin)", href: "/dashboard/performance-evaluation", icon: ClipboardCheck, id: "performance-evaluation" },
       { name: "Roles y Permisos", href: "/dashboard/administration/roles", icon: FileText, id: "roles" },
       { name: "Asignación de Líderes", href: "/dashboard/administration/leader-assignment", icon: UserCog, id: "leader-assignment" },
       { name: "Configuración de Horarios", href: "/dashboard/administration/schedule-settings", icon: SlidersHorizontal, id: "schedule-settings" },
+      { name: "Control de Dotación", href: "/dashboard/administration/equipment-control", icon: ShieldCheck, id: "equipment-control" },
     ]
   }
 ];

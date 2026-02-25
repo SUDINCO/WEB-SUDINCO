@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -7,13 +6,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { PlusCircle, Trash2, Map } from 'lucide-react';
+import { PlusCircle, Trash2 } from 'lucide-react';
 import { useCollection, useFirestore } from '@/firebase';
-import { collection, doc, addDoc, deleteDoc, updateDoc, DocumentData, setDoc } from 'firebase/firestore';
+import { collection, doc, deleteDoc, updateDoc, DocumentData, setDoc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-
+import { normalizeText } from '@/lib/utils';
 
 interface Role extends DocumentData {
   id: string;
@@ -50,37 +49,34 @@ const permissionsMap = [
                 { id: 'attendance-map', name: 'Mapa de Asistencia' },
                 { id: 'schedule', name: 'Cronograma' },
                 { id: 'attendance-summary', name: 'Control de Asistencia' },
+                { id: 'attendance-report', name: 'Resumen de Asistencia' },
                 { id: 'report-location', name: 'Reportar Ubicación' },
             ]
         },
         {
             title: "Solicitudes",
             tabs: [
-                { id: 'vacation-requests', name: 'Solicitud de Vacaciones y Permisos' },
+                { id: 'vacation-requests', name: 'Vacaciones y Permisos' },
             ]
         },
     ]
   },
   {
-    menu: 'Comunicación',
-    tabs: [
-      { id: 'publications', name: 'Publicaciones' },
-    ],
-  },
-  {
     menu: 'Asignaciones',
     tabs: [
-        { id: 'work-schedules', name: 'Horarios de Trabajo' },
         { id: 'work-locations', name: 'Ubicaciones de Trabajo' },
     ]
   },
   {
     menu: 'Administración',
     tabs: [
-      { id: 'performance-evaluation', name: 'Evaluación de Desempeño' },
+      { id: 'publications', name: 'Aprobación de Publicaciones' },
+      { id: 'calendar', name: 'Calendario' },
+      { id: 'performance-evaluation', name: 'Evaluación de Desempeño (Admin)' },
       { id: 'roles', name: 'Roles y Permisos' },
       { id: 'leader-assignment', name: 'Asignación de Líderes' },
-      { id: 'schedule-settings', name: 'Configuración de Patrones de Turno' },
+      { id: 'schedule-settings', name: 'Configuración de Horarios' },
+      { id: 'equipment-control', name: 'Control de Dotación' },
     ],
   },
 ];
@@ -88,16 +84,6 @@ const permissionsMap = [
 const allPermissionIds = permissionsMap.flatMap(p => 
     p.tabs ? p.tabs.map(t => t.id) : (p.groups ? p.groups.flatMap(g => g.tabs.map(t => t.id)) : [])
 );
-
-const normalizeText = (text: string | undefined | null): string => {
-    if (!text) return '';
-    return text
-      .normalize('NFD') 
-      .replace(/[\u0300-\u036f]/g, '') 
-      .toUpperCase() 
-      .replace(/\s+/g, ' ') 
-      .trim();
-};
 
 export default function RolesAndPermissionsPage() {
   const firestore = useFirestore();
@@ -194,7 +180,7 @@ export default function RolesAndPermissionsPage() {
      try {
         await deleteDoc(roleDocRef);
         toast({ title: "Rol Eliminado", description: `El rol "${selectedRole.name}" ha sido eliminado.`});
-        setSelectedRoleId(null); // Reset selection
+        setSelectedRoleId(null);
      } catch (error) {
         console.error("Error deleting role: ", error);
         toast({ variant: "destructive", title: "Error", description: "No se pudo eliminar el rol."});
@@ -225,9 +211,8 @@ export default function RolesAndPermissionsPage() {
     )
   };
 
-
   return (
-    <>
+    <div className="space-y-6">
       <h1 className="text-lg font-semibold md:text-2xl">Roles y Permisos</h1>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1">
@@ -324,7 +309,6 @@ export default function RolesAndPermissionsPage() {
             </Card>
         </div>
       </div>
-    </>
+    </div>
   );
 }
-    
