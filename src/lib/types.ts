@@ -1,5 +1,4 @@
 
-
 export interface UserProfile {
   id: string;
   codigo: string;
@@ -21,10 +20,29 @@ export interface UserProfile {
   tipoContrato: 'INDEFINIDO' | 'EMERGENTE';
   Status: 'active' | 'inactive';
   photoUrl?: string;
-  evaluador?: string; // Added from my-evaluations
-  observerEmail?: string; // Added from my-evaluations
-  fechaEvaluacionAnual?: string; // Added from my-evaluations
+  evaluador?: string;
+  observerEmail?: string;
+  fechaEvaluacionAnual?: string;
   requiresPasswordChange?: boolean;
+}
+
+export interface EquipmentHandover {
+  id: string;
+  location: string;
+  date: string;
+  type: 'entrega' | 'recepcion';
+  outgoingGuardId: string;
+  outgoingGuardName: string;
+  incomingGuardId: string;
+  incomingGuardName: string;
+  items: {
+    name: string;
+    status: 'good' | 'issue';
+    notes: string;
+  }[];
+  signature: string;
+  timestamp: number;
+  attendanceRecordId?: string;
 }
 
 export interface GenericOption {
@@ -35,7 +53,7 @@ export interface GenericOption {
 export interface ConsultantGroup {
     id: string;
     name: string;
-    members: string[]; // array of user IDs
+    members: string[];
 };
 
 export interface PerformanceEvaluation {
@@ -149,13 +167,10 @@ export interface ProfileEvaluation {
   aspiracionSalarial?: number;
 };
 
-
-// For profile evaluation page
 export type HiringProcessWithShortlist = HiringProcess & { 
     shortlist: (Candidate & { evaluation?: ProfileEvaluation })[] 
 };
 
-// For approvals page
 type CandidateInfo = {
   id: string;
   nombres: string;
@@ -199,7 +214,6 @@ export type HiringApproval = {
   };
 };
 
-// Types from Schedule
 export interface Collaborator {
   id: string;
   name: string;
@@ -254,15 +268,13 @@ export interface Lactation {
 
 export interface AttendanceRecord {
   id: string;
-  collaborator?: Collaborator; // from schedule-generator
-  collaboratorId?: string; // from firestore
-  userName?: string; // from location-report
-  date: any; // Can be Date object or Firestore Timestamp
+  collaborator?: Collaborator;
+  collaboratorId?: string;
+  userName?: string;
+  date: any;
   scheduledShift: string | null;
   entryTime: any | null;
   exitTime: any | null;
-
-  // From Firestore document
   status?: 'on-time' | 'late' | 'absent' | 'in-progress' | 'completed' | 'day-off';
   entryLatitude?: number;
   entryLongitude?: number;
@@ -270,8 +282,6 @@ export interface AttendanceRecord {
   exitLongitude?: number;
   entryWorkLocationName?: string;
   exitWorkLocationName?: string;
-
-  // From schedule-generator computation
   isEntryRegistered?: boolean;
   isExitRegistered?: boolean;
   latenessInMinutes?: number;
@@ -283,7 +293,6 @@ export interface AttendanceRecord {
   registrationStatus?: 'Completo' | 'Incompleto' | 'Falta' | 'N/A' | 'Programado';
   complianceStatus?: 'A Tiempo' | 'Atraso' | 'Falta' | 'N/A';
 }
-
 
 export interface Holiday {
   id: string;
@@ -330,23 +339,17 @@ export interface LocationReport {
   notes?: string;
 }
 
-export interface NotificationChange {
-  field: 'scheduledShift' | 'entryTime' | 'exitTime' | 'observation';
-  from: string | null;
-  to: string | null;
-}
-
 export interface Notification {
   id: string;
-  recordId: string; // e.g., '2023-11-20-collabId'
+  recordId: string;
   requesterId: string;
   requesterName: string;
-  changes: NotificationChange[];
+  changes: any[];
   status: 'pending' | 'approved' | 'rejected';
   requestNote: string;
-  createdAt: string; // ISO String
-  actedAt?: string; // ISO String
-  actedBy?: string; // UID or name of admin/coordinator
+  createdAt: string;
+  actedAt?: string;
+  actedBy?: string;
   adminObservation?: string;
 }
 
@@ -359,7 +362,7 @@ export interface ManualOverride {
 export type ManualOverrides = Map<string, Map<string, ManualOverride>>;
 
 export interface SavedSchedule {
-  id: string; // periodId_location_jobTitle
+  id: string;
   schedule: { [collaboratorId: string]: { [dayKey: string]: string | null } };
   conditioning: {
     isAutomatic: boolean;
@@ -375,7 +378,6 @@ export interface SavedSchedule {
     jobTitle: string;
   };
 }
-
 
 export interface Fine {
     id: string;

@@ -40,6 +40,7 @@ import {
   XCircle,
   Hourglass,
   Info,
+  ShieldCheck,
 } from 'lucide-react';
 import { useUser, useFirestore, useCollection } from '@/firebase';
 import {
@@ -77,11 +78,12 @@ import {
 import { es } from 'date-fns/locale';
 import { toast } from '@/hooks/use-toast';
 import { ScheduleProvider, useScheduleState } from '@/context/schedule-context';
-import type { Collaborator, ShiftPattern, Vacation, TemporaryTransfer, RoleChange, Lactation, ManualOverrides, UserProfile } from '@/lib/types';
+import type { Collaborator, ShiftPattern, Vacation, TemporaryTransfer, RoleChange, Lactation, ManualOverrides, UserProfile, EquipmentHandover } from '@/lib/types';
 import { obtenerHorarioUnificado } from '@/lib/schedule-generator';
 import { cn, normalizeText } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
 import { getEffectiveDetails } from '@/lib/schedule-utils';
+import { HandoverDialog } from '@/components/equipment/HandoverDialog';
 
 
 type AttendanceRecord = {
@@ -115,8 +117,8 @@ interface WorkShift {
 }
 
 function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
-  const R = 6371e3; // metres
-  const φ1 = lat1 * Math.PI/180; // φ, λ in radians
+  const R = 6371e3;
+  const φ1 = lat1 * Math.PI/180;
   const φ2 = lat2 * Math.PI/180;
   const Δφ = (lat2-lat1) * Math.PI/180;
   const Δλ = (lon2-lon1) * Math.PI/180;
@@ -126,8 +128,7 @@ function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
             Math.sin(Δλ/2) * Math.sin(Δλ/2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 
-  const d = R * c; // in metres
-  return d;
+  return R * c;
 }
 
 
@@ -180,16 +181,24 @@ function TimeTracker({ userProfile, schedule, onClockIn, onClockOut, latestRecor
   const entryTimeDisplay = latestRecord?.entryTime ? format(new Date(latestRecord.entryTime), 'HH:mm:ss') : '--:--:--';
   const exitTimeDisplay = latestRecord?.exitTime ? format(new Date(latestRecord.exitTime), 'HH:mm:ss') : '--:--:--';
 
+  const isGuard = userProfile?.cargo === 'GUARDIA DE SEGURIDAD';
+
   return (
-    <Card>
+    <Card className={cn(isGuard && "border-primary")}>
       <CardHeader>
-        <CardTitle>Mi Registro de Asistencia</CardTitle>
-        <CardDescription>
-          {format(currentTime, "'Hoy es' EEEE, d 'de' MMMM 'de' yyyy", { locale: es })}
-        </CardDescription>
+        <div className="flex justify-between items-center">
+          <div className="space-y-1">
+            <CardTitle className="flex items-center gap-2">
+              Mi Registro de Asistencia
+              {isGuard && <Badge className="bg-primary hover:bg-primary"><ShieldCheck className="mr-1 h-3 w-3" /> Puesto de Seguridad</Badge>}
+            </CardTitle>
+            <CardDescription>
+              {format(currentTime, "'Hoy es' EEEE, d 'de' MMMM 'de' yyyy", { locale: es })}
+            </CardDescription>
+          </div>
+        </div>
       </CardHeader>
       <CardContent className="grid md:grid-cols-3 gap-6 text-center">
-          {/* Clock In */}
           <div className="flex flex-col items-center justify-center gap-3 p-4 rounded-lg bg-green-50/50 border border-green-200">
               <p className="font-semibold text-green-800">Hora de Entrada</p>
               <p className="text-4xl font-bold text-green-900 tabular-nums">{entryTimeDisplay}</p>
@@ -199,7 +208,6 @@ function TimeTracker({ userProfile, schedule, onClockIn, onClockOut, latestRecor
              </Button>
           </div>
 
-          {/* Middle section with current time and worked duration */}
           <div className="flex flex-col items-center justify-center gap-4 order-first md:order-none">
               <div className="mb-4">
                   <p className="text-5xl font-bold tabular-nums">{format(currentTime, 'HH:mm:ss')}</p>
@@ -216,7 +224,6 @@ function TimeTracker({ userProfile, schedule, onClockIn, onClockOut, latestRecor
               </div>
           </div>
 
-          {/* Clock Out */}
           <div className="flex flex-col items-center justify-center gap-3 p-4 rounded-lg bg-red-50/50 border border-red-200">
               <p className="font-semibold text-red-800">Hora de Salida</p>
               <p className="text-4xl font-bold text-red-900 tabular-nums">{exitTimeDisplay}</p>
@@ -244,8 +251,8 @@ function WeeklySchedule({
   const [currentDate, setCurrentDate] = useState(new Date());
 
   const weekDays = useMemo(() => {
-    const start = startOfWeek(currentDate, { weekStartsOn: 1 }); // Monday
-    const end = endOfWeek(currentDate, { weekStartsOn: 1 }); // Sunday
+    const start = startOfWeek(currentDate, { weekStartsOn: 1 });
+    const end = endOfWeek(currentDate, { weekStartsOn: 1 });
     return eachDayOfInterval({ start, end });
   }, [currentDate]);
 
@@ -318,7 +325,7 @@ function WeeklySchedule({
               let displayHorario = 'Libre';
               if (scheduleTime) {
                 displayHorario = scheduleTime;
-              } else if (shift) { // Shows VAC, PM, etc.
+              } else if (shift) {
                 const absenceTypes: {[key: string]: string} = {
                     'VAC': 'Vacaciones', 'PM': 'Permiso Médico', 'LIC': 'Licencia',
                     'SUS': 'Suspensión', 'RET': 'Retiro', 'FI': 'Falta Injustificada', 'TRA': 'Traslado'
@@ -440,6 +447,11 @@ function AttendancePageContent() {
   
   const [selectedDayInfo, setSelectedDayInfo] = useState<{ date: Date, record?: AttendanceRecord, shift?: string | null } | null>(null);
 
+  // Equipment Handover State
+  const [isHandoverOpen, setIsHandoverOpen] = useState(false);
+  const [handoverType, setHandoverType] = useState<'entrega' | 'recepcion'>('recepcion');
+  const [reliefGuard, setReliefGuard] = useState<UserProfile | null>(null);
+
   const context = useScheduleState();
   const { shiftPatterns, savedSchedules, loading: contextLoading } = context;
 
@@ -447,6 +459,7 @@ function AttendancePageContent() {
   const { data: vacations, isLoading: vacationsLoading } = useCollection<Vacation>(useMemo(() => firestore ? collection(firestore, 'vacationRequests') : null, [firestore]));
   const { data: workLocations, isLoading: locationsLoading } = useCollection<WorkLocation>(useMemo(() => firestore ? collection(firestore, 'workLocations') : null, [firestore]));
   const { data: workShifts, isLoading: workShiftsLoading } = useCollection<WorkShift>(useMemo(() => firestore ? collection(firestore, 'workShifts') : null, [firestore]));
+  const { data: equipmentHandovers } = useCollection<EquipmentHandover>(useMemo(() => firestore ? collection(firestore, 'equipmentHandovers') : null, [firestore]));
   
   const { data: attendanceRecords, isLoading: attendanceLoading } = useCollection<AttendanceRecord>(useMemo(() => {
     if (!firestore || !userProfile) return null;
@@ -554,6 +567,38 @@ function AttendancePageContent() {
     if (action === 'in' && latestRecord) return;
     if (action === 'out' && !latestRecord) return;
 
+    // --- GUARD HANDOVER LOGIC ---
+    if (userProfile.cargo === 'GUARDIA DE SEGURIDAD') {
+      const todayStr = format(new Date(), 'yyyy-MM-dd');
+      const handoverType = action === 'in' ? 'recepcion' : 'entrega';
+      
+      const existingHandover = equipmentHandovers?.find(h => 
+        h.date === todayStr && 
+        h.type === handoverType && 
+        (handoverType === 'recepcion' ? h.incomingGuardId === userProfile.id : h.outgoingGuardId === userProfile.id)
+      );
+
+      if (!existingHandover) {
+        setHandoverType(handoverType);
+        
+        // Find relief guard from schedule
+        if (users) {
+          const location = userProfile.ubicacion || 'N/A';
+          // Simple relief logic: find another guard scheduled for today in the same location
+          const potentialRelief = users.find(u => 
+            u.id !== userProfile.id && 
+            u.cargo === 'GUARDIA DE SEGURIDAD' && 
+            u.ubicacion === location &&
+            u.Status === 'active'
+          );
+          setReliefGuard(potentialRelief || null);
+        }
+        
+        setIsHandoverOpen(true);
+        return; // Stop the clock action until handover is complete
+      }
+    }
+
     setIsClocking(true);
     let position: GeolocationPosition | null = null;
     let locationName = "Ubicación no registrada";
@@ -564,15 +609,11 @@ function AttendancePageContent() {
         
         if (position && workLocations) {
             for (const location of workLocations) {
-                // Ensure the location properties are numbers before calculation
                 const locLat = Number(location.latitude);
                 const locLon = Number(location.longitude);
                 const locRad = Number(location.radius);
 
-                if (isNaN(locLat) || isNaN(locLon) || isNaN(locRad)) {
-                    console.error("Invalid location data, skipping:", location);
-                    continue;
-                }
+                if (isNaN(locLat) || isNaN(locLon) || isNaN(locRad)) continue;
                 
                 const distance = getDistance(position.coords.latitude, position.coords.longitude, locLat, locLon);
                 if (distance <= locRad) {
@@ -583,9 +624,7 @@ function AttendancePageContent() {
         }
     } catch (e: any) {
         let description = 'No se pudo obtener la ubicación, pero se continuará con el registro.';
-        if (e.code === 1) { // PERMISSION_DENIED
-             description = 'Permiso de ubicación denegado. El registro continuará sin geolocalización.';
-        }
+        if (e.code === 1) description = 'Permiso de ubicación denegado. El registro continuará sin geolocalización.';
         toast({ variant: 'destructive', title: 'Advertencia de Ubicación', description });
     }
 
@@ -602,8 +641,7 @@ function AttendancePageContent() {
                 entryLongitude: position?.coords.longitude || null,
                 entryWorkLocationName: locationName,
             };
-            const attendanceCollection = collection(firestore, 'attendance');
-            await addDoc(attendanceCollection, newRecord);
+            await addDoc(collection(firestore, 'attendance'), newRecord);
             toast({ title: 'Entrada Registrada', description: `Ubicación: ${locationName}. ¡Que tengas una excelente jornada!` });
         } else if (action === 'out' && latestRecord) {
             const recordDoc = doc(firestore, 'attendance', latestRecord.id);
@@ -626,9 +664,7 @@ function AttendancePageContent() {
 
 
   const currentUserSchedule = useMemo(() => {
-    if (!userProfile || !savedSchedules) {
-        return schedule.get(userProfile?.id || '');
-    }
+    if (!userProfile || !savedSchedules) return schedule.get(userProfile?.id || '');
 
     const today = new Date();
     const periodDate = today.getDate() < 21 ? subMonths(today, 1) : today;
@@ -688,6 +724,19 @@ function AttendancePageContent() {
         open={!!selectedDayInfo}
         onOpenChange={() => setSelectedDayInfo(null)}
       />
+      
+      {isHandoverOpen && (
+        <HandoverDialog
+          open={isHandoverOpen}
+          onOpenChange={setIsHandoverOpen}
+          type={handoverType}
+          location={userProfile.ubicacion || 'OFICINA CENTRAL'}
+          currentUser={userProfile}
+          suggestedGuard={reliefGuard}
+          onSuccess={() => handleClockAction(handoverType === 'recepcion' ? 'in' : 'out')}
+        />
+      )}
+
       <TimeTracker 
         userProfile={userProfile} 
         schedule={currentUserSchedule}

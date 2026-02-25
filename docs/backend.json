@@ -1,6 +1,35 @@
 
 {
   "entities": {
+    "EquipmentHandover": {
+      "title": "Equipment Handover",
+      "type": "object",
+      "description": "Report of equipment status at shift changes for security guards.",
+      "properties": {
+        "location": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "type": { "type": "string", "enum": ["entrega", "recepcion"] },
+        "outgoingGuardId": { "type": "string" },
+        "outgoingGuardName": { "type": "string" },
+        "incomingGuardId": { "type": "string" },
+        "incomingGuardName": { "type": "string" },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "status": { "type": "string", "enum": ["good", "issue"] },
+              "notes": { "type": "string" }
+            }
+          }
+        },
+        "signature": { "type": "string", "description": "Base64 data URI of the digital signature." },
+        "timestamp": { "type": "number" },
+        "attendanceRecordId": { "type": "string" }
+      },
+      "required": ["location", "date", "type", "outgoingGuardId", "incomingGuardId", "items", "signature", "timestamp"]
+    },
     "Holiday": {
         "title": "Holiday",
         "type": "object",
@@ -852,6 +881,10 @@
     "/locationReports/{reportId}": {
       "schema": { "$ref": "#/entities/LocationReport" },
       "description": "Stores user location reports."
+    },
+    "/equipmentHandovers/{handoverId}": {
+      "schema": { "$ref": "#/entities/EquipmentHandover" },
+      "description": "Stores reports of equipment status at shift changes for security guards."
     }
   }
 }
