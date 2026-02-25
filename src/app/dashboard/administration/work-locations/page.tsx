@@ -74,6 +74,10 @@ export default function WorkLocationsPage() {
   const [mapCenter, setMapCenter] = useState<[number, number]>([-2.14, -79.9]);
   const [mapZoom, setMapZoom] = useState(12);
 
+  const form = useForm<LocationFormData>({
+    resolver: zodResolver(locationSchema),
+  });
+
   const firestore = useFirestore();
   const locationsCollectionRef = useMemo(() => firestore ? collection(firestore, 'workLocations') : null, [firestore]);
   
