@@ -2,20 +2,10 @@
 'use client';
 
 import { MapContainer, TileLayer, Marker, Popup, useMap, Circle, useMapEvents } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import type { WorkLocation } from '@/lib/types';
 
-const customIcon = new L.Icon({
-    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41]
-});
 
 function ViewManager({ center, zoom, bounds }: { center: [number, number], zoom: number, bounds: L.LatLngBounds | null }) {
     const map = useMap();
@@ -49,6 +39,17 @@ interface LocationsMapProps {
 }
 
 export default function LocationsMap({ locations, center, zoom, bounds, onMapDoubleClick, onMarkerClick, selectedLocationId }: LocationsMapProps) {
+    
+    const customIcon = useMemo(() => new L.Icon({
+        iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+        iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    }), []);
+    
     const validLocations = locations
         .map(l => ({
             ...l,

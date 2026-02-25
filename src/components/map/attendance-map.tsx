@@ -1,55 +1,22 @@
+
 'use client';
 
 import React from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Circle, Tooltip, useMap } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import type { WorkLocation, AttendanceRecord, LocationReport } from '@/lib/types';
 import { format } from 'date-fns';
 
-// Fix for default icon not showing in Next.js
-const defaultIcon = new L.Icon({
-    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41]
-});
-
-const outOfBoundsIcon = new L.Icon({
-    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.3.1/images/marker-shadow.png',
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41]
-});
-
-const locationIcon = new L.Icon({
-    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.3.1/images/marker-shadow.png',
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41]
-});
-
-const createAvatarIcon = (photoUrl: string | undefined, initials: string, borderColor: string = 'red') => {
-  const avatarHtml = photoUrl
-    ? `<img src="${photoUrl}" alt="${initials}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;" />`
-    : `<div style="width: 100%; height: 100%; border-radius: 50%; background-color: #cbd5e1; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; color: #475569;">${initials}</div>`;
-
-  return new L.DivIcon({
-    html: `<div style="width: 36px; height: 36px; border-radius: 50%; border: 2px solid ${borderColor}; background-color: white; padding: 2px; box-shadow: 0 2px 5px rgba(0,0,0,0.3);">${avatarHtml}</div>`,
-    className: '', // important to have an empty className
-    iconSize: [40, 40],
-    iconAnchor: [20, 40],
-    popupAnchor: [0, -40]
-  });
-};
-
+// This component will adjust the map's view to fit the provided bounds.
+function BoundsFitter({ bounds }: { bounds: L.LatLngBounds | null }) {
+    const map = useMap();
+    React.useEffect(() => {
+        if (bounds && bounds.isValid()) {
+            map.fitBounds(bounds, { padding: [50, 50] });
+        }
+    }, [bounds, map]);
+    return null;
+}
 
 // Utility function to calculate distance between two lat-lon points in meters
 function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -65,17 +32,6 @@ function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
     return R * c;
-}
-
-// This component will adjust the map's view to fit the provided bounds.
-function BoundsFitter({ bounds }: { bounds: L.LatLngBounds | null }) {
-    const map = useMap();
-    React.useEffect(() => {
-        if (bounds && bounds.isValid()) {
-            map.fitBounds(bounds, { padding: [50, 50] });
-        }
-    }, [bounds, map]);
-    return null;
 }
 
 type RecordWithUser = (AttendanceRecord | LocationReport) & {
@@ -105,6 +61,29 @@ function isLocationReport(record: RecordWithUser): record is LocationReport & { 
 
 export default function AttendanceMap({ workLocations, records, viewType, onLocationClick, onOutOfBoundsRecordClick }: AttendanceMapProps) {
     const defaultCenter: [number, number] = [-2.14, -79.9]; // Guayaquil
+
+    const locationIcon = React.useMemo(() => new L.Icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.3.1/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    }), []);
+    
+    const createAvatarIcon = React.useCallback((photoUrl: string | undefined, initials: string, borderColor: string = 'red') => {
+      const avatarHtml = photoUrl
+        ? `<img src="${photoUrl}" alt="${initials}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;" />`
+        : `<div style="width: 100%; height: 100%; border-radius: 50%; background-color: #cbd5e1; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; color: #475569;">${initials}</div>`;
+    
+      return new L.DivIcon({
+        html: `<div style="width: 36px; height: 36px; border-radius: 50%; border: 2px solid ${borderColor}; background-color: white; padding: 2px; box-shadow: 0 2px 5px rgba(0,0,0,0.3);">${avatarHtml}</div>`,
+        className: '', // important to have an empty className
+        iconSize: [40, 40],
+        iconAnchor: [20, 40],
+        popupAnchor: [0, -40]
+      });
+    }, []);
     
     // Process records for attendance view
     const { locationCounts, outOfBoundsRecords } = React.useMemo(() => {
