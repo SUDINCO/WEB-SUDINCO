@@ -1,4 +1,6 @@
 
+'use client';
+
 import { isWithinInterval } from 'date-fns';
 import type { Collaborator, TemporaryTransfer, RoleChange } from './types';
 
