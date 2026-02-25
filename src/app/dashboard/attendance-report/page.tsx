@@ -133,7 +133,7 @@ function AttendanceReportPage() {
     
             if (record && record.entryTime && record.exitTime) {
                 const shiftDetails = getShiftDetailsFromRules(scheduledShift, collaborator.cargo, jornada, overtimeRules);
-                status = (shiftDetails && differenceInMinutes(record.exitTime, record.entryTime) >= scheduledShift.hours * 60 - 5) ? 'Completo' : 'Incompleto';
+                status = (shiftDetails && differenceInMinutes(record.exitTime, record.entryTime) >= shiftDetails.hours * 60 - 5) ? 'Completo' : 'Incompleto';
             } else if (record && record.entryTime) {
                 status = 'Incompleto';
             }
