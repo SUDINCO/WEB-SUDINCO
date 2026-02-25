@@ -30,7 +30,6 @@ export interface EquipmentHandover {
   id: string;
   location: string;
   date: string;
-  type: 'entrega' | 'recepcion';
   outgoingGuardId: string;
   outgoingGuardName: string;
   incomingGuardId: string;
@@ -40,7 +39,7 @@ export interface EquipmentHandover {
     status: 'good' | 'issue';
     notes: string;
   }[];
-  signature: string;
+  outgoingSignature: string;
   timestamp: number;
   attendanceRecordId?: string;
 }

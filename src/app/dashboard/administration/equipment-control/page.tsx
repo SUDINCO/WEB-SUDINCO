@@ -28,16 +28,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
   Search, 
-  Shield, 
   AlertTriangle, 
   CheckCircle, 
   FileText, 
   Download, 
-  LoaderCircle,
   Eye,
-  Calendar as CalendarIcon,
   MapPin,
-  ArrowRight
 } from 'lucide-react';
 import { useCollection, useFirestore } from '@/firebase';
 import { collection, query, orderBy, limit } from 'firebase/firestore';
@@ -83,9 +79,8 @@ export default function EquipmentControlPage() {
     const dataToExport = filteredHandovers.map(h => ({
       Fecha: format(new Date(h.timestamp), 'dd/MM/yyyy HH:mm'),
       Ubicación: h.location,
-      Tipo: h.type.toUpperCase(),
-      'Guardia Saliente': h.outgoingGuardName,
-      'Guardia Entrante': h.incomingGuardName,
+      'Guardia Saliente (Entrega)': h.outgoingGuardName,
+      'Guardia Entrante (Recibe)': h.incomingGuardName,
       'Novedades': h.items.filter(i => i.status === 'issue').map(i => `${i.name}: ${i.notes}`).join('; ') || 'Ninguna'
     }));
 
@@ -100,7 +95,7 @@ export default function EquipmentControlPage() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Control de Dotación por Puesto</h1>
-          <p className="text-muted-foreground">Monitoreo de actas de entrega y recepción de equipos de seguridad.</p>
+          <p className="text-muted-foreground">Monitoreo de actas de relevo firmadas en el cambio de turno.</p>
         </div>
         <Button onClick={handleExport} variant="outline">
           <Download className="mr-2 h-4 w-4" />
@@ -111,7 +106,7 @@ export default function EquipmentControlPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="bg-primary/5 border-primary/20">
           <CardHeader className="pb-2">
-            <CardDescription>Total Actas Recientes</CardDescription>
+            <CardDescription>Total Relevos Registrados</CardDescription>
             <CardTitle className="text-3xl font-bold">{stats.total}</CardTitle>
           </CardHeader>
         </Card>
@@ -123,9 +118,9 @@ export default function EquipmentControlPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Estado General</CardDescription>
+            <CardDescription>Estado de Activos</CardDescription>
             <CardTitle className="text-3xl font-bold text-green-600">
-              {stats.total > 0 ? Math.round(((stats.total - stats.withIssues) / stats.total) * 100) : 0}% Ok
+              {stats.total > 0 ? Math.round(((stats.total - stats.withIssues) / stats.total) * 100) : 0}% OK
             </CardTitle>
           </CardHeader>
         </Card>
@@ -134,7 +129,7 @@ export default function EquipmentControlPage() {
       <Card>
         <CardHeader>
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <CardTitle>Historial de Actas</CardTitle>
+            <CardTitle>Historial de Relevos</CardTitle>
             <div className="relative w-full md:max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -152,9 +147,8 @@ export default function EquipmentControlPage() {
               <TableRow>
                 <TableHead>Fecha / Hora</TableHead>
                 <TableHead>Ubicación</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>G. Saliente</TableHead>
-                <TableHead>G. Entrante</TableHead>
+                <TableHead>G. Saliente (Entrega)</TableHead>
+                <TableHead>G. Entrante (Recibe)</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead className="text-right">Acción</TableHead>
               </TableRow>
@@ -163,7 +157,7 @@ export default function EquipmentControlPage() {
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={`skel-${i}`}>
-                    <TableCell colSpan={7} className="h-12"><div className="h-6 bg-muted rounded animate-pulse" /></TableCell>
+                    <TableCell colSpan={6} className="h-12"><div className="h-6 bg-muted rounded animate-pulse" /></TableCell>
                   </TableRow>
                 ))
               ) : filteredHandovers.length > 0 ? (
@@ -182,11 +176,6 @@ export default function EquipmentControlPage() {
                           <MapPin className="h-3 w-3 text-muted-foreground" />
                           {handover.location}
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="capitalize">
-                          {handover.type}
-                        </Badge>
                       </TableCell>
                       <TableCell className="text-xs">{handover.outgoingGuardName}</TableCell>
                       <TableCell className="text-xs">{handover.incomingGuardName}</TableCell>
@@ -214,8 +203,8 @@ export default function EquipmentControlPage() {
                 })
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                    No se encontraron actas registradas.
+                  <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                    No se encontraron relevos registrados.
                   </TableCell>
                 </TableRow>
               )}
@@ -231,7 +220,7 @@ export default function EquipmentControlPage() {
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
                   <FileText className="h-5 w-5 text-primary" />
-                  Acta de {selectedHandover.type === 'entrega' ? 'Entrega' : 'Recepción'} #{selectedHandover.id.slice(-6).toUpperCase()}
+                  Acta de Relevo #{selectedHandover.id.slice(-6).toUpperCase()}
                 </DialogTitle>
               </DialogHeader>
               
@@ -246,17 +235,17 @@ export default function EquipmentControlPage() {
                     <p className="font-semibold">{format(new Date(selectedHandover.timestamp), 'PPP p', { locale: es })}</p>
                   </div>
                   <div className="pt-2">
-                    <p className="text-xs text-muted-foreground uppercase font-bold">Guardia Saliente</p>
+                    <p className="text-xs text-muted-foreground uppercase font-bold">Entregado por (Saliente)</p>
                     <p className="font-semibold">{selectedHandover.outgoingGuardName}</p>
                   </div>
                   <div className="pt-2">
-                    <p className="text-xs text-muted-foreground uppercase font-bold">Guardia Entrante</p>
+                    <p className="text-xs text-muted-foreground uppercase font-bold">Recibido por (Entrante)</p>
                     <p className="font-semibold">{selectedHandover.incomingGuardName}</p>
                   </div>
                 </div>
 
                 <div className="space-y-3">
-                  <h4 className="font-bold text-sm border-b pb-1">Checklist de Equipos</h4>
+                  <h4 className="font-bold text-sm border-b pb-1">Estado de Equipos en el Relevo</h4>
                   <div className="space-y-2">
                     {selectedHandover.items.map((item) => (
                       <div key={item.name} className="flex items-center justify-between p-2 border rounded-md">
@@ -280,11 +269,11 @@ export default function EquipmentControlPage() {
                 </div>
 
                 <div className="pt-4 border-t flex flex-col items-center">
-                  <p className="text-xs text-muted-foreground font-bold mb-2">FIRMA DE VALIDACIÓN</p>
+                  <p className="text-xs text-muted-foreground font-bold mb-2 uppercase">Firma del Guardia Saliente (Aprobación)</p>
                   <div className="border rounded bg-white p-2">
                     <Image 
-                      src={selectedHandover.signature} 
-                      alt="Firma" 
+                      src={selectedHandover.outgoingSignature} 
+                      alt="Firma Saliente" 
                       width={300} 
                       height={100} 
                       className="max-h-[100px] w-auto object-contain"

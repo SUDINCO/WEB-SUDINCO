@@ -449,7 +449,6 @@ function AttendancePageContent() {
 
   // Equipment Handover State
   const [isHandoverOpen, setIsHandoverOpen] = useState(false);
-  const [handoverType, setHandoverType] = useState<'entrega' | 'recepcion'>('recepcion');
   const [reliefGuard, setReliefGuard] = useState<UserProfile | null>(null);
 
   const context = useScheduleState();
@@ -567,24 +566,19 @@ function AttendancePageContent() {
     if (action === 'in' && latestRecord) return;
     if (action === 'out' && !latestRecord) return;
 
-    // --- GUARD HANDOVER LOGIC ---
-    if (userProfile.cargo === 'GUARDIA DE SEGURIDAD') {
+    // --- GUARD HANDOVER LOGIC (Now only at Entrada/Clock-In) ---
+    if (userProfile.cargo === 'GUARDIA DE SEGURIDAD' && action === 'in') {
       const todayStr = format(new Date(), 'yyyy-MM-dd');
-      const handoverType = action === 'in' ? 'recepcion' : 'entrega';
       
       const existingHandover = equipmentHandovers?.find(h => 
         h.date === todayStr && 
-        h.type === handoverType && 
-        (handoverType === 'recepcion' ? h.incomingGuardId === userProfile.id : h.outgoingGuardId === userProfile.id)
+        h.incomingGuardId === userProfile.id
       );
 
       if (!existingHandover) {
-        setHandoverType(handoverType);
-        
-        // Find relief guard from schedule
+        // Find outgoing guard (relief) from payroll/users at the same location
         if (users) {
           const location = userProfile.ubicacion || 'N/A';
-          // Simple relief logic: find another guard scheduled for today in the same location
           const potentialRelief = users.find(u => 
             u.id !== userProfile.id && 
             u.cargo === 'GUARDIA DE SEGURIDAD' && 
@@ -595,7 +589,7 @@ function AttendancePageContent() {
         }
         
         setIsHandoverOpen(true);
-        return; // Stop the clock action until handover is complete
+        return; 
       }
     }
 
@@ -729,11 +723,10 @@ function AttendancePageContent() {
         <HandoverDialog
           open={isHandoverOpen}
           onOpenChange={setIsHandoverOpen}
-          type={handoverType}
           location={userProfile.ubicacion || 'OFICINA CENTRAL'}
           currentUser={userProfile}
           suggestedGuard={reliefGuard}
-          onSuccess={() => handleClockAction(handoverType === 'recepcion' ? 'in' : 'out')}
+          onSuccess={() => handleClockAction('in')}
         />
       )}
 

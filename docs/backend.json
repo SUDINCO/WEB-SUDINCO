@@ -8,7 +8,6 @@
       "properties": {
         "location": { "type": "string" },
         "date": { "type": "string", "format": "date" },
-        "type": { "type": "string", "enum": ["entrega", "recepcion"] },
         "outgoingGuardId": { "type": "string" },
         "outgoingGuardName": { "type": "string" },
         "incomingGuardId": { "type": "string" },
@@ -24,11 +23,11 @@
             }
           }
         },
-        "signature": { "type": "string", "description": "Base64 data URI of the digital signature." },
+        "outgoingSignature": { "type": "string", "description": "Base64 data URI of the outgoing guard signature." },
         "timestamp": { "type": "number" },
         "attendanceRecordId": { "type": "string" }
       },
-      "required": ["location", "date", "type", "outgoingGuardId", "incomingGuardId", "items", "signature", "timestamp"]
+      "required": ["location", "date", "outgoingGuardId", "incomingGuardId", "items", "outgoingSignature", "timestamp"]
     },
     "Holiday": {
         "title": "Holiday",

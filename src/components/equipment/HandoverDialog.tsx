@@ -13,11 +13,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Check, X, Eraser, LoaderCircle, Shield, User } from 'lucide-react';
+import { Check, Eraser, LoaderCircle, Shield, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { useFirestore } from '@/firebase';
@@ -27,7 +26,6 @@ import type { UserProfile } from '@/lib/types';
 interface HandoverDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  type: 'entrega' | 'recepcion';
   location: string;
   currentUser: UserProfile;
   suggestedGuard: UserProfile | null;
@@ -36,7 +34,7 @@ interface HandoverDialogProps {
 
 const EQUIPMENT_CATALOG = ['Radio', 'Chaleco', 'Arma de Fuego', 'Celular', 'Bitácora'];
 
-export function HandoverDialog({ open, onOpenChange, type, location, currentUser, suggestedGuard, onSuccess }: HandoverDialogProps) {
+export function HandoverDialog({ open, onOpenChange, location, currentUser, suggestedGuard, onSuccess }: HandoverDialogProps) {
   const [items, setItems] = useState(
     EQUIPMENT_CATALOG.map(name => ({ name, status: 'good' as 'good' | 'issue', notes: '' }))
   );
@@ -48,7 +46,6 @@ export function HandoverDialog({ open, onOpenChange, type, location, currentUser
   useEffect(() => {
     if (open) {
       setItems(EQUIPMENT_CATALOG.map(name => ({ name, status: 'good' as 'good' | 'issue', notes: '' })));
-      // Initialize canvas
       const canvas = canvasRef.current;
       if (canvas) {
         const ctx = canvas.getContext('2d');
@@ -122,12 +119,10 @@ export function HandoverDialog({ open, onOpenChange, type, location, currentUser
   const handleSubmit = async () => {
     if (!firestore) return;
 
-    // Validate signature
     const canvas = canvasRef.current;
     if (!canvas) return;
     
     const signatureData = canvas.toDataURL('image/png');
-    // Check if canvas is empty (simplified check)
     const emptyCanvas = document.createElement('canvas');
     emptyCanvas.width = canvas.width;
     emptyCanvas.height = canvas.height;
@@ -137,9 +132,18 @@ export function HandoverDialog({ open, onOpenChange, type, location, currentUser
       toast({
         variant: 'destructive',
         title: 'Firma requerida',
-        description: 'Por favor, realice su firma para validar el acta.',
+        description: 'El guardia que termina el turno debe firmar para validar el acta.',
       });
       return;
+    }
+
+    if (!suggestedGuard) {
+        toast({
+            variant: 'destructive',
+            title: 'Falta guardia saliente',
+            description: 'No se ha detectado al guardia que entrega el puesto.',
+        });
+        return;
     }
 
     setIsSubmitting(true);
@@ -147,21 +151,20 @@ export function HandoverDialog({ open, onOpenChange, type, location, currentUser
     const handoverData = {
       location,
       date: new Date().toISOString().split('T')[0],
-      type,
-      outgoingGuardId: type === 'entrega' ? currentUser.id : (suggestedGuard?.id || 'N/A'),
-      outgoingGuardName: type === 'entrega' ? `${currentUser.nombres} ${currentUser.apellidos}` : (suggestedGuard ? `${suggestedGuard.nombres} ${suggestedGuard.apellidos}` : 'N/A'),
-      incomingGuardId: type === 'recepcion' ? currentUser.id : (suggestedGuard?.id || 'N/A'),
-      incomingGuardName: type === 'recepcion' ? `${currentUser.nombres} ${currentUser.apellidos}` : (suggestedGuard ? `${suggestedGuard.nombres} ${suggestedGuard.apellidos}` : 'N/A'),
+      outgoingGuardId: suggestedGuard.id,
+      outgoingGuardName: `${suggestedGuard.nombres} ${suggestedGuard.apellidos}`,
+      incomingGuardId: currentUser.id,
+      incomingGuardName: `${currentUser.nombres} ${currentUser.apellidos}`,
       items,
-      signature: signatureData,
+      outgoingSignature: signatureData,
       timestamp: Date.now(),
     };
 
     try {
       await addDoc(collection(firestore, 'equipmentHandovers'), handoverData);
       toast({
-        title: 'Acta Registrada',
-        description: `El acta de ${type} ha sido guardada exitosamente.`,
+        title: 'Relevo Registrado',
+        description: 'El acta de relevo ha sido guardada exitosamente.',
       });
       onSuccess();
       onOpenChange(false);
@@ -181,30 +184,30 @@ export function HandoverDialog({ open, onOpenChange, type, location, currentUser
     <Dialog open={open} onOpenChange={(val) => !isSubmitting && onOpenChange(val)}>
       <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-2xl">
-            <Shield className="h-6 w-6 text-primary" />
-            Acta de {type === 'entrega' ? 'Entrega' : 'Recepción'} de Puesto
+          <DialogTitle className="flex items-center gap-2 text-2xl text-primary">
+            <Shield className="h-6 w-6" />
+            Acta Única de Relevo de Puesto
           </DialogTitle>
           <DialogDescription>
-            Validación de dotación y equipos para la ubicación: <strong>{location}</strong>
+            El guardia entrante realiza el checklist y el guardia saliente aprueba mediante su firma digital.
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto pr-2 space-y-6 py-4">
-          <Card className="bg-muted/30">
+          <Card className="bg-muted/30 border-primary/20">
             <CardContent className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground uppercase font-bold">Guardia Saliente</Label>
+                <Label className="text-xs text-muted-foreground uppercase font-bold">Guardia que Entrega (Saliente)</Label>
                 <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-primary" />
-                  <p className="font-semibold">{type === 'entrega' ? `${currentUser.nombres} ${currentUser.apellidos}` : (suggestedGuard ? `${suggestedGuard.nombres} ${suggestedGuard.apellidos}` : 'Cargando...')}</p>
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <p className="font-semibold">{suggestedGuard ? `${suggestedGuard.nombres} ${suggestedGuard.apellidos}` : 'Cargando relevo...'}</p>
                 </div>
               </div>
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground uppercase font-bold">Guardia Entrante</Label>
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-primary" />
-                  <p className="font-semibold">{type === 'recepcion' ? `${currentUser.nombres} ${currentUser.apellidos}` : (suggestedGuard ? `${suggestedGuard.nombres} ${suggestedGuard.apellidos}` : 'Cargando...')}</p>
+                <Label className="text-xs text-muted-foreground uppercase font-bold">Guardia que Recibe (Entrante)</Label>
+                <div className="flex items-center gap-2 text-primary">
+                  <User className="h-4 w-4" />
+                  <p className="font-bold">{currentUser.nombres} {currentUser.apellidos}</p>
                 </div>
               </div>
             </CardContent>
@@ -212,11 +215,11 @@ export function HandoverDialog({ open, onOpenChange, type, location, currentUser
 
           <div className="rounded-md border">
             <Table>
-              <TableHeader>
+              <TableHeader className="bg-muted">
                 <TableRow>
                   <TableHead className="w-[200px]">Material / Equipo</TableHead>
                   <TableHead className="text-center w-[200px]">Estado</TableHead>
-                  <TableHead>Novedades / Observaciones</TableHead>
+                  <TableHead>Observaciones del Guardia Entrante</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -231,11 +234,11 @@ export function HandoverDialog({ open, onOpenChange, type, location, currentUser
                       >
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="good" id={`good-${index}`} className="text-green-600" />
-                          <Label htmlFor={`good-${index}`} className="text-xs cursor-pointer">Bien</Label>
+                          <Label htmlFor={`good-${index}`} className="text-xs cursor-pointer">OK</Label>
                         </div>
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="issue" id={`issue-${index}`} className="text-red-600" />
-                          <Label htmlFor={`issue-${index}`} className="text-xs cursor-pointer text-red-600 font-bold">Novedad</Label>
+                          <Label htmlFor={`issue-${index}`} className="text-xs cursor-pointer text-red-600 font-bold">NOVEDAD</Label>
                         </div>
                       </RadioGroup>
                     </TableCell>
@@ -253,9 +256,12 @@ export function HandoverDialog({ open, onOpenChange, type, location, currentUser
             </Table>
           </div>
 
-          <div className="space-y-2">
-            <Label className="font-bold">Firma Digital del Responsable</Label>
-            <div className="border-2 border-dashed rounded-lg bg-white relative">
+          <div className="space-y-3 bg-slate-50 p-4 rounded-lg border">
+            <Label className="font-bold text-red-700 flex items-center gap-2">
+                <Edit className="h-4 w-4" />
+                FIRMA DEL GUARDIA SALIENTE (PARA APROBACIÓN)
+            </Label>
+            <div className="border-2 border-dashed border-slate-300 rounded-lg bg-white relative">
               <canvas
                 ref={canvasRef}
                 width={800}
@@ -280,8 +286,8 @@ export function HandoverDialog({ open, onOpenChange, type, location, currentUser
                 Borrar Firma
               </Button>
             </div>
-            <p className="text-[10px] text-muted-foreground text-center">
-              Al firmar, confirmo que he verificado el estado de todos los materiales listados anteriormente.
+            <p className="text-[10px] text-muted-foreground text-center italic">
+              Al firmar, el guardia saliente confirma la entrega de los equipos en el estado reportado por el guardia entrante.
             </p>
           </div>
         </div>
@@ -292,9 +298,9 @@ export function HandoverDialog({ open, onOpenChange, type, location, currentUser
           </Button>
           <Button onClick={handleSubmit} disabled={isSubmitting} size="lg" className="min-w-[200px]">
             {isSubmitting ? (
-              <><LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> Registrando...</>
+              <><LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> Procesando...</>
             ) : (
-              <><Check className="mr-2 h-4 w-4" /> Finalizar y Guardar Acta</>
+              <><Check className="mr-2 h-4 w-4" /> Aprobar y Guardar Acta</>
             )}
           </Button>
         </DialogFooter>
