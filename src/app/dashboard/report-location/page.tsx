@@ -3,11 +3,12 @@
 import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useUser, useFirestore, useCollection } from '@/firebase';
 import { collection, addDoc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
-import { Camera, MapPin, Clock, Send, LoaderCircle, X, ArrowLeft, ShieldCheck, ClipboardList, User } from 'lucide-react';
+import { Camera, MapPin, Clock, Send, LoaderCircle, X, ArrowLeft, ShieldCheck, ClipboardList, User, AlertTriangle } from 'lucide-react';
 import Image from 'next/image';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
