@@ -40,15 +40,50 @@ interface HandoverDialogProps {
 }
 
 const EQUIPMENT_CATALOG = ['Radio', 'Chaleco', 'Arma de Fuego', 'Celular', 'Bitácora'];
-const ISSUE_TYPES = [
-  'Dañado / No funciona',
-  'Faltante',
-  'Mal estado estético',
-  'Batería agotada / No carga',
-  'Pantalla rota',
-  'Botones trabados',
-  'Otro (especificar en notas)'
-];
+
+const ISSUE_TYPES_MAP: Record<string, string[]> = {
+  'Radio': [
+    'Dañado / No funciona',
+    'Faltante',
+    'Pantalla rota',
+    'Botones trabados',
+    'Batería agotada / No carga',
+    'Antena dañada'
+  ],
+  'Chaleco': [
+    'Roto / Rasgado',
+    'Faltante',
+    'Mal estado estético',
+    'Sucio',
+    'Velcro / Cierres dañados'
+  ],
+  'Arma de Fuego': [
+    'Mal estado mecánico',
+    'Faltante',
+    'Sin munición completa',
+    'Seguro dañado',
+    'Óxido / Falta limpieza'
+  ],
+  'Celular': [
+    'Pantalla rota',
+    'Faltante',
+    'No carga / Batería inflada',
+    'Botones trabados',
+    'Cámara dañada'
+  ],
+  'Bitácora': [
+    'Hojas faltantes',
+    'Faltante',
+    'Mal estado / Mojada',
+    'Sin espacio para registros'
+  ],
+  'default': [
+    'Dañado / No funciona',
+    'Faltante',
+    'Mal estado estético',
+    'Otro (especificar en notas)'
+  ]
+};
 
 interface HandoverItem {
   name: string;
@@ -298,71 +333,75 @@ export function HandoverDialog({ open, onOpenChange, location, currentUser, sugg
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {items.map((item, index) => (
-                  <React.Fragment key={item.name}>
-                    <TableRow className={cn(item.status === 'issue' && "bg-red-50/30")}>
-                      <TableCell className="font-semibold text-slate-700">{item.name}</TableCell>
-                      <TableCell>
-                        <RadioGroup
-                          defaultValue={item.status}
-                          onValueChange={(val) => handleStatusChange(index, val as 'good' | 'issue')}
-                          className="flex justify-center gap-4"
-                        >
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="good" id={`good-${index}`} className="text-emerald-600" />
-                            <Label htmlFor={`good-${index}`} className="text-xs cursor-pointer font-medium">OPERATIVO</Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="issue" id={`issue-${index}`} className="text-red-600" />
-                            <Label htmlFor={`issue-${index}`} className="text-xs cursor-pointer text-red-600 font-bold">NOVEDAD</Label>
-                          </div>
-                        </RadioGroup>
-                      </TableCell>
-                      <TableCell>
-                        {item.status === 'issue' ? (
-                          <div className="flex flex-col gap-2">
-                            <Select value={item.issueType} onValueChange={(val) => handleItemUpdate(index, 'issueType', val)}>
-                              <SelectTrigger className="h-8 text-xs border-red-200">
-                                <SelectValue placeholder="Tipo de problema..." />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {ISSUE_TYPES.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
-                              </SelectContent>
-                            </Select>
-                            <Input
-                              placeholder="Notas adicionales..."
-                              value={item.notes}
-                              onChange={(e) => handleItemUpdate(index, 'notes', e.target.value)}
-                              className="h-8 text-xs border-red-200"
-                            />
-                          </div>
-                        ) : (
-                          <span className="text-xs text-muted-foreground italic">Sin observaciones</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {item.status === 'issue' && (
-                          <div className="flex flex-col items-center gap-1">
-                            {item.photoUrl ? (
-                              <div className="relative group">
-                                <div className="w-12 h-12 rounded border overflow-hidden">
-                                  <Image src={item.photoUrl} alt="Evidencia" width={48} height={48} className="object-cover" unoptimized />
+                {items.map((item, index) => {
+                  const specificIssues = ISSUE_TYPES_MAP[item.name] || ISSUE_TYPES_MAP['default'];
+                  
+                  return (
+                    <React.Fragment key={item.name}>
+                      <TableRow className={cn(item.status === 'issue' && "bg-red-50/30")}>
+                        <TableCell className="font-semibold text-slate-700">{item.name}</TableCell>
+                        <TableCell>
+                          <RadioGroup
+                            defaultValue={item.status}
+                            onValueChange={(val) => handleStatusChange(index, val as 'good' | 'issue')}
+                            className="flex justify-center gap-4"
+                          >
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="good" id={`good-${index}`} className="text-emerald-600" />
+                              <Label htmlFor={`good-${index}`} className="text-xs cursor-pointer font-medium">OPERATIVO</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="issue" id={`issue-${index}`} className="text-red-600" />
+                              <Label htmlFor={`issue-${index}`} className="text-xs cursor-pointer text-red-600 font-bold">NOVEDAD</Label>
+                            </div>
+                          </RadioGroup>
+                        </TableCell>
+                        <TableCell>
+                          {item.status === 'issue' ? (
+                            <div className="flex flex-col gap-2">
+                              <Select value={item.issueType} onValueChange={(val) => handleItemUpdate(index, 'issueType', val)}>
+                                <SelectTrigger className="h-8 text-xs border-red-200">
+                                  <SelectValue placeholder="Tipo de problema..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {specificIssues.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                              <Input
+                                placeholder="Notas adicionales..."
+                                value={item.notes}
+                                onChange={(e) => handleItemUpdate(index, 'notes', e.target.value)}
+                                className="h-8 text-xs border-red-200"
+                              />
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground italic">Sin observaciones</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {item.status === 'issue' && (
+                            <div className="flex flex-col items-center gap-1">
+                              {item.photoUrl ? (
+                                <div className="relative group">
+                                  <div className="w-12 h-12 rounded border overflow-hidden">
+                                    <Image src={item.photoUrl} alt="Evidencia" width={48} height={48} className="object-cover" unoptimized />
+                                  </div>
+                                  <button onClick={() => handleItemUpdate(index, 'photoUrl', null)} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5">
+                                    <X className="h-3 w-3" />
+                                  </button>
                                 </div>
-                                <button onClick={() => handleItemUpdate(index, 'photoUrl', null)} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5">
-                                  <X className="h-3 w-3" />
-                                </button>
-                              </div>
-                            ) : (
-                              <Button variant="outline" size="icon" className="h-10 w-10 border-dashed" onClick={() => { setActivePhotoIndex(index); fileInputRef.current?.click(); }}>
-                                <Camera className="h-5 w-5 text-muted-foreground" />
-                              </Button>
-                            )}
-                          </div>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  </React.Fragment>
-                ))}
+                              ) : (
+                                <Button variant="outline" size="icon" className="h-10 w-10 border-dashed" onClick={() => { setActivePhotoIndex(index); fileInputRef.current?.click(); }}>
+                                  <Camera className="h-5 w-5 text-muted-foreground" />
+                                </Button>
+                              )}
+                            </div>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    </React.Fragment>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
