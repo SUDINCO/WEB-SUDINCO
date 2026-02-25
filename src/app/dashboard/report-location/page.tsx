@@ -13,7 +13,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Combobox } from '@/components/ui/combobox';
 import type { WorkLocation, UserProfile } from '@/lib/types';
-import { normalizeText } from '@/lib/utils';
+import { cn, normalizeText } from '@/lib/utils';
 
 // Helper to calculate distance in meters
 function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -269,8 +269,7 @@ export default function ReportLocationPage() {
                 <ArrowLeft className="mr-2 h-4 w-4" /> Cancelar
               </Button>
             </CardContent>
-          </Card>
-        )}
+          )}
 
         {step === 'details' && reportData && (
           <Card className="shadow-lg">
