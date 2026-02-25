@@ -42,7 +42,7 @@ import {
   Info,
   ShieldCheck,
 } from 'lucide-react';
-import { useUser, useFirestore, useCollection } from '@/firebase';
+import { useUser, useAuth, useFirestore, useCollection } from '@/firebase';
 import {
   collection,
   doc,
@@ -184,7 +184,7 @@ function TimeTracker({ userProfile, schedule, onClockIn, onClockOut, latestRecor
   const isGuard = userProfile?.cargo === 'GUARDIA DE SEGURIDAD';
 
   return (
-    <Card className={cn(isGuard && "border-primary")}>
+    <Card className={cn(isGuard && "border-primary shadow-lg")}>
       <CardHeader>
         <div className="flex justify-between items-center">
           <div className="space-y-1">
@@ -202,7 +202,7 @@ function TimeTracker({ userProfile, schedule, onClockIn, onClockOut, latestRecor
           <div className="flex flex-col items-center justify-center gap-3 p-4 rounded-lg bg-green-50/50 border border-green-200">
               <p className="font-semibold text-green-800">Hora de Entrada</p>
               <p className="text-4xl font-bold text-green-900 tabular-nums">{entryTimeDisplay}</p>
-              <Button size="lg" className="w-full bg-green-600 hover:bg-green-700" onClick={onClockIn} disabled={!canClockIn || isClocking}>
+              <Button size="lg" className="w-full bg-green-600 hover:bg-green-700 shadow-md" onClick={onClockIn} disabled={!canClockIn || isClocking}>
                 {isClocking && canClockIn ? <LoaderCircle className="animate-spin" /> : <LogIn />} 
                 Registrar Entrada
              </Button>
@@ -217,7 +217,7 @@ function TimeTracker({ userProfile, schedule, onClockIn, onClockOut, latestRecor
                   <p className="text-sm font-medium text-muted-foreground">Tiempo Trabajado Hoy</p>
                   <p className="text-3xl font-bold tabular-nums">{formatDuration(workedSeconds)}</p>
                    {latestRecord && !latestRecord.exitTime ? (
-                      <Badge variant="default" className="bg-blue-500 mt-1">Turno en progreso</Badge>
+                      <Badge variant="default" className="bg-blue-500 mt-1 animate-pulse">Turno en progreso</Badge>
                    ) : (
                       <Badge variant="secondary" className="mt-1">Fuera de turno</Badge>
                    )}
@@ -227,7 +227,7 @@ function TimeTracker({ userProfile, schedule, onClockIn, onClockOut, latestRecor
           <div className="flex flex-col items-center justify-center gap-3 p-4 rounded-lg bg-red-50/50 border border-red-200">
               <p className="font-semibold text-red-800">Hora de Salida</p>
               <p className="text-4xl font-bold text-red-900 tabular-nums">{exitTimeDisplay}</p>
-              <Button size="lg" className="w-full bg-red-600 hover:bg-red-700" onClick={onClockOut} disabled={!canClockOut || isClocking}>
+              <Button size="lg" className="w-full bg-red-600 hover:bg-red-700 shadow-md" onClick={onClockOut} disabled={!canClockOut || isClocking}>
                   {isClocking && canClockOut ? <LoaderCircle className="animate-spin" /> : <LogOut />}
                    Registrar Salida
               </Button>
@@ -566,17 +566,34 @@ function AttendancePageContent() {
     if (action === 'in' && latestRecord) return;
     if (action === 'out' && !latestRecord) return;
 
-    // --- GUARD HANDOVER LOGIC (Now only at Entrada/Clock-In) ---
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+
+    // --- GUARD CLOCK-OUT VALIDATION ---
+    if (userProfile.cargo === 'GUARDIA DE SEGURIDAD' && action === 'out') {
+      const handoverDone = equipmentHandovers?.some(h => 
+        h.date === todayStr && 
+        h.outgoingGuardId === userProfile.id &&
+        h.location === userProfile.ubicacion
+      );
+
+      if (!handoverDone) {
+        toast({
+          variant: 'destructive',
+          title: 'Acta No Gestionada',
+          description: 'No puede registrar su salida hasta que el relevo entrante haya completado el acta de dotación.',
+        });
+        return;
+      }
+    }
+
+    // --- GUARD CLOCK-IN VALIDATION (Handover Required) ---
     if (userProfile.cargo === 'GUARDIA DE SEGURIDAD' && action === 'in') {
-      const todayStr = format(new Date(), 'yyyy-MM-dd');
-      
       const existingHandover = equipmentHandovers?.find(h => 
         h.date === todayStr && 
         h.incomingGuardId === userProfile.id
       );
 
       if (!existingHandover) {
-        // Find outgoing guard (relief) from payroll/users at the same location
         if (users) {
           const location = userProfile.ubicacion || 'N/A';
           const potentialRelief = users.find(u => 
