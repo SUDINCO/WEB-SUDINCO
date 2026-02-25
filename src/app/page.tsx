@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -50,10 +49,10 @@ function AccountChooser({ accounts, onSelectAccount, onRemoveAccount, onUseAnoth
             >
               <Avatar className="h-12 w-12">
                 <AvatarImage src={account.photoUrl} />
-                <AvatarFallback>{account.name.charAt(0)}</AvatarFallback>
+                <AvatarFallback>{(account.name || account.email || '?').charAt(0).toUpperCase()}</AvatarFallback>
               </Avatar>
               <div className="font-medium text-left">
-                <div>{account.name}</div>
+                <div>{account.name || account.email}</div>
               </div>
             </button>
             <Button
@@ -90,10 +89,15 @@ export default function Home() {
     // This code runs only on the client
     const storedAccounts = localStorage.getItem('savedUserAccounts');
     if (storedAccounts) {
-      const accounts = JSON.parse(storedAccounts);
-      if (accounts.length > 0) {
-        setSavedAccounts(accounts);
-        setView('chooser');
+      try {
+        const accounts = JSON.parse(storedAccounts);
+        if (Array.isArray(accounts) && accounts.length > 0) {
+          setSavedAccounts(accounts);
+          setView('chooser');
+        }
+      } catch (e) {
+        console.error("Error loading saved accounts:", e);
+        localStorage.removeItem('savedUserAccounts');
       }
     }
 
@@ -124,9 +128,13 @@ export default function Home() {
   };
   
   const handleLoginSuccess = (user: any, profile: any) => {
+    const nombres = profile.nombres || '';
+    const apellidos = profile.apellidos || '';
+    const fullName = `${nombres} ${apellidos}`.trim();
+
     const newAccount: SavedAccount = {
       email: user.email,
-      name: profile.nombres + ' ' + profile.apellidos,
+      name: fullName || user.email,
       photoUrl: profile.photoUrl,
     };
     
