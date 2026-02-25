@@ -1,5 +1,4 @@
 
-      
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
@@ -392,6 +391,7 @@ function AttendanceControlPage() {
             return {
                 'Colaborador': `${item.collaborator.nombres} ${item.collaborator.apellidos}`,
                 'Cargo': item.collaborator.cargo,
+                'Ubicación': item.collaborator.ubicacion || 'N/A',
                 'Turno': item.scheduledShift || 'LIB',
                 'Entrada': entry,
                 'Salida': exit,
@@ -511,6 +511,7 @@ function AttendanceControlPage() {
                             <TableRow>
                                 <TableHead>Colaborador</TableHead>
                                 <TableHead>Cargo</TableHead>
+                                <TableHead>Ubicación</TableHead>
                                 <TableHead>Turno</TableHead>
                                 <TableHead>Entrada</TableHead>
                                 <TableHead>Salida</TableHead>
@@ -523,7 +524,7 @@ function AttendanceControlPage() {
                         </TableHeader>
                         <TableBody>
                             {isLoading ? (
-                                <TableRow><TableCell colSpan={10} className="h-24 text-center"><LoaderCircle className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
+                                <TableRow><TableCell colSpan={11} className="h-24 text-center"><LoaderCircle className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
                             ) : tableData.length > 0 ? tableData.map(item => {
                                 const entry = item.attendance?.entryTime ? format(item.attendance.entryTime as Date, 'HH:mm:ss') : '--';
                                 const exit = item.attendance?.exitTime ? format(item.attendance.exitTime as Date, 'HH:mm:ss') : '--';
@@ -546,6 +547,7 @@ function AttendanceControlPage() {
                                 <TableRow key={item.collaborator.id}>
                                     <TableCell className="font-medium">{`${item.collaborator.nombres} ${item.collaborator.apellidos}`}</TableCell>
                                     <TableCell>{item.collaborator.cargo}</TableCell>
+                                    <TableCell>{item.collaborator.ubicacion || 'N/A'}</TableCell>
                                     <TableCell>{item.scheduledShift || 'LIB'}</TableCell>
                                     <TableCell className={cn(item.manuallyEdited && "text-blue-600")}>
                                         <div className="flex items-center gap-1">
@@ -572,7 +574,7 @@ function AttendanceControlPage() {
                                 </TableRow>
                                 )
                             }) : (
-                                <TableRow><TableCell colSpan={10} className="h-24 text-center">No hay datos de asistencia para los filtros seleccionados.</TableCell></TableRow>
+                                <TableRow><TableCell colSpan={11} className="h-24 text-center">No hay datos de asistencia para los filtros seleccionados.</TableCell></TableRow>
                             )}
                         </TableBody>
                     </Table>
