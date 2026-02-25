@@ -34,6 +34,7 @@ import {
   Download, 
   Eye,
   MapPin,
+  Camera,
 } from 'lucide-react';
 import { useCollection, useFirestore } from '@/firebase';
 import { collection, query, orderBy, limit } from 'firebase/firestore';
@@ -46,6 +47,7 @@ import { cn } from '@/lib/utils';
 export default function EquipmentControlPage() {
   const [filter, setFilter] = useState('');
   const [selectedHandover, setSelectedHandover] = useState<EquipmentHandover | null>(null);
+  const [viewPhoto, setViewPhoto] = useState<string | null>(null);
   const firestore = useFirestore();
 
   const handoversQuery = useMemo(() => {
@@ -79,48 +81,48 @@ export default function EquipmentControlPage() {
     const dataToExport = filteredHandovers.map(h => ({
       Fecha: format(new Date(h.timestamp), 'dd/MM/yyyy HH:mm'),
       Ubicación: h.location,
-      'Guardia Saliente (Entrega)': h.outgoingGuardName,
-      'Guardia Entrante (Recibe)': h.incomingGuardName,
-      'Novedades': h.items.filter(i => i.status === 'issue').map(i => `${i.name}: ${i.notes}`).join('; ') || 'Ninguna'
+      'Guardia Saliente': h.outgoingGuardName,
+      'Guardia Entrante': h.incomingGuardName,
+      'Novedades': h.items.filter(i => i.status === 'issue').map(i => `${i.name} (${i.issueType}): ${i.notes}`).join('; ') || 'Ninguna'
     }));
 
     const ws = XLSX.utils.json_to_sheet(dataToExport);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Actas de Dotación');
-    XLSX.writeFile(wb, `Control_Dotacion_${format(new Date(), 'yyyyMMdd')}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, 'Control de Dotación');
+    XLSX.writeFile(wb, `Reporte_Dotacion_${format(new Date(), 'yyyyMMdd')}.xlsx`);
   };
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Control de Dotación por Puesto</h1>
-          <p className="text-muted-foreground">Monitoreo de actas de relevo firmadas en el cambio de turno.</p>
+          <h1 className="text-2xl font-bold tracking-tight">Control de Dotación Premium</h1>
+          <p className="text-muted-foreground">Auditoría de relevos con doble firma y evidencia fotográfica.</p>
         </div>
         <Button onClick={handleExport} variant="outline">
           <Download className="mr-2 h-4 w-4" />
-          Exportar Reporte
+          Exportar Excel
         </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="bg-primary/5 border-primary/20">
-          <CardHeader className="pb-2">
-            <CardDescription>Total Relevos Registrados</CardDescription>
+          <CardHeader className="pb-2 text-center">
+            <CardDescription>Total Relevos</CardDescription>
             <CardTitle className="text-3xl font-bold">{stats.total}</CardTitle>
           </CardHeader>
         </Card>
         <Card className="bg-red-50 border-red-100">
-          <CardHeader className="pb-2">
-            <CardDescription className="text-red-600">Actas con Novedades</CardDescription>
+          <CardHeader className="pb-2 text-center">
+            <CardDescription className="text-red-600 font-bold">Actas con Novedades</CardDescription>
             <CardTitle className="text-3xl font-bold text-red-700">{stats.withIssues}</CardTitle>
           </CardHeader>
         </Card>
-        <Card>
+        <Card className="bg-emerald-50 border-emerald-100 text-center">
           <CardHeader className="pb-2">
-            <CardDescription>Estado de Activos</CardDescription>
-            <CardTitle className="text-3xl font-bold text-green-600">
-              {stats.total > 0 ? Math.round(((stats.total - stats.withIssues) / stats.total) * 100) : 0}% OK
+            <CardDescription className="text-emerald-600 font-bold">Índice de Operatividad</CardDescription>
+            <CardTitle className="text-3xl font-bold text-emerald-700">
+              {stats.total > 0 ? Math.round(((stats.total - stats.withIssues) / stats.total) * 100) : 0}%
             </CardTitle>
           </CardHeader>
         </Card>
@@ -129,7 +131,7 @@ export default function EquipmentControlPage() {
       <Card>
         <CardHeader>
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <CardTitle>Historial de Relevos</CardTitle>
+            <CardTitle>Historial de Auditoría</CardTitle>
             <div className="relative w-full md:max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -147,9 +149,9 @@ export default function EquipmentControlPage() {
               <TableRow>
                 <TableHead>Fecha / Hora</TableHead>
                 <TableHead>Ubicación</TableHead>
-                <TableHead>G. Saliente (Entrega)</TableHead>
-                <TableHead>G. Entrante (Recibe)</TableHead>
-                <TableHead>Estado</TableHead>
+                <TableHead>Saliente (Entrega)</TableHead>
+                <TableHead>Entrante (Recibe)</TableHead>
+                <TableHead className="text-center">Estado</TableHead>
                 <TableHead className="text-right">Acción</TableHead>
               </TableRow>
             </TableHeader>
@@ -164,7 +166,7 @@ export default function EquipmentControlPage() {
                 filteredHandovers.map((handover) => {
                   const hasIssues = handover.items.some(i => i.status === 'issue');
                   return (
-                    <TableRow key={handover.id} className={cn(hasIssues && "bg-red-50/30")}>
+                    <TableRow key={handover.id} className={cn(hasIssues && "bg-red-50/20")}>
                       <TableCell className="font-medium">
                         <div className="flex flex-col">
                           <span>{format(new Date(handover.timestamp), 'dd/MM/yyyy')}</span>
@@ -172,23 +174,23 @@ export default function EquipmentControlPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1">
-                          <MapPin className="h-3 w-3 text-muted-foreground" />
+                        <div className="flex items-center gap-1 font-semibold text-slate-700">
+                          <MapPin className="h-3 w-3 text-primary" />
                           {handover.location}
                         </div>
                       </TableCell>
                       <TableCell className="text-xs">{handover.outgoingGuardName}</TableCell>
-                      <TableCell className="text-xs">{handover.incomingGuardName}</TableCell>
-                      <TableCell>
+                      <TableCell className="text-xs font-semibold">{handover.incomingGuardName}</TableCell>
+                      <TableCell className="text-center">
                         {hasIssues ? (
-                          <Badge variant="destructive" className="gap-1">
+                          <Badge variant="destructive" className="gap-1 animate-pulse">
                             <AlertTriangle className="h-3 w-3" />
                             Novedad
                           </Badge>
                         ) : (
-                          <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50 gap-1">
+                          <Badge variant="outline" className="text-emerald-600 border-emerald-200 bg-emerald-50 gap-1">
                             <CheckCircle className="h-3 w-3" />
-                            OK
+                            Todo OK
                           </Badge>
                         )}
                       </TableCell>
@@ -204,7 +206,7 @@ export default function EquipmentControlPage() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                    No se encontraron relevos registrados.
+                    No se encontraron registros.
                   </TableCell>
                 </TableRow>
               )}
@@ -213,76 +215,126 @@ export default function EquipmentControlPage() {
         </CardContent>
       </Card>
 
+      {/* Detail Dialog */}
       <Dialog open={!!selectedHandover} onOpenChange={() => setSelectedHandover(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           {selectedHandover && (
             <>
               <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-primary" />
-                  Acta de Relevo #{selectedHandover.id.slice(-6).toUpperCase()}
+                <DialogTitle className="flex items-center gap-2 text-xl font-bold border-b pb-2">
+                  <FileText className="h-6 w-6 text-primary" />
+                  Acta de Relevo Digital #{selectedHandover.id.slice(-6).toUpperCase()}
                 </DialogTitle>
               </DialogHeader>
               
-              <div className="space-y-6 py-4">
-                <div className="grid grid-cols-2 gap-4 text-sm bg-muted/30 p-4 rounded-lg">
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase font-bold">Ubicación</p>
-                    <p className="font-semibold">{selectedHandover.location}</p>
+              <div className="space-y-8 py-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-slate-50 rounded-xl border">
+                  <div className="col-span-2">
+                    <p className="text-[10px] text-muted-foreground font-bold uppercase">Ubicación</p>
+                    <p className="font-bold text-slate-800">{selectedHandover.location}</p>
                   </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase font-bold">Fecha / Hora</p>
-                    <p className="font-semibold">{format(new Date(selectedHandover.timestamp), 'PPP p', { locale: es })}</p>
+                  <div className="col-span-2">
+                    <p className="text-[10px] text-muted-foreground font-bold uppercase">Fecha y Hora</p>
+                    <p className="font-bold text-slate-800">{format(new Date(selectedHandover.timestamp), 'PPP p', { locale: es })}</p>
                   </div>
-                  <div className="pt-2">
-                    <p className="text-xs text-muted-foreground uppercase font-bold">Entregado por (Saliente)</p>
-                    <p className="font-semibold">{selectedHandover.outgoingGuardName}</p>
+                  <div className="col-span-2 pt-2 border-t">
+                    <p className="text-[10px] text-blue-600 font-bold uppercase">Saliente (Entregó)</p>
+                    <p className="font-bold">{selectedHandover.outgoingGuardName}</p>
                   </div>
-                  <div className="pt-2">
-                    <p className="text-xs text-muted-foreground uppercase font-bold">Recibido por (Entrante)</p>
-                    <p className="font-semibold">{selectedHandover.incomingGuardName}</p>
+                  <div className="col-span-2 pt-2 border-t">
+                    <p className="text-[10px] text-emerald-600 font-bold uppercase">Entrante (Recibió)</p>
+                    <p className="font-bold">{selectedHandover.incomingGuardName}</p>
                   </div>
                 </div>
 
-                <div className="space-y-3">
-                  <h4 className="font-bold text-sm border-b pb-1">Estado de Equipos en el Relevo</h4>
-                  <div className="space-y-2">
+                <div className="space-y-4">
+                  <h4 className="font-bold text-lg text-slate-800 border-l-4 border-primary pl-3">Checklist de Activos</h4>
+                  <div className="space-y-3">
                     {selectedHandover.items.map((item) => (
-                      <div key={item.name} className="flex items-center justify-between p-2 border rounded-md">
-                        <div className="flex items-center gap-2">
-                          {item.status === 'good' ? (
-                            <CheckCircle className="h-4 w-4 text-green-500" />
-                          ) : (
-                            <AlertTriangle className="h-4 w-4 text-red-500" />
-                          )}
-                          <span className="font-medium text-sm">{item.name}</span>
-                        </div>
-                        <div className="text-right">
-                          <Badge variant={item.status === 'good' ? 'outline' : 'destructive'} className="text-[10px] h-5">
+                      <div key={item.name} className={cn("p-4 border rounded-xl flex flex-col gap-3", item.status === 'issue' ? "bg-red-50/50 border-red-200" : "bg-white")}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            {item.status === 'good' ? (
+                              <CheckCircle className="h-5 w-5 text-emerald-500" />
+                            ) : (
+                              <AlertTriangle className="h-5 w-5 text-red-500" />
+                            )}
+                            <span className="font-bold text-slate-700">{item.name}</span>
+                          </div>
+                          <Badge variant={item.status === 'good' ? 'outline' : 'destructive'}>
                             {item.status === 'good' ? 'OPERATIVO' : 'NOVEDAD'}
                           </Badge>
-                          {item.notes && <p className="text-xs text-muted-foreground italic mt-1">{item.notes}</p>}
                         </div>
+                        {item.status === 'issue' && (
+                          <div className="pl-7 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                              <p className="text-[10px] font-bold text-red-700 uppercase">Problema Reportado</p>
+                              <p className="text-sm font-semibold">{item.issueType}</p>
+                              <p className="text-xs text-muted-foreground italic">"{item.notes}"</p>
+                            </div>
+                            {item.photoUrl && (
+                              <div className="flex justify-end">
+                                <button className="relative group" onClick={() => setViewPhoto(item.photoUrl!)}>
+                                  <div className="w-24 h-16 rounded border-2 border-white shadow-sm overflow-hidden">
+                                    <Image src={item.photoUrl} alt="Evidencia" width={96} height={64} className="object-cover" unoptimized />
+                                  </div>
+                                  <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Camera className="h-4 w-4 text-white" />
+                                  </div>
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
                 </div>
 
-                <div className="pt-4 border-t flex flex-col items-center">
-                  <p className="text-xs text-muted-foreground font-bold mb-2 uppercase">Firma del Guardia Saliente (Aprobación)</p>
-                  <div className="border rounded bg-white p-2">
-                    <Image 
-                      src={selectedHandover.outgoingSignature} 
-                      alt="Firma Saliente" 
-                      width={300} 
-                      height={100} 
-                      className="max-h-[100px] w-auto object-contain"
-                      unoptimized
-                    />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t">
+                  <div className="flex flex-col items-center">
+                    <p className="text-[10px] text-muted-foreground font-bold mb-2 uppercase">Firma Guardia Saliente</p>
+                    <div className="border bg-slate-50 rounded-lg p-2 w-full flex justify-center">
+                      <Image 
+                        src={selectedHandover.outgoingSignature} 
+                        alt="Firma Saliente" 
+                        width={300} 
+                        height={100} 
+                        className="max-h-[80px] w-auto object-contain"
+                        unoptimized
+                      />
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <p className="text-[10px] text-muted-foreground font-bold mb-2 uppercase">Firma Guardia Entrante</p>
+                    <div className="border bg-slate-50 rounded-lg p-2 w-full flex justify-center">
+                      <Image 
+                        src={selectedHandover.incomingSignature} 
+                        alt="Firma Entrante" 
+                        width={300} 
+                        height={100} 
+                        className="max-h-[80px] w-auto object-contain"
+                        unoptimized
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
             </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Photo Preview Dialog */}
+      <Dialog open={!!viewPhoto} onOpenChange={() => setViewPhoto(null)}>
+        <DialogContent className="max-w-3xl p-0 overflow-hidden bg-black border-none">
+          {viewPhoto && (
+            <div className="relative aspect-auto max-h-[80vh] w-full flex justify-center">
+              <Image src={viewPhoto} alt="Evidencia Ampliada" width={1200} height={800} className="object-contain" unoptimized />
+              <button className="absolute top-4 right-4 bg-white/20 hover:bg-white/40 text-white rounded-full p-2" onClick={() => setViewPhoto(null)}>
+                <X className="h-6 w-6" />
+              </button>
+            </div>
           )}
         </DialogContent>
       </Dialog>

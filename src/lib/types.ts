@@ -37,9 +37,12 @@ export interface EquipmentHandover {
   items: {
     name: string;
     status: 'good' | 'issue';
+    issueType?: string;
     notes: string;
+    photoUrl?: string;
   }[];
   outgoingSignature: string;
+  incomingSignature: string;
   timestamp: number;
   attendanceRecordId?: string;
 }
