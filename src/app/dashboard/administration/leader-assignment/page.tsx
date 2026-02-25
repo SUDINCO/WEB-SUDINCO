@@ -54,7 +54,6 @@ import { useCollection, useFirestore } from '@/firebase';
 import { collection, doc, addDoc, deleteDoc, writeBatch, getDocs } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
-import * as XLSX from 'xlsx';
 import { normalizeText } from '@/lib/utils';
 
 interface UserProfile {
@@ -188,7 +187,8 @@ export default function LeaderAssignmentPage() {
     }
   };
   
-  const handleExportTemplate = () => {
+  const handleExportTemplate = async () => {
+    const XLSX = await import('xlsx');
     const templateHeaders = ['empresa', 'cargo', 'ubicacion', 'departamento', 'centroCosto', 'leaderEmail'];
     const worksheet = XLSX.utils.aoa_to_sheet([templateHeaders]);
     const workbook = XLSX.utils.book_new();
@@ -205,7 +205,8 @@ export default function LeaderAssignmentPage() {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
+        const XLSX = await import('xlsx');
         const data = e.target?.result;
         const workbook = XLSX.read(data, { type: 'array' });
         const sheetName = workbook.SheetNames[0];

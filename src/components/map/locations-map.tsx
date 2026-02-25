@@ -32,14 +32,27 @@ interface LocationsMapProps {
     locations: WorkLocation[];
     center: [number, number];
     zoom: number;
-    bounds?: L.LatLngBounds | null;
+    fitBounds?: boolean;
     onMapDoubleClick: (latlng: { lat: number, lng: number }) => void;
     onMarkerClick: (locationId: string) => void;
     selectedLocationId: string | null;
 }
 
-export default function LocationsMap({ locations, center, zoom, bounds, onMapDoubleClick, onMarkerClick, selectedLocationId }: LocationsMapProps) {
+export default function LocationsMap({ locations, center, zoom, fitBounds = false, onMapDoubleClick, onMarkerClick, selectedLocationId }: LocationsMapProps) {
     
+    const bounds = useMemo(() => {
+        if (!fitBounds || !locations || locations.length === 0) {
+          return null;
+        }
+        const points = locations
+          .map(loc => (loc.latitude && loc.longitude ? [Number(loc.latitude), Number(loc.longitude)] : null))
+          .filter((p): p is [number, number] => p !== null && !isNaN(p[0]) && !isNaN(p[1]));
+          
+        if (points.length === 0) return null;
+        
+        return L.latLngBounds(points);
+      }, [locations, fitBounds]);
+
     const customIcon = useMemo(() => new L.Icon({
         iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
         iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
@@ -65,7 +78,7 @@ export default function LocationsMap({ locations, center, zoom, bounds, onMapDou
 
     return (
         <MapContainer center={center} zoom={zoom} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }} doubleClickZoom={false}>
-            <ViewManager center={center} zoom={zoom} bounds={bounds || null} />
+            <ViewManager center={center} zoom={zoom} bounds={bounds} />
             <TileLayer
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

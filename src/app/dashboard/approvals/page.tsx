@@ -392,7 +392,7 @@ export default function ApprovalsPage() {
                         variant="outline"
                         size="sm"
                         className="h-8"
-                        onClick={() => handleDownload(approval)}
+                        onClick={async () => await handleDownload(approval)}
                       >
                         <Download className="mr-2 h-4 w-4" />
                         Descargar Resumen

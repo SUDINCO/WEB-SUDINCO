@@ -1,5 +1,3 @@
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
 import { type CellHookData } from 'jspdf-autotable';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -29,7 +27,10 @@ const ratings: Record<string, { label: string, color: [number, number, number] }
     TI: { label: "Tiene", color: [20, 184, 166] },       // teal-500
 };
 
-export const generateEvaluationPDF = (worker: PersonDTO, evaluator: PersonDTO, evaluation: EvaluationDTO) => {
+export const generateEvaluationPDF = async (worker: PersonDTO, evaluator: PersonDTO, evaluation: EvaluationDTO) => {
+    const { default: jsPDF } = await import('jspdf');
+    await import('jspdf-autotable');
+
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 14;
@@ -176,7 +177,7 @@ export const generateEvaluationPDF = (worker: PersonDTO, evaluator: PersonDTO, e
             if (key === selectedRating) {
                 doc.setFillColor(...ratings[key].color);
                 doc.rect(buttonX, ratingY, ratingButtonWidth, 5, 'F');
-                doc.setTextColor(255);
+                doc.setTextColor(255, 255, 255);
             } else {
                  doc.setTextColor(0);
             }
@@ -287,7 +288,7 @@ const getInitials = (text: string = '') => {
     return text.split(' ').filter(Boolean).map(word => word[0]).join('').toUpperCase();
 };
 
-const addPage1Header = (doc: jsPDF, approval: HiringApproval) => {
+const addPage1Header = (doc: any, approval: HiringApproval) => {
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 10;
     let lastY = 12;
@@ -316,7 +317,7 @@ const addPage1Header = (doc: jsPDF, approval: HiringApproval) => {
     return lastY;
 };
 
-const addPage2Header = (doc: jsPDF, approval: HiringApproval) => {
+const addPage2Header = (doc: any, approval: HiringApproval) => {
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 10;
     let lastY = 12;
@@ -334,7 +335,7 @@ const addPage2Header = (doc: jsPDF, approval: HiringApproval) => {
     return lastY + 8;
 };
 
-const addSignatureBlock = (doc: jsPDF, x: number, y: number, signatory: Signatory, role: string, date: number) => {
+const addSignatureBlock = (doc: any, x: number, y: number, signatory: Signatory, role: string, date: number) => {
     const signatureWidth = 65;
     doc.setFontSize(8);
     doc.setFont('helvetica', 'bold');
@@ -356,7 +357,7 @@ const addSignatureBlock = (doc: jsPDF, x: number, y: number, signatory: Signator
 };
 
 
-export const generateHiringApprovalPDF = (
+export const generateHiringApprovalPDF = async (
     approval: HiringApproval,
     candidate: CandidateInfo,
     evaluation: EvaluationInfo,
@@ -365,6 +366,9 @@ export const generateHiringApprovalPDF = (
     rhDirector: Signatory,
     process?: HiringProcessInfo
 ) => {
+    const { default: jsPDF } = await import('jspdf');
+    await import('jspdf-autotable');
+
     const doc = new jsPDF({
         orientation: 'landscape',
         unit: 'mm',

@@ -6,7 +6,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import dynamic from 'next/dynamic';
-import L from 'leaflet';
 import {
   Card,
   CardContent,
@@ -83,20 +82,6 @@ export default function WorkLocationsPage() {
   
   const { data: locations, isLoading: locationsLoading } = useCollection<WorkLocation>(locationsCollectionRef);
   
-  const bounds = useMemo(() => {
-    if (!locations || locations.length === 0) {
-      return null;
-    }
-    const points = locations
-      .map(loc => (loc.latitude && loc.longitude ? [loc.latitude, loc.longitude] : null))
-      .filter((p): p is [number, number] => p !== null);
-      
-    if (points.length === 0) return null;
-    
-    return L.latLngBounds(points);
-  }, [locations]);
-
-
   const handleAddNew = useCallback(() => {
     setEditingLocation(null);
     form.reset({ name: '', latitude: mapCenter[0], longitude: mapCenter[1], radius: 50 });
@@ -107,7 +92,7 @@ export default function WorkLocationsPage() {
     setEditingLocation(location);
     form.reset(location);
     setViewMode('form');
-    setMapCenter([location.latitude, location.longitude]);
+    setMapCenter([Number(location.latitude), Number(location.longitude)]);
     setMapZoom(16);
   }, [form]);
 
@@ -241,8 +226,8 @@ export default function WorkLocationsPage() {
                           locations.map((loc) => (
                           <TableRow key={loc.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleEdit(loc)}>
                               <TableCell className="font-medium">{loc.name}</TableCell>
-                              <TableCell>{loc.latitude.toFixed(6)}</TableCell>
-                              <TableCell>{loc.longitude.toFixed(6)}</TableCell>
+                              <TableCell>{Number(loc.latitude).toFixed(6)}</TableCell>
+                              <TableCell>{Number(loc.longitude).toFixed(6)}</TableCell>
                               <TableCell>{loc.radius}</TableCell>
                               <TableCell className="text-right">
                                 <Button variant="ghost" size="icon" onClick={(e) => {e.stopPropagation(); handleEdit(loc); }}>
@@ -328,7 +313,7 @@ export default function WorkLocationsPage() {
                 locations={locations || []}
                 center={mapCenter}
                 zoom={mapZoom}
-                bounds={viewMode === 'list' ? bounds : null}
+                fitBounds={viewMode === 'list'}
                 onMapDoubleClick={handleMapDoubleClick}
                 onMarkerClick={handleMarkerClick}
                 selectedLocationId={editingLocation?.id || null}

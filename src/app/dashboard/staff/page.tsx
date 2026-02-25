@@ -75,8 +75,6 @@ import { toast } from '@/hooks/use-toast';
 import { PlusCircle, Search, Edit, UserPlus, LoaderCircle, Check, FileUp, FileDown, ArrowRight, Users, Trash2, KeyRound, MoreHorizontal, Info, UserRound, AlertTriangle, CheckCircle } from 'lucide-react';
 import { format, parse } from 'date-fns';
 import { Switch } from '@/components/ui/switch';
-import Papa from 'papaparse';
-import * as XLSX from 'xlsx';
 import { Badge } from '@/components/ui/badge';
 import { Combobox } from '@/components/ui/combobox';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -567,7 +565,7 @@ export default function StaffPage() {
   };
 
 
-    const handleExport = (format: 'csv' | 'xlsx') => {
+    const handleExport = async (format: 'csv' | 'xlsx') => {
         if (!users) {
             toast({ variant: 'destructive', title: 'Error', description: 'No hay datos de usuarios para exportar.' });
             return;
@@ -594,6 +592,7 @@ export default function StaffPage() {
         }));
 
         if (format === 'csv') {
+            const Papa = (await import('papaparse')).default;
             const csv = Papa.unparse(dataToExport, { header: true });
             const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
@@ -604,6 +603,7 @@ export default function StaffPage() {
             link.click();
             document.body.removeChild(link);
         } else {
+            const XLSX = await import('xlsx');
             const worksheet = XLSX.utils.json_to_sheet(dataToExport);
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, 'Nómina');
@@ -638,7 +638,8 @@ export default function StaffPage() {
     if (!file || !users) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
+        const XLSX = await import('xlsx');
         const data = e.target?.result;
         const workbook = XLSX.read(data, { type: 'array' });
         const sheetName = workbook.SheetNames[0];

@@ -433,7 +433,7 @@ function EvaluationHistorySheet({ open, onOpenChange, worker, allEvaluations, al
                                         <TableCell>{getEvaluatorName(evaluation.evaluatorId)}</TableCell>
                                         <TableCell>{evaluation.generalEvaluation}%</TableCell>
                                         <TableCell className="text-right space-x-1">
-                                            <Button variant="outline" size="sm" onClick={() => handleDownloadPdf(evaluation)}>
+                                            <Button variant="outline" size="sm" onClick={async () => await handleDownloadPdf(evaluation)}>
                                                 <Download className="mr-2 h-4 w-4" />
                                                 PDF
                                             </Button>

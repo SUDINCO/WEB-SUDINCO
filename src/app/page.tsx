@@ -1,9 +1,10 @@
 
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import { LoginForm } from '@/components/login-form';
-import { useAuth } from '@/firebase';
+import { useAuth, useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -81,7 +82,7 @@ function AccountChooser({ accounts, onSelectAccount, onRemoveAccount, onUseAnoth
 export default function Home() {
   const [savedAccounts, setSavedAccounts] = useState<SavedAccount[]>([]);
   const [selectedAccountEmail, setSelectedAccountEmail] = useState<string | null>(null);
-  const [view, setView] = useState<'chooser' | 'login'>('login');
+  const [view, setView] = useState<'login' | 'chooser'>('login');
   const auth = useAuth();
   const router = useRouter();
 

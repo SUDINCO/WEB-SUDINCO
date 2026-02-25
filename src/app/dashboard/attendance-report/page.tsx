@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -17,7 +18,6 @@ import { useCollection, useFirestore } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import { format, isSameDay, isWithinInterval, set, isAfter, addMonths, isSaturday, isSunday, differenceInMinutes, subMonths, eachDayOfInterval, parse } from 'date-fns';
 import { es } from 'date-fns/locale';
-import * as XLSX from 'xlsx';
 import {
   CalendarIcon, Download, LoaderCircle,
 } from 'lucide-react';
@@ -246,7 +246,8 @@ function AttendanceReportPage() {
     const cargoOptions = useMemo(() => [{ value: 'todos', label: 'Todos los cargos' }, ...(cargos || []).map(o => ({ value: o.name, label: o.name }))], [cargos]);
     const colaboradorOptions = useMemo(() => [{ value: 'todos', label: 'Todos los colaboradores' }, ...(users || []).map(u => ({ value: u.id, label: `${u.nombres} ${u.apellidos}` }))], [users]);
 
-    const handleExport = (range?: DateRange) => {
+    const handleExport = async (range?: DateRange) => {
+        const XLSX = await import('xlsx');
         let dataToExport;
         let sheetName;
 
