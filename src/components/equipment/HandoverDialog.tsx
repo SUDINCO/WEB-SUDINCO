@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Card, CardContent } from '@/components/ui/card';
@@ -127,7 +128,10 @@ export function HandoverDialog({ open, onOpenChange, type, location, currentUser
     
     const signatureData = canvas.toDataURL('image/png');
     // Check if canvas is empty (simplified check)
-    const isEmpty = canvas.toDataURL() === document.createElement('canvas').toDataURL();
+    const emptyCanvas = document.createElement('canvas');
+    emptyCanvas.width = canvas.width;
+    emptyCanvas.height = canvas.height;
+    const isEmpty = canvas.toDataURL() === emptyCanvas.toDataURL();
     
     if (isEmpty) {
       toast({
@@ -266,6 +270,7 @@ export function HandoverDialog({ open, onOpenChange, type, location, currentUser
                 onTouchEnd={stopDrawing}
               />
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 className="absolute bottom-2 right-2 text-muted-foreground hover:text-destructive"
