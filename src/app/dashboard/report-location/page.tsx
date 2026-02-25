@@ -60,7 +60,7 @@ export default function ReportLocationPage() {
     useMemo(() => firestore ? collection(firestore, 'workLocations') : null, [firestore])
   );
   const { data: allUsers } = useCollection<UserProfile>(
-    useMemo(() => firestore ? collection(firestore, 'users') : null, [firestore])
+    useMemo(() => (firestore ? collection(firestore, 'users') : null), [firestore])
   );
 
   const filteredUsersAtLocation = useMemo(() => {
@@ -77,12 +77,6 @@ export default function ReportLocationPage() {
         description: u.cargo
     }));
   }, [allUsers, reportData?.locationName]);
-
-  const handleStartProcess = (type: ReportType) => {
-    setReportType(type);
-    setStep('capturing');
-    captureLocation();
-  };
 
   const captureLocation = useCallback(() => {
     setIsCapturingLocation(true);
@@ -127,6 +121,12 @@ export default function ReportLocationPage() {
       { enableHighAccuracy: true }
     );
   }, [workLocations]);
+
+  const handleStartProcess = (type: ReportType) => {
+    setReportType(type);
+    setStep('capturing');
+    captureLocation();
+  };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -183,8 +183,7 @@ export default function ReportLocationPage() {
     const selectedResponsible = allUsers?.find(u => u.id === responsibleId);
 
     try {
-      const collectionName = reportType === 'supervision' ? 'locationReports' : 'locationReports'; // Use same for now or separate if needed
-      await addDoc(collection(firestore, collectionName), {
+      await addDoc(collection(firestore, 'locationReports'), {
         userId: authUser.uid,
         userName: authUser.displayName || authUser.email,
         type: reportType,
@@ -269,7 +268,8 @@ export default function ReportLocationPage() {
                 <ArrowLeft className="mr-2 h-4 w-4" /> Cancelar
               </Button>
             </CardContent>
-          )}
+          </Card>
+        )}
 
         {step === 'details' && reportData && (
           <Card className="shadow-lg">
@@ -305,7 +305,7 @@ export default function ReportLocationPage() {
 
               {reportType === 'supervision' && (
                 <div className="space-y-2">
-                  <Label className="flex items-center gap-2">
+                  <Label className="flex items-center gap-2 font-semibold">
                     <User className="h-4 w-4" /> Responsable de Turno *
                   </Label>
                   {filteredUsersAtLocation.length > 0 ? (
@@ -330,7 +330,7 @@ export default function ReportLocationPage() {
               )}
 
               <div className="space-y-2">
-                <Label>Evidencia Fotográfica *</Label>
+                <Label className="font-semibold">Evidencia Fotográfica *</Label>
                 {reportData.photoPreview ? (
                   <div className="relative group">
                     <Image
@@ -363,7 +363,7 @@ export default function ReportLocationPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>{reportType === 'supervision' ? 'Novedades Adicionales' : 'Comentarios (Opcional)'}</Label>
+                <Label className="font-semibold">{reportType === 'supervision' ? 'Novedades Adicionales' : 'Comentarios (Opcional)'}</Label>
                 <Textarea 
                   placeholder={reportType === 'supervision' ? "Establecer cualquier detalle adicional de la supervisión..." : "Añadir una nota al reporte..."}
                   value={notes}
