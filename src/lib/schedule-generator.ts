@@ -284,7 +284,7 @@ export const getShiftDetailsFromRules = (shift: string, effectiveJobTitle: strin
     
     if (!rule && shift === 'N9') {
         rule = overtimeRules.find(r => 
-            normalizeText(r.jobTitle) === '_DEFAULT_OFFICE_' &&
+            normalizeText(r.jobTitle) === 'HORARIO OFICINA' &&
             r.shift === shift &&
             r.dayType === dayType
         );
@@ -600,7 +600,6 @@ export function calculateScheduleSummary(
             const shift = scheduleToProcess.get(collaborator.id)?.get(dayKey);
 
             if (shift === undefined) {
-                // If a day is not in the schedule, it means it wasn't part of an approved period for this user
                 return;
             }
 
@@ -612,29 +611,6 @@ export function calculateScheduleSummary(
                 freeDaysByWeekday[dayOfWeek]++;
             }
         });
-        
-        let compensationHours = 0;
-        let compensationDetails: { day: Date, shift: string | null }[] = [];
-
-        if (workedDayKeys.length > 22) {
-            const extraDaysCount = workedDayKeys.length - 22;
-            const compensationDayKeys = workedDayKeys.slice(-extraDaysCount);
-
-            compensationDayKeys.forEach(dayKey => {
-                const day = new Date(`${dayKey}T00:00:00`);
-                const shift = scheduleToProcess.get(collaborator.id)?.get(dayKey);
-                if (shift) {
-                    const { jobTitle } = getEffectiveDetails(collaborator, day, allTransfers, allRoleChanges);
-                    const dayIsHoliday = allHolidays.some(h => isWithinInterval(day, { start: h.startDate, end: h.endDate }));
-                    const jornada = dayIsHoliday ? "FESTIVO" : "NORMAL"; 
-                    const shiftDetails = getShiftDetailsFromRules(shift, jobTitle, jornada, allOvertimeRules);
-                    if (shiftDetails) {
-                        compensationHours += shiftDetails.hours;
-                        compensationDetails.push({ day, shift });
-                    }
-                }
-            });
-        }
         
         const extraHours = workedDayKeys.reduce((acc, dayKey) => {
             const day = new Date(`${dayKey}T00:00:00`);
@@ -655,7 +631,7 @@ export function calculateScheduleSummary(
                     const isOfficeShift = shift === 'N9';
                     if (isOfficeShift) {
                         rule = allOvertimeRules.find(r => 
-                            normalizeText(r.jobTitle) === '_DEFAULT_OFFICE_' &&
+                            normalizeText(r.jobTitle) === 'HORARIO OFICINA' &&
                             r.shift === shift &&
                             r.dayType === jornada
                         );
@@ -678,8 +654,6 @@ export function calculateScheduleSummary(
             shiftCounts,
             freeDaysByWeekday,
             extraHours,
-            compensationHours,
-            compensationDetails,
         };
     }).filter((c): c is NonNullable<typeof c> => c !== null);
 

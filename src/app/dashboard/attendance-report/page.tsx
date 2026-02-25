@@ -24,6 +24,9 @@ import {
 import type { UserProfile, SavedSchedule, AttendanceRecord, OvertimeRule, GenericOption, ShiftPattern, Holiday } from '@/lib/types';
 import { getShiftDetailsFromRules } from '@/lib/schedule-generator';
 import { normalizeText } from '@/lib/utils';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import type { DateRange } from 'react-day-picker';
+import { toast } from '@/hooks/use-toast';
 
 
 type DailySummaryRow = {
@@ -37,7 +40,7 @@ type PeriodSummaryRow = {
     collaborator: UserProfile;
     dLab: number; lib: number; vac: number; pm: number; lic: number;
     sus: number; ret: number; fi: number; he25: number; he50: number;
-    he100: number; hComp: number; multas: number;
+    he100: number;
 };
 
 function findScheduledShift(collaborator: UserProfile, date: Date, savedSchedules: SavedSchedule[], shiftPatterns: ShiftPattern[]): string | null {
@@ -74,6 +77,9 @@ function AttendanceReportPage() {
     const [activeTab, setActiveTab] = useState('vista-diaria');
     const [filters, setFilters] = useState({ ubicacion: 'todos', cargo: 'todos', colaborador: 'todos' });
 
+    const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+    const [exportDateRange, setExportDateRange] = useState<DateRange | undefined>();
+
     const { data: users, isLoading: usersLoading } = useCollection<UserProfile>(useMemo(() => firestore ? collection(firestore, 'users') : null, [firestore]));
     const { data: savedSchedules, isLoading: schedulesLoading } = useCollection<SavedSchedule>(useMemo(() => firestore ? collection(firestore, 'savedSchedules') : null, [firestore]));
     const { data: attendanceRecordsData, isLoading: attendanceLoading } = useCollection<AttendanceRecord>(useMemo(() => firestore ? collection(firestore, 'attendance') : null, [firestore]));
@@ -104,70 +110,51 @@ function AttendanceReportPage() {
         }));
     }, [attendanceRecordsData]);
 
-    const dailySummaryData = useMemo((): DailySummaryRow[] => {
-      if (isLoading || !users || !attendanceRecords || !overtimeRules || !savedSchedules || !shiftPatterns || !holidays) return [];
-  
-      const activeUsers = users.filter(u => u.Status === 'active');
-      
-      const dayIsHoliday = holidays.some(h => isWithinInterval(selectedDate, { start: h.startDate, end: h.endDate }));
-      const jornada = dayIsHoliday ? "FESTIVO" : "NORMAL";
-  
-      const summaryRows: DailySummaryRow[] = [];
-  
-      activeUsers.forEach(collaborator => {
-          if (
-              (filters.ubicacion !== 'todos' && normalizeText(collaborator.ubicacion) !== normalizeText(filters.ubicacion)) ||
-              (filters.cargo !== 'todos' && normalizeText(collaborator.cargo) !== normalizeText(filters.cargo)) ||
-              (filters.colaborador !== 'todos' && collaborator.id !== filters.colaborador)
-          ) {
-              return;
-          }
-  
-          const record = attendanceRecords.find(ar => ar.collaboratorId === collaborator.id && ar.date && isSameDay(ar.date, selectedDate));
-          const scheduledShift = findScheduledShift(collaborator, selectedDate, savedSchedules, shiftPatterns);
-  
-          let status: 'Completo' | 'Incompleto' | 'Falta' = 'Falta';
-  
-          if (!scheduledShift || scheduledShift === 'LIB') {
-              return;
-          }
-  
-          if (record && record.entryTime && record.exitTime) {
-              const shiftDetails = getShiftDetailsFromRules(scheduledShift, collaborator.cargo, jornada, overtimeRules);
-              if (shiftDetails) {
-                  const scheduledMinutes = shiftDetails.hours * 60;
-                  const workedMinutes = differenceInMinutes(record.exitTime, record.entryTime);
-                  if (workedMinutes >= scheduledMinutes - 5) {
-                      status = 'Completo';
-                  } else {
-                      status = 'Incompleto';
-                  }
-              } else {
-                  status = 'Incompleto';
-              }
-          } else if (record && record.entryTime) {
-              status = 'Incompleto';
-          }
-          
-          const extraHours = { he25: 0, he50: 0, he100: 0 };
-          if (status === 'Completo' && scheduledShift && record && record.entryTime && record.exitTime) {
-               const rule = overtimeRules.find(r => 
-                  normalizeText(r.jobTitle) === normalizeText(collaborator.cargo) && 
-                  r.shift === scheduledShift && 
-                  r.dayType === jornada
-              );
-              if (rule) {
-                  extraHours.he25 = rule.nightSurcharge || 0;
-                  extraHours.he50 = rule.sup50 || 0;
-                  extraHours.he100 = rule.ext100 || 0;
-              }
-          }
-          
-          summaryRows.push({ collaborator, scheduledShift, status, extraHours });
-      });
-  
-      return summaryRows;
-  }, [selectedDate, filters, isLoading, users, attendanceRecords, overtimeRules, savedSchedules, shiftPatterns, holidays]);
+    const calculateDailySummaryForDay = (date: Date): DailySummaryRow[] => {
+        if (isLoading || !users || !attendanceRecords || !overtimeRules || !savedSchedules || !shiftPatterns || !holidays) return [];
+    
+        const activeUsers = users.filter(u => u.Status === 'active');
+        const dayIsHoliday = holidays.some(h => isWithinInterval(date, { start: h.startDate, end: h.endDate }));
+        const jornada = dayIsHoliday ? "FESTIVO" : "NORMAL";
+        const summaryRows: DailySummaryRow[] = [];
+    
+        activeUsers.forEach(collaborator => {
+            if (
+                (filters.ubicacion !== 'todos' && normalizeText(collaborator.ubicacion) !== normalizeText(filters.ubicacion)) ||
+                (filters.cargo !== 'todos' && normalizeText(collaborator.cargo) !== normalizeText(filters.cargo)) ||
+                (filters.colaborador !== 'todos' && collaborator.id !== filters.colaborador)
+            ) return;
+    
+            const record = attendanceRecords.find(ar => ar.collaboratorId === collaborator.id && ar.date && isSameDay(ar.date, date));
+            const scheduledShift = findScheduledShift(collaborator, date, savedSchedules, shiftPatterns);
+    
+            let status: 'Completo' | 'Incompleto' | 'Falta' = 'Falta';
+            if (!scheduledShift || scheduledShift === 'LIB') return;
+    
+            if (record && record.entryTime && record.exitTime) {
+                const shiftDetails = getShiftDetailsFromRules(scheduledShift, collaborator.cargo, jornada, overtimeRules);
+                status = (shiftDetails && differenceInMinutes(record.exitTime, record.entryTime) >= scheduledShift.hours * 60 - 5) ? 'Completo' : 'Incompleto';
+            } else if (record && record.entryTime) {
+                status = 'Incompleto';
+            }
+            
+            const extraHours = { he25: 0, he50: 0, he100: 0 };
+            if (status === 'Completo' && scheduledShift && record?.entryTime && record?.exitTime) {
+                 const rule = overtimeRules.find(r => normalizeText(r.jobTitle) === normalizeText(collaborator.cargo) && r.shift === scheduledShift && r.dayType === jornada);
+                if (rule) {
+                    extraHours.he25 = rule.nightSurcharge || 0;
+                    extraHours.he50 = rule.sup50 || 0;
+                    extraHours.he100 = rule.ext100 || 0;
+                }
+            }
+            summaryRows.push({ collaborator, scheduledShift, status, extraHours });
+        });
+        return summaryRows;
+    };
+
+    const dailySummaryData = useMemo(() => calculateDailySummaryForDay(selectedDate), 
+      [selectedDate, filters, isLoading, users, attendanceRecords, overtimeRules, savedSchedules, shiftPatterns, holidays]
+    );
     
     const { days: periodDays, monthName: periodMonthName } = useMemo(() => {
         const referenceDate = selectedDate.getDate() < 21 ? selectedDate : addMonths(selectedDate, 1);
@@ -192,7 +179,7 @@ function AttendanceReportPage() {
         return filteredUsers.map(collaborator => {
             const summary: Omit<PeriodSummaryRow, 'collaborator'> = {
                 dLab: 0, lib: 0, vac: 0, pm: 0, lic: 0, sus: 0, ret: 0, fi: 0,
-                he25: 0, he50: 0, he100: 0, hComp: 0, multas: 0
+                he25: 0, he50: 0, he100: 0
             };
 
             const collaboratorRecords = attendanceRecords.filter(r => r.collaboratorId === collaborator.id);
@@ -245,24 +232,6 @@ function AttendanceReportPage() {
                     summary.fi++;
                 }
             });
-
-            if (workedDayKeys.length > 22) {
-                const extraDaysCount = workedDayKeys.length - 22;
-                const compensationDayKeys = workedDayKeys.slice(-extraDaysCount);
-
-                compensationDayKeys.forEach(dayKey => {
-                    const day = parse(dayKey, 'yyyy-MM-dd', new Date());
-                    const shift = findScheduledShift(collaborator, day, savedSchedules, shiftPatterns);
-                    if (shift) {
-                        const dayIsHoliday = holidays.some(h => isWithinInterval(day, { start: h.startDate, end: h.endDate }));
-                        const jornada = dayIsHoliday ? "FESTIVO" : "NORMAL";
-                        const shiftDetails = getShiftDetailsFromRules(shift, collaborator.cargo, jornada, overtimeRules);
-                        if (shiftDetails) {
-                            summary.hComp += shiftDetails.hours;
-                        }
-                    }
-                });
-            }
             
             return { collaborator, ...summary };
         }).filter(item => item.dLab > 0 || item.lib > 0 || item.vac > 0 || item.pm > 0 || item.lic > 0 || item.sus > 0 || item.ret > 0 || item.fi > 0);
@@ -277,21 +246,36 @@ function AttendanceReportPage() {
     const cargoOptions = useMemo(() => [{ value: 'todos', label: 'Todos los cargos' }, ...(cargos || []).map(o => ({ value: o.name, label: o.name }))], [cargos]);
     const colaboradorOptions = useMemo(() => [{ value: 'todos', label: 'Todos los colaboradores' }, ...(users || []).map(u => ({ value: u.id, label: `${u.nombres} ${u.apellidos}` }))], [users]);
 
-    const handleExport = () => {
+    const handleExport = (range?: DateRange) => {
         let dataToExport;
         let sheetName;
 
         if (activeTab === 'vista-diaria') {
-            dataToExport = dailySummaryData.map(item => ({
-                'Colaborador': `${item.collaborator.nombres} ${item.collaborator.apellidos}`,
-                'Cargo': item.collaborator.cargo,
-                'Turno': item.scheduledShift || 'N/A',
-                'Estado': item.status,
-                'H.E. 25%': item.extraHours.he25,
-                'H.E. 50%': item.extraHours.he50,
-                'H.E. 100%': item.extraHours.he100,
-            }));
-            sheetName = `Resumen_Diario_${format(selectedDate, 'yyyy-MM-dd')}`;
+            if (!range?.from || !range.to) {
+                toast({ variant: 'destructive', title: 'Rango requerido', description: 'Por favor, selecciona un rango de fechas para exportar la vista diaria.' });
+                return;
+            }
+            
+            const daysInRange = eachDayOfInterval({ start: range.from, end: range.to });
+            const multiDayData: any[] = [];
+            
+            daysInRange.forEach(day => {
+                const dailyData = calculateDailySummaryForDay(day);
+                dailyData.forEach(item => {
+                    multiDayData.push({
+                        'Fecha': format(day, 'yyyy-MM-dd'),
+                        'Colaborador': `${item.collaborator.nombres} ${item.collaborator.apellidos}`,
+                        'Cargo': item.collaborator.cargo,
+                        'Turno': item.scheduledShift || 'N/A',
+                        'Estado': item.status,
+                        'H.E. 25%': item.extraHours.he25,
+                        'H.E. 50%': item.extraHours.he50,
+                        'H.E. 100%': item.extraHours.he100,
+                    });
+                });
+            });
+            dataToExport = multiDayData;
+            sheetName = `Resumen_Diario_${format(range.from, 'yyyy-MM-dd')}_a_${format(range.to, 'yyyy-MM-dd')}`;
         } else { // resumen-periodo
             dataToExport = periodSummaryData.map(item => ({
                 'Código': item.collaborator.codigo,
@@ -310,8 +294,6 @@ function AttendanceReportPage() {
                 'H.E. 25%': item.he25,
                 'H.E. 50%': item.he50,
                 'H.E. 100%': item.he100,
-                'H. Comp.': item.hComp,
-                'Multas (%)': item.multas,
             }));
             sheetName = `Resumen_Periodo_${periodDays.length > 0 ? format(periodDays[0], 'yyyy-MM') : ''}`;
         }
@@ -320,10 +302,38 @@ function AttendanceReportPage() {
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
         XLSX.writeFile(workbook, `Resumen_Asistencia.xlsx`);
+        setIsExportDialogOpen(false);
     };
 
     return (
         <div className="space-y-6">
+             <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Seleccionar Rango de Fechas para Exportar</DialogTitle>
+                        <DialogDescription>
+                            {activeTab === 'vista-diaria' 
+                                ? "Selecciona un rango para exportar el reporte diario."
+                                : "Para el resumen del período, se exportarán los datos del período actual mostrado en la tabla. No se necesita un rango de fechas."
+                            }
+                        </DialogDescription>
+                    </DialogHeader>
+                    {activeTab === 'vista-diaria' && (
+                        <div className="py-4 flex justify-center">
+                            <Calendar
+                                mode="range"
+                                selected={exportDateRange}
+                                onSelect={setExportDateRange}
+                            />
+                        </div>
+                    )}
+                    <DialogFooter>
+                        <Button variant="ghost" onClick={() => setIsExportDialogOpen(false)}>Cancelar</Button>
+                        <Button onClick={() => handleExport(exportDateRange)}>Confirmar y Descargar</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
             <h1 className="text-lg font-semibold md:text-2xl">Resumen de Asistencia</h1>
             <Card>
                 <CardHeader>
@@ -334,7 +344,7 @@ function AttendanceReportPage() {
                                 Detalle de asistencia para el día seleccionado y resumen para el período correspondiente ({periodMonthName}).
                             </CardDescription>
                         </div>
-                        <Button onClick={handleExport}><Download className="mr-2 h-4 w-4" />Descargar Excel</Button>
+                        <Button onClick={() => setIsExportDialogOpen(true)}><Download className="mr-2 h-4 w-4" />Descargar Excel</Button>
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -422,13 +432,11 @@ function AttendanceReportPage() {
                                         <TableHead>H.E. 25%</TableHead>
                                         <TableHead>H.E. 50%</TableHead>
                                         <TableHead>H.E. 100%</TableHead>
-                                        <TableHead>H. Comp.</TableHead>
-                                        <TableHead>Multas (%)</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {isLoading ? (
-                                        <TableRow><TableCell colSpan={18} className="h-24 text-center"><LoaderCircle className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
+                                        <TableRow><TableCell colSpan={16} className="h-24 text-center"><LoaderCircle className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
                                     ) : periodSummaryData.length > 0 ? periodSummaryData.map(item => (
                                         <TableRow key={item.collaborator.id}>
                                             <TableCell>{item.collaborator.codigo}</TableCell>
@@ -447,11 +455,9 @@ function AttendanceReportPage() {
                                             <TableCell>{item.he25 > 0 ? item.he25.toFixed(2) : ''}</TableCell>
                                             <TableCell>{item.he50 > 0 ? item.he50.toFixed(2) : ''}</TableCell>
                                             <TableCell>{item.he100 > 0 ? item.he100.toFixed(2) : ''}</TableCell>
-                                            <TableCell>{item.hComp > 0 ? item.hComp.toFixed(2) : ''}</TableCell>
-                                            <TableCell>{item.multas > 0 ? `${item.multas}%` : ''}</TableCell>
                                         </TableRow>
                                     )) : (
-                                        <TableRow><TableCell colSpan={18} className="h-24 text-center text-muted-foreground">No hay datos para el período y filtros seleccionados.</TableCell></TableRow>
+                                        <TableRow><TableCell colSpan={16} className="h-24 text-center text-muted-foreground">No hay datos para el período y filtros seleccionados.</TableCell></TableRow>
                                     )}
                                 </TableBody>
                             </Table>

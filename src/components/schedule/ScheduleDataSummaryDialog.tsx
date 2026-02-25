@@ -67,8 +67,6 @@ interface SummaryData {
     shiftCounts: Map<string, number>;
     freeDaysByWeekday: number[];
     extraHours: { he25: number; he50: number; he100: number; };
-    compensationHours: number;
-    compensationDetails: { day: Date, shift: string | null }[];
 }
 
 const SummaryTable = ({ groupedData, uniqueShifts }: { groupedData: any[], uniqueShifts: string[] }) => {
@@ -81,7 +79,7 @@ const SummaryTable = ({ groupedData, uniqueShifts }: { groupedData: any[], uniqu
                   <TableHead rowSpan={2} className="sticky left-0 bg-background z-30 p-2 min-w-[200px] border-r">TRABAJADORES</TableHead>
                   <TableHead colSpan={uniqueShifts.length + 1} className="text-center p-1 border-x">TURNO</TableHead>
                   <TableHead colSpan={7} className="text-center p-1 border-x">CONTADOR DE DÍAS LIBRES</TableHead>
-                  <TableHead colSpan={5} className="text-center p-1 border-x">TOTALES</TableHead>
+                  <TableHead colSpan={3} className="text-center p-1 border-x">TOTALES</TableHead>
               </TableRow>
               <TableRow>
                   {uniqueShifts.map(shift => <TableHead key={shift} className="p-1 text-center w-10 border-x">{shift}</TableHead>)}
@@ -90,8 +88,6 @@ const SummaryTable = ({ groupedData, uniqueShifts }: { groupedData: any[], uniqu
                   <TableHead className="p-1 text-center w-24 border-x">Recargo Noct. (25%)</TableHead>
                   <TableHead className="p-1 text-center w-24 border-x">H. Suplem. (50%)</TableHead>
                   <TableHead className="p-1 text-center w-24 border-x">H. Extraord. (100%)</TableHead>
-                  <TableHead className="p-1 text-center w-24 border-x">H. Comp.</TableHead>
-                  <TableHead className="p-1 text-center w-24 border-x">Multas (%)</TableHead>
               </TableRow>
           </TableHeader>
           <TableBody>
@@ -99,7 +95,7 @@ const SummaryTable = ({ groupedData, uniqueShifts }: { groupedData: any[], uniqu
                   groupedData.map(group => (
                       <React.Fragment key={group.jobTitle}>
                           <TableRow className="bg-primary/10 hover:bg-primary/10">
-                              <TableCell colSpan={uniqueShifts.length + 14} className="font-bold text-center text-primary p-1 sticky left-0 bg-primary/10 z-10">
+                              <TableCell colSpan={uniqueShifts.length + 12} className="font-bold text-center text-primary p-1 sticky left-0 bg-primary/10 z-10">
                                   {group.jobTitle}
                               </TableCell>
                           </TableRow>
@@ -116,27 +112,6 @@ const SummaryTable = ({ groupedData, uniqueShifts }: { groupedData: any[], uniqu
                                       <TableCell className="text-center">{employee.extraHours.he25 > 0 ? employee.extraHours.he25.toFixed(2) : ''}</TableCell>
                                       <TableCell className="text-center">{employee.extraHours.he50 > 0 ? employee.extraHours.he50.toFixed(2) : ''}</TableCell>
                                       <TableCell className="text-center">{employee.extraHours.he100 > 0 ? employee.extraHours.he100.toFixed(2) : ''}</TableCell>
-                                      <TableCell className="text-center font-bold text-blue-600">
-                                          {employee.compensationHours > 0 && (
-                                              <Tooltip>
-                                                  <TooltipTrigger asChild>
-                                                      <span className="flex items-center justify-center gap-1 cursor-help">
-                                                          {employee.compensationHours.toFixed(2)}
-                                                          <Info className="h-3 w-3"/>
-                                                      </span>
-                                                  </TooltipTrigger>
-                                                  <TooltipContent>
-                                                      <div className="text-xs p-1">
-                                                          <p className="font-bold mb-1">Días Compensados:</p>
-                                                          <ul className="space-y-0.5">
-                                                              {employee.compensationDetails.map(d => <li key={d.day.toISOString()}>{format(d.day, 'dd/MM')}: {d.shift}</li>)}
-                                                          </ul>
-                                                      </div>
-                                                  </TooltipContent>
-                                              </Tooltip>
-                                          )}
-                                      </TableCell>
-                                      <TableCell className="text-center"></TableCell>
                                   </TableRow>
                               )
                           })}
@@ -144,7 +119,7 @@ const SummaryTable = ({ groupedData, uniqueShifts }: { groupedData: any[], uniqu
                   ))
               ) : (
                   <TableRow>
-                      <TableCell colSpan={uniqueShifts.length + 14} className="h-48 text-center text-muted-foreground">
+                      <TableCell colSpan={uniqueShifts.length + 12} className="h-48 text-center text-muted-foreground">
                           No hay datos aprobados para mostrar con los filtros seleccionados.
                       </TableCell>
                   </TableRow>
