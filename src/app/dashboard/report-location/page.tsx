@@ -142,6 +142,7 @@ export default function ReportLocationPage() {
           let width = img.width;
           let height = img.height;
 
+          // Compression and resizing logic
           if (width > height) {
             if (width > MAX_WIDTH) {
               height *= MAX_WIDTH / width;
@@ -158,7 +159,8 @@ export default function ReportLocationPage() {
           const ctx = canvas.getContext('2d');
           if (ctx) {
             ctx.drawImage(img, 0, 0, width, height);
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.7); // 70% quality compression
+            // Compress to JPEG with 0.7 quality
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.7); 
             setReportData(prev => prev ? { ...prev, photoPreview: dataUrl } : null);
           }
         };
@@ -200,6 +202,7 @@ export default function ReportLocationPage() {
 
       toast({ title: 'Éxito', description: 'El reporte ha sido enviado correctamente.' });
       setStep('selection');
+      setReportType(null);
       setReportData(null);
       setNotes('');
       setResponsibleId('');
