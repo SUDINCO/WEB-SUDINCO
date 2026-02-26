@@ -49,6 +49,11 @@ service cloud.firestore {
       allow create: if isMasterOrAdmin();
       allow delete: if isMaster();
     }
+
+    // PRIVACY CONSENTS: Users manage their own consent records.
+    match /privacyConsents/{userId} {
+      allow read, write: if isOwner(userId);
+    }
     
     // ROLES: Only Master can manage roles. All signed-in users can read them.
     match /roles/{roleId} {
@@ -75,6 +80,16 @@ service cloud.firestore {
          resource.data.observerStatus == 'review_requested')
       ));
       allow delete: if isMaster();
+    }
+
+    // MANAGER EVALUATIONS: Employees evaluate their managers.
+    match /managerEvaluations/{evaluationId} {
+      // An employee can create an evaluation about their manager.
+      allow create: if isSignedIn() && request.resource.data.employeeId == request.auth.uid;
+      // The manager being evaluated, the employee who wrote it, or an Admin/Master can read it.
+      allow read: if isMasterOrAdmin() || (isSignedIn() && (resource.data.managerId == request.auth.uid || resource.data.employeeId == request.auth.uid));
+      // Only Master can update/delete for now to be safe.
+      allow update, delete: if isMaster();
     }
 
     // VACATION REQUESTS: Users manage their own requests.

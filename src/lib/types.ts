@@ -26,6 +26,14 @@ export interface UserProfile {
   requiresPasswordChange?: boolean;
 }
 
+export interface PrivacyConsent {
+  id?: string;
+  uid: string;
+  acceptedAt: number;
+  version: string;
+  accepted: boolean;
+}
+
 export interface EquipmentHandover {
   id: string;
   location: string;

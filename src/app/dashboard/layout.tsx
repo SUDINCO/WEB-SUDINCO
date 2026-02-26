@@ -42,6 +42,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { UserProfileProvider, useUserProfile } from '@/context/user-profile-context';
 import { allNavLinks } from '@/lib/nav-links';
 import { useRecentLinks } from '@/hooks/use-recent-links';
+import { PrivacyConsentModal } from "@/components/PrivacyConsentModal";
 
 const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes
 
@@ -249,6 +250,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
       />
       
       <div className="h-full">
+        <PrivacyConsentModal />
         
         {/* Mobile View */}
         <div className="md:hidden">

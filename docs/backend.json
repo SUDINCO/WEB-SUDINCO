@@ -1,6 +1,18 @@
 
 {
   "entities": {
+    "PrivacyConsent": {
+      "title": "Privacy Consent",
+      "type": "object",
+      "description": "User consent for personal data treatment according to LOPDP.",
+      "properties": {
+        "uid": { "type": "string" },
+        "acceptedAt": { "type": "number" },
+        "version": { "type": "string" },
+        "accepted": { "type": "boolean" }
+      },
+      "required": ["uid", "acceptedAt", "version", "accepted"]
+    },
     "EquipmentHandover": {
       "title": "Equipment Handover",
       "type": "object",
@@ -784,6 +796,10 @@
     "/users/{userId}": {
       "schema": { "$ref": "#/entities/UserProfile" },
       "description": "Stores information about company users/workers, including their role for system access."
+    },
+    "/privacyConsents/{userId}": {
+      "schema": { "$ref": "#/entities/PrivacyConsent" },
+      "description": "Stores user privacy consent records."
     },
     "/roles/{roleId}": {
         "schema": { "$ref": "#/entities/Role" },
