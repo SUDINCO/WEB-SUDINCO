@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -62,16 +61,16 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
-import { useCollection, useFirestore, useAuth, useUser } from '@/firebase';
+import { Textarea } from '@/components/ui/textarea';
+import { useCollection, useFirestore, useAuth } from '@/firebase';
 import { collection, doc, addDoc, updateDoc, setDoc, query, where, getDocs, writeBatch, deleteDoc } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, getAuth } from 'firebase/auth';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { firebaseConfig } from '@/firebase/config';
 import { toast } from '@/hooks/use-toast';
-import { PlusCircle, Search, Edit, UserPlus, LoaderCircle, Check, FileUp, FileDown, Users, Trash2, KeyRound, MoreHorizontal, UserRound, CheckCircle, X, Camera, AlertTriangle } from 'lucide-react';
+import { PlusCircle, Search, Edit, UserPlus, LoaderCircle, Check, KeyRound, MoreHorizontal, UserRound, CheckCircle, X, Camera, AlertTriangle, Trash2, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
@@ -79,7 +78,6 @@ import { Combobox } from '@/components/ui/combobox';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import Image from 'next/image';
 import { normalizeText } from '@/lib/utils';
 import { resetUserPasswordAction } from '@/app/actions/auth';
 import type { UserProfile, GenericOption, ConsultantGroup } from '@/lib/types';
@@ -361,9 +359,6 @@ export default function StaffPage() {
             throw new Error(result.error);
         }
 
-        const userDocRef = doc(firestore, 'users', userToReset.id);
-        await updateDoc(userDocRef, { requiresPasswordChange: true });
-        
         setResetStatus('success');
         toast({ title: 'Reseteo Automático Exitoso', description: 'La contraseña ahora es el número de cédula.' });
     } catch (error: any) {

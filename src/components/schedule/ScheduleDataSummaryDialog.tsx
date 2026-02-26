@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -97,7 +96,7 @@ const SummaryTable = ({ groupedData, uniqueShifts }: { groupedData: GroupedSumma
           </TableHeader>
           <TableBody>
               {groupedData.length > 0 ? (
-                  groupedData.map(group => (
+                  groupedData.map((group: GroupedSummary) => (
                       <React.Fragment key={group.jobTitle}>
                           <TableRow className="bg-primary/10 hover:bg-primary/10">
                               <TableCell colSpan={uniqueShifts.length + 12} className="font-bold text-center text-primary p-1 sticky left-0 bg-primary/10 z-10">
