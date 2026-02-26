@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -357,14 +356,12 @@ export default function StaffPage() {
     setResetError('');
 
     try {
-        // EJECUCIÓN DE LA ACCIÓN DE SERVIDOR (ADMIN SDK)
         const result = await resetUserPasswordAction(userToReset.id, userToReset.cedula);
         
         if (!result.success) {
             throw new Error(result.error);
         }
 
-        // Marcamos el perfil en Firestore para cambio obligatorio
         const userDocRef = doc(firestore, 'users', userToReset.id);
         await updateDoc(userDocRef, { requiresPasswordChange: true });
         
@@ -542,7 +539,7 @@ export default function StaffPage() {
                         <FormField control={form.control} name="centroCosto" render={({ field }) => (<FormItem><FormLabel>Centro de Costo</FormLabel><Combobox options={toOptions(centrosCosto)} placeholder="Seleccionar..." {...field} allowCreate /></FormItem>)} />
                         <FormField control={form.control} name="fechaIngreso" render={({ field }) => (<FormItem><FormLabel>F. Ingreso</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="tipoContrato" render={({ field }) => (<FormItem><FormLabel>Tipo Contrato</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="INDEFINIDO">Indefinido</SelectItem><SelectItem value="EMERGENTE">Emergente</SelectItem></SelectContent></Select></FormItem>)} />
-                        <FormField control={form.control} name="rol" render={({ field }) => (<FormItem><FormLabel>Rol Sistema</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{roles?.map((r: any) => (<SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>))}</SelectContent></Select></FormItem>)} />
+                        <FormField control={form.control} name="rol" render={({ field }) => (<FormItem><FormLabel>Rol Sistema</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{roles?.map((r: any) => (<SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>))}</Select></FormItem>)} />
                     </div>
                     <Separator />
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

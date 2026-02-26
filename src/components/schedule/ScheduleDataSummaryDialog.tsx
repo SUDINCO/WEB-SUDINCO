@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -37,29 +36,6 @@ type Option = {
   isSaved?: boolean;
 };
 
-interface ScheduleDataSummaryDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  savedSchedules: { [key: string]: SavedSchedule };
-  collaborators: Collaborator[];
-  days: Date[];
-  currentDate: Date;
-  periodTitle: string;
-  holidays: Holiday[];
-  overtimeRules: OvertimeRule[];
-  transfers: TemporaryTransfer[];
-  roleChanges: RoleChange[];
-  shiftPatterns: ShiftPattern[];
-  onPrevPeriod: () => void;
-  onNextPeriod: () => void;
-  locationOptions: Option[];
-  jobTitleOptions: Option[];
-  selectedLocation: string;
-  onLocationChange: (value: string) => void;
-  selectedJobTitle: string;
-  onJobTitleChange: (value: string) => void;
-}
-
 interface SummaryData {
     id: string;
     name: string;
@@ -69,7 +45,12 @@ interface SummaryData {
     extraHours: { he25: number; he50: number; he100: number; };
 }
 
-const SummaryTable = ({ groupedData, uniqueShifts }: { groupedData: any[], uniqueShifts: string[] }) => {
+interface GroupedSummary {
+    jobTitle: string;
+    employees: SummaryData[];
+}
+
+const SummaryTable = ({ groupedData, uniqueShifts }: { groupedData: GroupedSummary[], uniqueShifts: string[] }) => {
     const weekDaysLabels = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB'];
     
     return (
@@ -205,14 +186,14 @@ export function ScheduleDataSummaryDialog({
     );
 
     if (periodLocation === 'todos' && periodJobTitle === 'todos') {
-      return { groupedData: allGroupedData, uniqueShifts };
+      return { groupedData: allGroupedData as GroupedSummary[], uniqueShifts };
     }
     
     const fullCollaboratorMap = new Map(collaborators.map(c => [c.id, c]));
 
-    const filteredGroupedData = allGroupedData
-      .map(group => {
-        const filteredEmployees = group.employees.filter(employee => {
+    const filteredGroupedData = (allGroupedData as GroupedSummary[])
+      .map((group: GroupedSummary) => {
+        const filteredEmployees = group.employees.filter((employee: SummaryData) => {
           const collaborator = fullCollaboratorMap.get(employee.id);
           if (!collaborator) return false;
           
@@ -282,11 +263,11 @@ export function ScheduleDataSummaryDialog({
     );
     
     if (annualLocation === 'todos' && annualJobTitle === 'todos') {
-      return { groupedData, uniqueShifts };
+      return { groupedData: groupedData as GroupedSummary[], uniqueShifts };
     }
     
-    const filteredGroupedData = groupedData.map(group => {
-        const filteredEmployees = group.employees.filter(employee => {
+    const filteredGroupedData = (groupedData as GroupedSummary[]).map((group: GroupedSummary) => {
+        const filteredEmployees = group.employees.filter((employee: SummaryData) => {
           const collaborator = collaborators.find(c => c.id === employee.id);
           if (!collaborator) return false;
           
