@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo, useState } from 'react';
@@ -23,6 +22,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -37,18 +46,21 @@ import {
   Camera,
   X,
   Clock,
+  Trash2,
 } from 'lucide-react';
 import { useCollection, useFirestore } from '@/firebase';
-import { collection, query, orderBy, limit } from 'firebase/firestore';
+import { collection, query, orderBy, limit, doc, deleteDoc } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { EquipmentHandover } from '@/lib/types';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
+import { toast } from '@/hooks/use-toast';
 
 export default function EquipmentControlPage() {
   const [filter, setFilter] = useState('');
   const [selectedHandover, setSelectedHandover] = useState<EquipmentHandover | null>(null);
+  const [handoverToDelete, setHandoverToDelete] = useState<EquipmentHandover | null>(null);
   const [viewPhoto, setViewPhoto] = useState<string | null>(null);
   const firestore = useFirestore();
 
@@ -79,6 +91,19 @@ export default function EquipmentControlPage() {
     };
   }, [handovers]);
 
+  const handleDeleteHandover = async () => {
+    if (!handoverToDelete || !firestore) return;
+    try {
+      await deleteDoc(doc(firestore, 'equipmentHandovers', handoverToDelete.id));
+      toast({ title: 'Acta eliminada', description: 'El registro ha sido borrado exitosamente.' });
+    } catch (error) {
+      console.error("Error deleting handover:", error);
+      toast({ variant: 'destructive', title: 'Error', description: 'No se pudo eliminar el acta.' });
+    } finally {
+      setHandoverToDelete(null);
+    }
+  };
+
   const handleExport = async () => {
     const XLSX = await import('xlsx');
     const dataToExport = filteredHandovers.map(h => ({
@@ -100,7 +125,7 @@ export default function EquipmentControlPage() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Control de Dotación Premium</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Control de Dotación</h1>
           <p className="text-muted-foreground">Auditoría de relevos con doble identidad digital y validación personal.</p>
         </div>
         <Button onClick={handleExport} variant="outline">
@@ -135,8 +160,7 @@ export default function EquipmentControlPage() {
               {stats.total > 0 ? Math.round(((stats.total - stats.withIssues) / stats.total) * 100) : 0}%
             </CardTitle>
           </CardHeader>
-        </Card>
-      </div>
+        </div>
 
       <Card>
         <CardHeader>
@@ -219,10 +243,15 @@ export default function EquipmentControlPage() {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" onClick={() => setSelectedHandover(handover)}>
-                          <Eye className="h-4 w-4 mr-2" />
-                          Ver Acta
-                        </Button>
+                        <div className="flex justify-end gap-2">
+                          <Button variant="ghost" size="sm" onClick={() => setSelectedHandover(handover)}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            Ver
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => setHandoverToDelete(handover)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
@@ -238,6 +267,24 @@ export default function EquipmentControlPage() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!handoverToDelete} onOpenChange={() => setHandoverToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Está seguro de eliminar esta acta?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción eliminará permanentemente el registro del relevo y no se podrá deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteHandover} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Eliminar Acta
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Detail Dialog */}
       <Dialog open={!!selectedHandover} onOpenChange={() => setSelectedHandover(null)}>
@@ -339,14 +386,16 @@ export default function EquipmentControlPage() {
                   <div className="flex flex-col items-center">
                     <p className="text-[10px] text-emerald-600 font-bold mb-2 uppercase">Firma Guardia Entrante (Registro)</p>
                     <div className="border bg-slate-50 rounded-lg p-2 w-full flex justify-center">
-                      <Image 
-                        src={selectedHandover.incomingSignature} 
-                        alt="Firma Entrante" 
-                        width={300} 
-                        height={100} 
-                        className="max-h-[80px] w-auto object-contain"
-                        unoptimized
-                      />
+                      {selectedHandover.incomingSignature && (
+                        <Image 
+                          src={selectedHandover.incomingSignature} 
+                          alt="Firma Entrante" 
+                          width={300} 
+                          height={100} 
+                          className="max-h-[80px] w-auto object-contain"
+                          unoptimized
+                        />
+                      )}
                     </div>
                     <p className="text-[9px] text-muted-foreground mt-1">Registrado: {format(new Date(selectedHandover.timestamp), 'dd/MM/yy HH:mm')}</p>
                   </div>
