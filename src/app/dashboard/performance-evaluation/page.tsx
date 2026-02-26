@@ -1,8 +1,7 @@
 
-
 "use client";
 
-import React, { useState, useEffect, useMemo, Suspense } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -58,7 +57,6 @@ import { Button } from '@/components/ui/button';
 import { FileDown, FileUp, Search, Activity, AlertTriangle, CheckCircle, Clock, History, Download, Trash2, Edit, CalendarDays, LoaderCircle, Save, ArrowLeft } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
-import * as XLSX from 'xlsx';
 import { Combobox } from '@/components/ui/combobox';
 import { useDoc, useCollection, useFirestore } from '@/firebase';
 import { collection, doc, writeBatch, query, where, getDocs, updateDoc, deleteDoc, addDoc, orderBy, limit } from 'firebase/firestore';
@@ -80,6 +78,16 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { MultiSelectCombobox } from '@/components/ui/multi-select-combobox';
 import { Textarea } from '@/components/ui/textarea';
 
+
+const normalizeEmail = (email: string | undefined | null): string => {
+    if (!email) return '';
+    return email
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/\s+/g, '')
+      .trim();
+};
 
 // --- START OF FORM LOGIC (from [workerId]/page.tsx) ---
 
@@ -268,7 +276,6 @@ function EvaluationForm({ workerId, reviewEvaluationId }: { workerId: string, re
                 }
             };
             fetchLastEvaluation().catch(err => {
-                // This might fail if the index is missing. We can handle it gracefully.
                 console.warn("Could not fetch last evaluation, likely due to a missing index. Starting with a blank form.", err);
             });
         }
@@ -305,21 +312,17 @@ function EvaluationForm({ workerId, reviewEvaluationId }: { workerId: string, re
         const observer = allUsers?.find(u => u.email === worker.observerEmail);
         const hasObserver = !!worker.observerEmail;
         
-        // Explicitly build the object to avoid `undefined` values from `...data` spread.
         const evaluationData = {
-            // IDs and Date
             workerId: worker.id,
             evaluatorId: evaluator.id,
             evaluationDate: new Date().toISOString().split('T')[0],
             generalEvaluation: generalEvaluation,
     
-            // Observer fields
             observerId: observer?.id || null,
             observerEmail: worker.observerEmail || null,
             observerStatus: hasObserver ? 'pending' as const : 'approved' as const,
             observerComments: '',
     
-            // Criteria
             conocimientosTecnicos: data.conocimientosTecnicos,
             calidadTrabajo: data.calidadTrabajo,
             cumplimientoPoliticas: data.cumplimientoPoliticas,
@@ -330,7 +333,6 @@ function EvaluationForm({ workerId, reviewEvaluationId }: { workerId: string, re
             servicioCliente: data.servicioCliente,
             compromisoCompania: data.compromisoCompania,
     
-            // Justifications (ensure they are null if empty/undefined)
             conocimientosTecnicosJustification: data.conocimientosTecnicosJustification || null,
             calidadTrabajoJustification: data.calidadTrabajoJustification || null,
             cumplimientoPoliticasJustification: data.cumplimientoPoliticasJustification || null,
@@ -341,11 +343,9 @@ function EvaluationForm({ workerId, reviewEvaluationId }: { workerId: string, re
             servicioClienteJustification: data.servicioClienteJustification || null,
             compromisoCompaniaJustification: data.compromisoCompaniaJustification || null,
     
-            // Final observations
             observations: data.observations,
             messageForWorker: data.messageForWorker || null,
     
-            // Reinforcement Plan (handle complex object)
             reinforcementPlan: {
                 requiresReinforcement: data.reinforcementPlan?.requiresReinforcement || false,
                 skillType: data.reinforcementPlan?.skillType || null,
@@ -355,7 +355,6 @@ function EvaluationForm({ workerId, reviewEvaluationId }: { workerId: string, re
             }
         };
         
-        // If reinforcement is not required, set the whole object to a simpler, clean state.
         if (!evaluationData.reinforcementPlan.requiresReinforcement) {
             evaluationData.reinforcementPlan = {
                 requiresReinforcement: false,
@@ -437,13 +436,9 @@ function EvaluationForm({ workerId, reviewEvaluationId }: { workerId: string, re
         if (!dateStr) return 'N/A';
         const date = new Date(dateStr);
         if(isNaN(date.getTime())) return 'N/A';
-        // Adjusting for timezone issues
         const adjustedDate = new Date(date.valueOf() + date.getTimezoneOffset() * 60 * 1000);
         return adjustedDate.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
     }
-
-    const currentSkillOptions = form.watch("reinforcementPlan.skillType") === 'tecnica' ? [] : softSkillsOptions;
-
 
     return (
         <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
@@ -729,7 +724,7 @@ function EvaluationForm({ workerId, reviewEvaluationId }: { workerId: string, re
     );
 }
 
-// --- START OF LIST LOGIC (from original page.tsx) ---
+// --- START OF LIST LOGIC ---
 
 const parseDate = (dateString: string): Date | null => {
   if (!dateString || typeof dateString !== 'string') return null;
@@ -928,7 +923,7 @@ function EvaluationHistorySheet({ open, onOpenChange, worker, allEvaluations, al
                                         <TableCell>{getEvaluatorName(evaluation.evaluatorId)}</TableCell>
                                         <TableCell>{evaluation.generalEvaluation}%</TableCell>
                                         <TableCell className="text-right space-x-1">
-                                            <Button variant="outline" size="sm" onClick={() => handleDownloadPdf(evaluation)}>
+                                            <Button variant="outline" size="sm" onClick={async () => await handleDownloadPdf(evaluation)}>
                                                 <Download className="mr-2 h-4 w-4" />
                                                 PDF
                                             </Button>
@@ -975,6 +970,7 @@ function EvaluationList() {
     const [isConfirmGeneralDateAlertOpen, setIsConfirmGeneralDateAlertOpen] = useState(false);
     
     const [selectedWorkers, setSelectedWorkers] = useState<string[]>([]);
+    const [dataToImport, setDataToImport] = useState<any[]>([]);
 
 
     const firestore = useFirestore();
@@ -1006,13 +1002,12 @@ function EvaluationList() {
           return { pending: [], completed: [] };
         }
     
-        const activeWorkers = workersData; // Include all workers
+        const activeWorkers = workersData;
         const pending: any[] = [];
         const completed: any[] = [];
     
         activeWorkers.forEach(worker => {
           if (worker.Status !== 'active') {
-              // Inactive workers always go to 'completed'
               completed.push({ ...worker, statusInfo: { isCompleted: true, message: 'Inactivo' }, lastEvaluation: evaluationsByWorker.get(worker.id)?.[0], evaluationCount: (evaluationsByWorker.get(worker.id) || []).length });
               return;
           }
@@ -1196,7 +1191,8 @@ function EvaluationList() {
         return user ? `${user.nombres} ${user.apellidos}` : email;
     };
     
-    const handleExportSummary = () => {
+    const handleExportSummary = async () => {
+        const XLSX = await import('xlsx');
         const workersToExport = [...filteredPending, ...filteredCompleted];
         
         const dataToExport = workersToExport.map(worker => {
@@ -1225,7 +1221,6 @@ function EvaluationList() {
                 rowData['Plan: Descripción'] = 'N/A';
             }
     
-            // Performance Evaluation Averages
             const workerEvaluations = evaluationsByWorker.get(worker.id) || [];
             if (workerEvaluations.length > 0) {
                 const ratingValues: Record<string, number> = { NT: 1, BA: 2, ED: 3, TI: 4 };
@@ -1233,7 +1228,7 @@ function EvaluationList() {
     
                 competencyKeys.forEach(key => {
                     const sumPercentage = workerEvaluations.reduce((acc, ev) => {
-                        const score = ratingValues[ev[key as keyof PerformanceEvaluation] as string] || 1; // Default to 1 (NT) if not found
+                        const score = ratingValues[ev[key as keyof PerformanceEvaluation] as string] || 1;
                         const percentage = ((score - 1) / 3) * 100;
                         return acc + percentage;
                     }, 0);
@@ -1243,7 +1238,6 @@ function EvaluationList() {
                 rowData['Prom. Nota Desempeño (%)'] = (generalEvalSum / workerEvaluations.length).toFixed(0);
             }
     
-            // 180 Feedback Averages
             if (worker.isLeader) {
                 const leaderEvaluations = managerEvaluationsData?.filter(me => me.managerId === worker.id) || [];
                 if (leaderEvaluations.length > 0) {
@@ -1276,7 +1270,8 @@ function EvaluationList() {
         XLSX.writeFile(workbook, 'resumen_evaluaciones.xlsx');
     };
 
-    const handleExportHistory = () => {
+    const handleExportHistory = async () => {
+        const XLSX = await import('xlsx');
         if (selectedWorkers.length === 0) {
             toast({ title: "Seleccione empleados", description: "Debe seleccionar al menos un empleado para exportar el historial." });
             return;
@@ -1297,7 +1292,6 @@ function EvaluationList() {
                 return;
             }
 
-            // Add performance evaluations
             workerPerformanceEvals.forEach(evaluation => {
                 const evaluator = workersData?.find(w => w.id === evaluation.evaluatorId);
                 const toPct = (scoreKey: keyof PerformanceEvaluation) => {
@@ -1340,7 +1334,6 @@ function EvaluationList() {
                 dataToExport.push(row);
             });
 
-            // Add 180 feedback evaluations
             leader180Evals.forEach(feedback => {
                 const feedbackGiver = workersData?.find(w => w.id === feedback.employeeId);
                 const feedbackScores = [feedback.leadership_q1, feedback.leadership_q2, feedback.leadership_q3, feedback.communication_q1, feedback.communication_q2, feedback.communication_q3, feedback.performance_q1, feedback.performance_q2, feedback.performance_q3];
@@ -1379,6 +1372,25 @@ function EvaluationList() {
         XLSX.utils.book_append_sheet(workbook, worksheet, 'HistorialEvaluaciones');
         XLSX.writeFile(workbook, 'historial_evaluaciones_seleccion.xlsx');
     };
+
+    const handleExportRolesTemplate = async () => {
+        const XLSX = await import('xlsx');
+        if (!workersData) return;
+        
+        const dataToExport = workersData.filter(w => w.Status === 'active').map(worker => ({
+            'Cedula': worker.cedula,
+            'Apellidos': worker.apellidos,
+            'Nombres': worker.nombres,
+            'Cargo': worker.cargo,
+            'Evaluador (Email)': worker.evaluador || '',
+            'Observador (Email)': worker.observerEmail || '',
+        }));
+
+        const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'PlantillaRoles');
+        XLSX.writeFile(workbook, 'plantilla_roles_evaluacion.xlsx');
+    };
     
     const handleSelectAll = (tab: 'pending' | 'completed') => {
         const workersToSelect = tab === 'pending' ? filteredPending : filteredCompleted;
@@ -1403,11 +1415,71 @@ function EvaluationList() {
     };
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        // This is a placeholder for the actual import logic
+        const file = event.target.files?.[0];
+        if (!file || !workersData) return;
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const XLSX = await import('xlsx');
+            const data = e.target?.result;
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet);
+            
+            if (jsonData.length > 0 && ('Cedula' in jsonData[0] || 'cedula' in jsonData[0])) {
+                setDataToImport(jsonData);
+                setIsImportAlertOpen(true);
+            } else {
+                toast({
+                    variant: "destructive",
+                    title: "Archivo no válido",
+                    description: "El archivo debe contener al menos la columna 'Cedula'."
+                });
+            }
+        };
+        reader.readAsArrayBuffer(file);
+        if (fileInputRef.current) fileInputRef.current.value = "";
     };
     
     const confirmImport = async () => {
-        // This is a placeholder for the actual import logic
+        if (!dataToImport.length || !firestore || !workersData) return;
+
+        const batch = writeBatch(firestore);
+        let updatedCount = 0;
+
+        dataToImport.forEach((row) => {
+            const cedula = String(row.Cedula || row.cedula || '').trim();
+            const evaluador = normalizeEmail(row['Evaluador (Email)'] || row.evaluador || '');
+            const observerEmail = normalizeEmail(row['Observador (Email)'] || row.observerEmail || '');
+
+            const worker = workersData.find(w => w.cedula === cedula);
+            if (worker) {
+                const docRef = doc(firestore, 'users', worker.id);
+                const updates: any = {};
+                if (evaluador) updates.evaluador = evaluador;
+                if (observerEmail) updates.observerEmail = observerEmail;
+                
+                if (Object.keys(updates).length > 0) {
+                    batch.update(docRef, updates);
+                    updatedCount++;
+                }
+            }
+        });
+
+        try {
+            await batch.commit();
+            toast({
+                title: "Actualización completada",
+                description: `Se han actualizado los roles de ${updatedCount} empleados.`
+            });
+        } catch (error) {
+            console.error("Error importing roles:", error);
+            toast({ variant: "destructive", title: "Error", description: "No se pudieron actualizar los roles." });
+        } finally {
+            setIsImportAlertOpen(false);
+            setDataToImport([]);
+        }
     };
 
     const handleViewHistory = (worker: UserProfile) => {
@@ -1544,14 +1616,14 @@ function EvaluationList() {
             <AlertDialog open={isImportAlertOpen} onOpenChange={setIsImportAlertOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Confirmar Actualización</AlertDialogTitle>
+                        <AlertDialogTitle>Confirmar Actualización de Roles</AlertDialogTitle>
                         <AlertDialogDescription>
-                            {/*Se encontraron {dataToImport.length} registros para actualizar. Se actualizarán los campos de evaluador y/u observador. ¿Deseas continuar?*/}
+                            Se encontraron {dataToImport.length} registros para procesar. Se actualizarán los campos de Evaluador y Observador para los empleados cuyas cédulas coincidan. ¿Deseas continuar?
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={confirmImport}>Confirmar</AlertDialogAction>
+                        <AlertDialogAction onClick={confirmImport}>Confirmar Actualización</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
@@ -1658,7 +1730,7 @@ function EvaluationList() {
                     <CardDescription>
                         Gestiona y monitorea las evaluaciones de desempeño de los empleados.
                     </CardDescription>
-                    <div className="flex items-center pt-4 justify-between">
+                    <div className="flex items-center pt-4 justify-between gap-4 flex-wrap">
                         <div className='relative w-full max-w-sm'>
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
@@ -1668,7 +1740,7 @@ function EvaluationList() {
                                 className="pl-10"
                             />
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 flex-wrap">
                              <Button variant="outline" onClick={handleExportSummary}>
                                 <FileDown className="mr-2 h-4 w-4" />
                                 Exportar Resumen
@@ -1677,11 +1749,15 @@ function EvaluationList() {
                                 <FileDown className="mr-2 h-4 w-4" />
                                 Exportar Historial ({selectedWorkers.length})
                              </Button>
+                             <Button variant="outline" onClick={handleExportRolesTemplate}>
+                                <FileDown className="mr-2 h-4 w-4" />
+                                Exportar Plantilla de Roles
+                             </Button>
                              <Button variant="outline" onClick={() => setIsGeneralDateDialogOpen(true)}>
                                 <CalendarDays className="mr-2 h-4 w-4" />
-                                Asignar Fecha General
+                                Fecha General
                              </Button>
-                            <Button variant="outline" onClick={handleImportClick}>
+                            <Button variant="default" onClick={handleImportClick}>
                                 <FileUp className="h-4 w-4 mr-2" />
                                 Importar/Actualizar Roles
                             </Button>
