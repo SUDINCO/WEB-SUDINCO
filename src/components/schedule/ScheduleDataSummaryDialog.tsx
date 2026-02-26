@@ -249,7 +249,6 @@ export function ScheduleDataSummaryDialog({
     const allSavedSchedules = Object.values(savedSchedules);
     const shiftPatternsByCargo = new Map(shiftPatterns.map(p => [normalizeText(p.jobTitle), p]));
 
-    // Step 1: Populate schedule from saved/approved periods for everyone
     allSavedSchedules.forEach(saved => {
         const savedPeriodYear = parseInt(saved.id.split('_')[0].substring(0, 4));
         if(savedPeriodYear !== yearStart.getFullYear()) return;
@@ -265,12 +264,10 @@ export function ScheduleDataSummaryDialog({
         });
     });
 
-    // Step 2: For office staff, generate their full year schedule, completely overwriting their schedule map.
     collaborators.forEach(collaborator => {
         const { jobTitle } = collaborator;
         const normalizedJobTitle = normalizeText(jobTitle);
         
-        // Definition of "office staff": no specific shift pattern defined for their role.
         if (!shiftPatternsByCargo.has(normalizedJobTitle)) {
             const userSchedule = new Map<string, string | null>();
             allYearDays.forEach(day => {

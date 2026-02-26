@@ -154,7 +154,6 @@ export default function StaffPage() {
 
   const firestore = useFirestore();
   const auth = useAuth();
-  const { user: currentUser } = useUser();
   const usersCollectionRef = useMemo(() => firestore ? collection(firestore, 'users') : null, [firestore]);
   const rolesCollectionRef = useMemo(() => firestore ? collection(firestore, 'roles') : null, [firestore]);
   const leaderRulesCollectionRef = useMemo(() => firestore ? collection(firestore, 'leaderAssignmentRules') : null, [firestore]);
