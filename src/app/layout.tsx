@@ -4,13 +4,13 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 
-// Metadata para la aplicación PERFORMA
+// Metadata para la aplicación PERFORMA - Actualizada para forzar reconstrucción de rutas
 export const metadata: Metadata = {
   title: {
     default: "PERFORMA",
     template: "%s | PERFORMA",
   },
-  description: 'Página de acceso para la aplicación PERFORMA',
+  description: 'Plataforma integral para la gestión de talento humano y control operativo.',
   icons: {
     icon: 'https://i.postimg.cc/sgYg2NKd/icono-performa.png',
     apple: 'https://i.postimg.cc/sgYg2NKd/icono-performa.png',

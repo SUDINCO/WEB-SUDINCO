@@ -351,12 +351,18 @@ export interface LocationReport {
   notes?: string;
 }
 
+export interface NotificationChange {
+  field: string;
+  from: any;
+  to: any;
+}
+
 export interface Notification {
   id: string;
   recordId: string;
   requesterId: string;
   requesterName: string;
-  changes: any[];
+  changes: NotificationChange[];
   status: 'pending' | 'approved' | 'rejected';
   requestNote: string;
   createdAt: string;
