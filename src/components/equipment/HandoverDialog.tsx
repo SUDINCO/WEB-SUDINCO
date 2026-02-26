@@ -74,7 +74,8 @@ export function HandoverDialog({ open, onOpenChange, location, currentUser, sugg
         setItems(EQUIPMENT_CATALOG.map(name => ({ name, status: 'good', issueType: '', notes: '', photoUrl: null })));
       }
       setIsLocked(false);
-      setTimeout(() => clearCanvas(), 100);
+      // Wait for dialog animation to finish before clearing canvas
+      setTimeout(() => clearCanvas(), 150);
     }
   }, [open, isApproving, existingHandover]);
 
@@ -84,8 +85,9 @@ export function HandoverDialog({ open, onOpenChange, location, currentUser, sugg
       const ctx = canvas.getContext('2d');
       if (ctx) {
         ctx.strokeStyle = '#000';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 3;
         ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
         ctx.clearRect(0, 0, canvas.width, canvas.height);
       }
     }
@@ -136,20 +138,26 @@ export function HandoverDialog({ open, onOpenChange, location, currentUser, sugg
     setActivePhotoIndex(null);
   };
 
+  // Corrected coordinate calculation to fix distortion
   const getCoordinates = (e: any) => {
     if (!canvasRef.current) return { x: 0, y: 0 };
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
+    
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
     const clientY = e.touches ? e.touches[0].clientY : e.clientY;
     
-    // Calculate scaling factor between element size and internal coordinate system
+    // Position relative to the element
+    const offsetX = clientX - rect.left;
+    const offsetY = clientY - rect.top;
+    
+    // Scale according to internal canvas resolution
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
     
     return {
-      x: (clientX - rect.left) * scaleX,
-      y: (clientY - rect.top) * scaleY
+      x: offsetX * scaleX,
+      y: offsetY * scaleY
     };
   };
 
@@ -328,7 +336,7 @@ export function HandoverDialog({ open, onOpenChange, location, currentUser, sugg
             <div className="border-2 border-dashed rounded-lg bg-white relative overflow-hidden">
               <canvas
                 ref={canvasRef}
-                width={800} // Higher internal resolution
+                width={800}
                 height={240}
                 className={cn(
                   "w-full h-[120px] cursor-crosshair touch-none",

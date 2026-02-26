@@ -4,6 +4,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 
+// Metadata para la aplicación PERFORMA
 export const metadata: Metadata = {
   title: {
     default: "PERFORMA",
