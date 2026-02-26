@@ -136,32 +136,50 @@ export function HandoverDialog({ open, onOpenChange, location, currentUser, sugg
     setActivePhotoIndex(null);
   };
 
+  const getCoordinates = (e: any) => {
+    if (!canvasRef.current) return { x: 0, y: 0 };
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    
+    // Calculate scaling factor between element size and internal coordinate system
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    
+    return {
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY
+    };
+  };
+
   const startDrawing = (e: any) => {
     if (isLocked) return;
-    setIsDrawing(true);
-    draw(e);
+    const { x, y } = getCoordinates(e);
+    const ctx = canvasRef.current?.getContext('2d');
+    if (ctx) {
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      setIsDrawing(true);
+    }
   };
 
   const draw = (e: any) => {
     if (!isDrawing || isLocked || !canvasRef.current) return;
+    const { x, y } = getCoordinates(e);
     const ctx = canvasRef.current.getContext('2d');
-    if (!ctx) return;
-    const rect = canvasRef.current.getBoundingClientRect();
-    const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
-    const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
-    ctx.lineTo(x, y);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(x, y);
+    if (ctx) {
+      ctx.lineTo(x, y);
+      ctx.stroke();
+    }
   };
 
   const stopDrawing = () => {
     setIsDrawing(false);
-    canvasRef.current?.getContext('2d')?.beginPath();
   };
 
   const handleSubmit = async () => {
-    if (!firestore || !suggestedGuard) return;
+    if (!firestore) return;
     if (!isLocked) {
       toast({ variant: 'destructive', title: 'Firma requerida', description: 'Debe certificar su firma para continuar.' });
       return;
@@ -180,6 +198,11 @@ export function HandoverDialog({ open, onOpenChange, location, currentUser, sugg
         });
         toast({ title: 'Acta Aprobada', description: 'Has validado la entrega de equipos correctamente.' });
       } else {
+        if (!suggestedGuard) {
+            toast({ variant: 'destructive', title: 'Error', description: 'No hay un guardia de relevo identificado para este puesto.' });
+            setIsSubmitting(false);
+            return;
+        }
         await addDoc(collection(firestore, 'equipmentHandovers'), {
           location,
           date: new Date().toISOString().split('T')[0],
@@ -302,14 +325,28 @@ export function HandoverDialog({ open, onOpenChange, location, currentUser, sugg
               <Label className="font-bold flex items-center gap-2"><Check className="h-4 w-4" /> SU FIRMA DIGITAL OBLIGATORIA</Label>
               {isLocked && <Badge>CERTIFICADA</Badge>}
             </div>
-            <div className="border rounded-lg bg-white relative">
+            <div className="border-2 border-dashed rounded-lg bg-white relative overflow-hidden">
               <canvas
-                ref={canvasRef} width={400} height={120}
-                className={cn("w-full h-[120px] cursor-crosshair touch-none", isLocked && "pointer-events-none opacity-50")}
-                onMouseDown={startDrawing} onMouseMove={draw} onMouseUp={stopDrawing} onMouseOut={stopDrawing}
-                onTouchStart={startDrawing} onTouchMove={draw} onTouchEnd={stopDrawing}
+                ref={canvasRef}
+                width={800} // Higher internal resolution
+                height={240}
+                className={cn(
+                  "w-full h-[120px] cursor-crosshair touch-none",
+                  isLocked && "pointer-events-none opacity-50"
+                )}
+                onMouseDown={startDrawing}
+                onMouseMove={draw}
+                onMouseUp={stopDrawing}
+                onMouseOut={stopDrawing}
+                onTouchStart={startDrawing}
+                onTouchMove={draw}
+                onTouchEnd={stopDrawing}
               />
-              {!isLocked && <Button variant="ghost" size="icon" className="absolute bottom-1 right-1" onClick={clearCanvas}><Eraser className="h-4 w-4" /></Button>}
+              {!isLocked && (
+                <Button variant="ghost" size="icon" className="absolute bottom-1 right-1" onClick={clearCanvas}>
+                  <Eraser className="h-4 w-4" />
+                </Button>
+              )}
             </div>
             <Button variant={isLocked ? "outline" : "default"} className="w-full gap-2" onClick={() => setIsLocked(!isLocked)}>
               {isLocked ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
