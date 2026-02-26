@@ -300,7 +300,6 @@ export default function StaffPage() {
             return;
         }
         
-        // AUTOMATIZACIÓN TOTAL: Crear vía Server Action
         const result = await createUserAction(dataToSave);
         if (result.success) {
             toast({ title: 'Usuario Registrado', description: 'La cuenta ha sido creada y configurada automáticamente.' });
@@ -525,8 +524,51 @@ export default function StaffPage() {
                         <FormField control={form.control} name="ubicacion" render={({ field }) => (<FormItem><FormLabel>Ubicación</FormLabel><Combobox options={toOptions(ubicaciones)} placeholder="Seleccionar..." {...field} allowCreate /></FormItem>)} />
                         <FormField control={form.control} name="centroCosto" render={({ field }) => (<FormItem><FormLabel>Centro de Costo</FormLabel><Combobox options={toOptions(centrosCosto)} placeholder="Seleccionar..." {...field} allowCreate /></FormItem>)} />
                         <FormField control={form.control} name="fechaIngreso" render={({ field }) => (<FormItem><FormLabel>F. Ingreso</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                        <FormField control={form.control} name="tipoContrato" render={({ field }) => (<FormItem><FormLabel>Tipo Contrato</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="INDEFINIDO">Indefinido</SelectItem><SelectItem value="EMERGENTE">Emergente</SelectItem></Select></FormItem>)} />
-                        <FormField control={form.control} name="rol" render={({ field }) => (<FormItem><FormLabel>Rol Sistema</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{roles?.map((r: any) => (<SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>))}</Select></FormItem>)} />
+                        <FormField
+                          control={form.control}
+                          name="tipoContrato"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Tipo Contrato</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="INDEFINIDO">Indefinido</SelectItem>
+                                  <SelectItem value="EMERGENTE">Emergente</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="rol"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Rol Sistema</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {roles?.map((r: any) => (
+                                    <SelectItem key={r.id} value={r.id}>
+                                      {r.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
                     </div>
                     <Separator />
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

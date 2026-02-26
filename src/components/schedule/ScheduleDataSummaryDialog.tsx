@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/table';
 import { format, getDay, isWithinInterval, parseISO, subMonths, eachDayOfInterval, startOfYear, endOfYear, set, startOfMonth, endOfMonth, isSaturday, isSunday, addMonths } from 'date-fns';
 import type { Collaborator, Holiday, OvertimeRule, RoleChange, SavedSchedule, TemporaryTransfer, ShiftPattern } from '@/lib/types';
-import { getShiftDetailsFromRules } from '@/lib/schedule-generator';
+import { getShiftDetailsFromRules, calculateScheduleSummary } from '@/lib/schedule-generator';
 import { getEffectiveDetails } from '@/lib/schedule-utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { Info, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -27,7 +27,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Combobox } from '@/components/ui/combobox';
 import { Label } from '@/components/ui/label';
 import { normalizeText } from '@/lib/utils';
-import { calculateScheduleSummary } from '@/lib/schedule-generator';
 
 
 type Option = {
@@ -230,7 +229,7 @@ export function ScheduleDataSummaryDialog({
       })
       .filter(group => group.employees.length > 0);
 
-    return { groupedData: filteredGroupedData, uniqueShifts };
+    return { groupedData: filteredGroupedData as GroupedSummary[], uniqueShifts };
 
   }, [periodIdentifier, periodLocation, periodJobTitle, savedSchedules, collaborators, days, holidays, overtimeRules, transfers, roleChanges, shiftPatterns]);
 
@@ -301,7 +300,7 @@ export function ScheduleDataSummaryDialog({
       })
       .filter(group => group.employees.length > 0);
       
-    return { groupedData: filteredGroupedData, uniqueShifts };
+    return { groupedData: filteredGroupedData as GroupedSummary[], uniqueShifts };
 
 }, [currentDate, savedSchedules, collaborators, holidays, overtimeRules, transfers, roleChanges, annualLocation, annualJobTitle, shiftPatterns]);
 
