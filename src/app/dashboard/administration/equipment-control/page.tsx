@@ -128,7 +128,7 @@ export default function EquipmentControlPage() {
           <h1 className="text-2xl font-bold tracking-tight">Control de Dotación</h1>
           <p className="text-muted-foreground">Auditoría de relevos con doble identidad digital y validación personal.</p>
         </div>
-        <Button onClick={handleExport} variant="outline">
+        <Button onClick={handleExport} variant="outline" className="shrink-0">
           <Download className="mr-2 h-4 w-4" />
           Exportar Excel
         </Button>
@@ -152,7 +152,6 @@ export default function EquipmentControlPage() {
             <CardDescription className="text-red-600 font-bold">Actas con Novedades</CardDescription>
             <CardTitle className="text-3xl font-bold text-red-700">{stats.withIssues}</CardTitle>
           </CardHeader>
-        </Card>
         <Card className="bg-emerald-50 border-emerald-100 text-center">
           <CardHeader className="pb-2">
             <CardDescription className="text-emerald-600 font-bold">Índice de Operatividad</CardDescription>
@@ -160,7 +159,8 @@ export default function EquipmentControlPage() {
               {stats.total > 0 ? Math.round(((stats.total - stats.withIssues) / stats.total) * 100) : 0}%
             </CardTitle>
           </CardHeader>
-        </div>
+        </Card>
+      </div>
 
       <Card>
         <CardHeader>
