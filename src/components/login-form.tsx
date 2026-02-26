@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,6 +17,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
@@ -126,9 +126,9 @@ export function LoginForm({ selectedAccountEmail, onLoginSuccess }: LoginFormPro
             }
         }
         
-        // For any other login error, show a generic message under the password field
+        // For any other login error, show a more helpful message
         form.setError("password", {
-          message: "El correo electrónico o la contraseña son incorrectos."
+          message: "Credenciales incorrectas. Si es tu primer ingreso o pediste un reset, usa tu número de cédula como contraseña."
         });
     }
   }
@@ -182,7 +182,7 @@ export function LoginForm({ selectedAccountEmail, onLoginSuccess }: LoginFormPro
               render={({ field }) => (
                 <FormItem>
                   <div className="flex items-center justify-between">
-                    <FormLabel>Contraseña</FormLabel>
+                    <FormLabel>Contraseña / Cédula</FormLabel>
                     <Link
                       href="/forgot-password"
                       className="text-sm font-medium text-primary hover:underline"
@@ -193,9 +193,12 @@ export function LoginForm({ selectedAccountEmail, onLoginSuccess }: LoginFormPro
                   <FormControl>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input type="password" placeholder="••••••••" {...field} className="pl-10" />
+                      <Input type="password" placeholder="Tu contraseña o cédula" {...field} className="pl-10" />
                     </div>
                   </FormControl>
+                  <FormDescription className="text-[10px] leading-tight">
+                    Si es tu primer ingreso o fue reseteada, tu contraseña es tu número de cédula.
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

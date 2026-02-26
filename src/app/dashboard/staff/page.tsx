@@ -1026,7 +1026,7 @@ export default function StaffPage() {
           }, 300);
         }
       }}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
                 {resetStatus === 'success' ? 'Reset Exitoso'
@@ -1035,26 +1035,37 @@ export default function StaffPage() {
             </DialogTitle>
             {resetStatus === 'idle' && (
               <DialogDescription>
-                  {`¿Estás seguro de que quieres resetear la contraseña de ${userToReset?.nombres} ${userToReset?.apellidos} (${userToReset?.email})?`}
+                  {`¿Deseas resetear la contraseña de ${userToReset?.nombres} ${userToReset?.apellidos}?`}
                   <br/><br/>
-                  <span className="font-bold text-primary">Flujo de Reset:</span>
-                  <ul className="list-disc pl-5 mt-2 space-y-1">
-                    <li>Se activará el cambio obligatorio de contraseña.</li>
-                    <li>Se enviará un correo de recuperación al empleado.</li>
-                    <li><span className="font-bold">Manual:</span> Debe cambiar la contraseña en la Consola a su número de cédula para que el empleado use esa clave temporal.</li>
-                  </ul>
+                  Al confirmar, el sistema marcará al empleado para una <strong>actualización obligatoria</strong> de contraseña en su próximo ingreso.
               </DialogDescription>
             )}
           </DialogHeader>
+
+          {resetStatus === 'idle' && (
+              <div className="bg-red-50 border border-red-200 p-4 rounded-lg flex gap-3">
+                  <AlertTriangle className="h-5 w-5 text-red-600 shrink-0" />
+                  <div className="text-xs text-red-800 space-y-2">
+                      <p className="font-bold">INSTRUCCIÓN OBLIGATORIA PARA ADMINISTRADOR:</p>
+                      <p>Para que el trabajador pueda ingresar tras el reset, usted DEBE realizar lo siguiente en la consola de Firebase:</p>
+                      <ol className="list-decimal pl-4 space-y-1">
+                          <li>Vaya a la sección <span className="font-bold">Authentication</span>.</li>
+                          <li>Busque el correo <span className="font-bold">{userToReset?.email}</span>.</li>
+                          <li>Use la opción "Cambiar Contraseña" y escriba el número de cédula: <span className="font-bold bg-white px-1 border">{userToReset?.cedula}</span>.</li>
+                      </ol>
+                      <p>Una vez que el trabajador ingrese con su cédula, el sistema le pedirá automáticamente su nueva clave privada.</p>
+                  </div>
+              </div>
+          )}
 
           {resetStatus === 'success' && (
               <div className="py-4 text-center flex flex-col items-center gap-2">
                   <CheckCircle className="h-16 w-16 text-green-500" />
                   <p className="text-sm">
-                      Perfil marcado para actualización obligatoria de contraseña. Se ha enviado un correo a <strong className="text-foreground">{userToReset?.email}</strong>.
+                      Perfil marcado exitosamente. El trabajador ahora está obligado a cambiar su clave al ingresar.
                   </p>
-                  <p className="text-xs text-muted-foreground mt-2 bg-muted p-2 rounded-md">
-                    Recuerde establecer la contraseña como <span className="font-bold">{userToReset?.cedula}</span> en el panel administrativo de Firebase.
+                  <p className="text-xs text-muted-foreground mt-2 bg-muted p-3 rounded-md border border-dashed border-primary">
+                    RECUERDE: El trabajador debe intentar ingresar con su cédula <span className="font-bold">({userToReset?.cedula})</span>. Asegúrese de haberla actualizado en la consola.
                   </p>
               </div>
           )}
@@ -1071,7 +1082,7 @@ export default function StaffPage() {
                     <Button variant="ghost" onClick={() => setUserToReset(null)} disabled={isResetting}>Cancelar</Button>
                     <Button onClick={handlePasswordReset} disabled={isResetting}>
                         {isResetting && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
-                        {isResetting ? 'Reseteando...' : 'Sí, Resetear'}
+                        {isResetting ? 'Procesando...' : 'Confirmar Reset'}
                     </Button>
                 </>
             ) : (
@@ -1082,7 +1093,7 @@ export default function StaffPage() {
                         setResetError('');
                         setIsResetting(false);
                     }, 300);
-                }}>Cerrar</Button>
+                }}>Finalizar</Button>
             )}
           </DialogFooter>
         </DialogContent>
