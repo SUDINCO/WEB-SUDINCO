@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -382,26 +381,25 @@ export function obtenerHorarioUnificado(
   
   const { allCollaborators, shiftPatterns, vacations, transfers, lactations, roleChanges, manualOverrides, notifications, filters, isAutomatic, draftConditioning, savedSchedules = {} } = context;
 
-  const periodIdentifier = format(days[0], 'yyyy-MM');
   const locationFilter = filters?.location;
   const cargoFilter = filters?.jobTitle;
 
   // LÓGICA PARA ROLES QUE SOLO VEN LO APROBADO (Colaboradores, RRHH en reportes, etc.)
+  // IMPORTANTE: Se unifican todos los cronogramas aprobados sin filtrar por periodID estático
+  // para evitar que aparezca 'PENDIENTE' erróneamente en vistas multi-periodo.
   if (role !== 'coordinator') {
       const resultSchedule = new Map<string, Map<string, string | null>>();
       allCollaborators.forEach(c => resultSchedule.set(c.id, new Map()));
 
       Object.values(savedSchedules).forEach(saved => {
-          if (saved.id.startsWith(periodIdentifier)) {
-              Object.entries(saved.schedule).forEach(([collabId, dayMap]) => {
-                  if (resultSchedule.has(collabId)) {
-                      const userSchedule = resultSchedule.get(collabId)!;
-                      Object.entries(dayMap).forEach(([dayKey, shift]) => {
-                          userSchedule.set(dayKey, shift);
-                      });
-                  }
-              });
-          }
+          Object.entries(saved.schedule).forEach(([collabId, dayMap]) => {
+              if (resultSchedule.has(collabId)) {
+                  const userSchedule = resultSchedule.get(collabId)!;
+                  Object.entries(dayMap).forEach(([dayKey, shift]) => {
+                      userSchedule.set(dayKey, shift);
+                  });
+              }
+          });
       });
       return resultSchedule;
   }
