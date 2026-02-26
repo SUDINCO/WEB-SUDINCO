@@ -490,21 +490,14 @@ export default function StaffPage() {
     setResetError('');
 
     try {
-        // Step 1: Update Firestore flag to force change on next login
+        // AUTOMATIC: Update Firestore flag to force change on next login
         const userDocRef = doc(firestore, 'users', userToReset.id);
         await updateDoc(userDocRef, { requiresPasswordChange: true });
-
-        // Step 2: Send official reset email as a security measure
-        await sendPasswordResetEmail(auth, userToReset.email);
         
         setResetStatus('success');
     } catch (error: any) {
-        console.error("Error resetting password:", error);
-        let description = 'Ocurrió un error inesperado al procesar el reseteo.';
-        if (error.code === 'auth/user-not-found') {
-            description = "Este correo no tiene una cuenta de autenticación asociada. Debes crear el usuario primero.";
-        }
-        setResetError(description);
+        console.error("Error resetting password flag:", error);
+        setResetError('Ocurrió un error inesperado al marcar el perfil para reseteo.');
         setResetStatus('error');
     } finally {
         setIsResetting(false);
@@ -1029,32 +1022,42 @@ export default function StaffPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-                {resetStatus === 'success' ? 'Reset Exitoso'
+                {resetStatus === 'success' ? 'Perfil Marcado'
                  : resetStatus === 'error' ? 'Error al Resetear'
                  : 'Resetear Contraseña'}
             </DialogTitle>
             {resetStatus === 'idle' && (
               <DialogDescription>
-                  {`¿Deseas resetear la contraseña de ${userToReset?.nombres} ${userToReset?.apellidos}?`}
+                  {`¿Deseas marcar el perfil de ${userToReset?.nombres} ${userToReset?.apellidos} para actualización obligatoria de contraseña?`}
                   <br/><br/>
-                  Al confirmar, el sistema marcará al empleado para una <strong>actualización obligatoria</strong> de contraseña en su próximo ingreso.
+                  Al confirmar, el sistema forzará al empleado a cambiar su clave en su próximo ingreso.
               </DialogDescription>
             )}
           </DialogHeader>
 
           {resetStatus === 'idle' && (
-              <div className="bg-red-50 border border-red-200 p-4 rounded-lg flex gap-3">
-                  <AlertTriangle className="h-5 w-5 text-red-600 shrink-0" />
-                  <div className="text-xs text-red-800 space-y-2">
-                      <p className="font-bold">INSTRUCCIÓN OBLIGATORIA PARA ADMINISTRADOR:</p>
-                      <p>Para que el trabajador pueda ingresar tras el reset, usted DEBE realizar lo siguiente en la consola de Firebase:</p>
-                      <ol className="list-decimal pl-4 space-y-1">
-                          <li>Vaya a la sección <span className="font-bold">Authentication</span>.</li>
-                          <li>Busque el correo <span className="font-bold">{userToReset?.email}</span>.</li>
-                          <li>Use la opción "Cambiar Contraseña" y escriba el número de cédula: <span className="font-bold bg-white px-1 border">{userToReset?.cedula}</span>.</li>
-                      </ol>
-                      <p>Una vez que el trabajador ingrese con su cédula, el sistema le pedirá automáticamente su nueva clave privada.</p>
+              <div className="bg-red-50 border border-red-200 p-4 rounded-lg space-y-4">
+                  <div className="flex gap-3">
+                    <AlertTriangle className="h-5 w-5 text-red-600 shrink-0" />
+                    <div className="text-xs text-red-800 space-y-2">
+                        <p className="font-bold">PASO OBLIGATORIO PARA EL ADMINISTRADOR:</p>
+                        <p>Dado que la plataforma no conoce la clave actual del trabajador, usted debe:</p>
+                        <ol className="list-decimal pl-4 space-y-1">
+                            <li>Ir a la <span className="font-bold">Consola de Google Cloud (Identity Platform)</span> o Firebase.</li>
+                            <li>Buscar el usuario: <span className="font-bold">{userToReset?.email}</span>.</li>
+                            <li>Establecer como nueva contraseña su número de cédula:</li>
+                        </ol>
+                    </div>
                   </div>
+                  <div className="bg-white border-2 border-primary border-dashed p-3 rounded text-center">
+                      <p className="text-xs text-muted-foreground uppercase font-bold mb-1">Cédula del Trabajador</p>
+                      <p className="text-xl font-mono font-bold tracking-widest text-primary selection:bg-primary selection:text-white">
+                        {userToReset?.cedula}
+                      </p>
+                  </div>
+                  <p className="text-[10px] text-center text-muted-foreground italic">
+                    Una vez que el trabajador ingrese con su cédula, el sistema le pedirá su nueva clave privada.
+                  </p>
               </div>
           )}
 
@@ -1062,10 +1065,10 @@ export default function StaffPage() {
               <div className="py-4 text-center flex flex-col items-center gap-2">
                   <CheckCircle className="h-16 w-16 text-green-500" />
                   <p className="text-sm">
-                      Perfil marcado exitosamente. El trabajador ahora está obligado a cambiar su clave al ingresar.
+                      Perfil marcado exitosamente. El trabajador ahora está obligado a actualizar su clave al ingresar.
                   </p>
                   <p className="text-xs text-muted-foreground mt-2 bg-muted p-3 rounded-md border border-dashed border-primary">
-                    RECUERDE: El trabajador debe intentar ingresar con su cédula <span className="font-bold">({userToReset?.cedula})</span>. Asegúrese de haberla actualizado en la consola.
+                    RECUERDE: Cambie la clave a <span className="font-bold">{userToReset?.cedula}</span> en la consola administrativa para habilitar el ingreso temporal.
                   </p>
               </div>
           )}
@@ -1082,7 +1085,7 @@ export default function StaffPage() {
                     <Button variant="ghost" onClick={() => setUserToReset(null)} disabled={isResetting}>Cancelar</Button>
                     <Button onClick={handlePasswordReset} disabled={isResetting}>
                         {isResetting && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
-                        {isResetting ? 'Procesando...' : 'Confirmar Reset'}
+                        {isResetting ? 'Procesando...' : 'Confirmar Reset y Marcar Perfil'}
                     </Button>
                 </>
             ) : (
