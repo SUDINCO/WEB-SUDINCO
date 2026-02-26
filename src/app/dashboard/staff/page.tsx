@@ -36,9 +36,9 @@ import {
     AlertDialogCancel,
     AlertDialogContent,
     AlertDialogDescription,
-    AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
+    AlertDialogFooter,
 } from "@/components/ui/alert-dialog";
 import {
     DropdownMenu,
@@ -82,7 +82,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import Image from 'next/image';
 import { normalizeText } from '@/lib/utils';
 import { resetUserPasswordAction } from '@/app/actions/auth';
-import { UserProfile, GenericOption, ConsultantGroup } from '@/lib/types';
+import type { UserProfile, GenericOption, ConsultantGroup } from '@/lib/types';
 
 const userSchema = z.object({
   photoUrl: z.string().optional(),
@@ -203,7 +203,7 @@ export default function StaffPage() {
   const toOptions = (data: GenericOption[] | null | undefined) => {
     if (!data) return [];
     return data.map(item => ({ label: item.name, value: item.name }));
-  }
+  };
 
   useEffect(() => {
     if (!editingUser && leaderRules && !rulesLoading) {
