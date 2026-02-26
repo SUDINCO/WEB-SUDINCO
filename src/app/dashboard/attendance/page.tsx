@@ -226,9 +226,9 @@ function TimeTracker({ userProfile, schedule, onClockIn, onClockOut, latestRecor
           </div>
 
           <div className="flex flex-col items-center justify-center gap-3 p-4 rounded-lg bg-red-50/50 border border-red-200">
-              <p className="font-semibold text-red-800">Hora de Salida</p>
+              <p className="text-red-800 font-semibold text-center mb-1">Hora de Salida</p>
               <p className="text-4xl font-bold text-red-900 tabular-nums">{exitTimeDisplay}</p>
-              <Button size="lg" className="w-full bg-red-600 hover:bg-red-700 shadow-md" onClick={onClockOut} disabled={!canClockOut || isClocking}>
+              <Button size="lg" className="w-full bg-red-600 hover:bg-red-700 shadow-md mt-3" onClick={onClockOut} disabled={!canClockOut || isClocking}>
                   {isClocking && canClockOut ? <LoaderCircle className="animate-spin" /> : <LogOut />}
                    Registrar Salida
               </Button>
@@ -308,6 +308,7 @@ function WeeklySchedule({
           <TableHeader>
             <TableRow>
               <TableHead>Día</TableHead>
+              <TableHead>Turno</TableHead>
               <TableHead>Horario</TableHead>
               <TableHead>Entrada</TableHead>
               <TableHead>Salida</TableHead>
@@ -323,7 +324,9 @@ function WeeklySchedule({
               const entryTime = record?.entryTime ? format(new Date(record.entryTime), 'HH:mm') : '-';
               const exitTime = record?.exitTime ? format(new Date(record.exitTime), 'HH:mm') : '-';
               
+              let displayTurno = shift || 'LIB';
               let displayHorario = 'Libre';
+
               if (scheduleTime) {
                 displayHorario = scheduleTime;
               } else if (shift) {
@@ -331,7 +334,7 @@ function WeeklySchedule({
                     'VAC': 'Vacaciones', 'PM': 'Permiso Médico', 'LIC': 'Licencia',
                     'SUS': 'Suspensión', 'RET': 'Retiro', 'FI': 'Falta Injustificada', 'TRA': 'Traslado'
                 };
-                displayHorario = absenceTypes[shift] || shift;
+                displayHorario = absenceTypes[shift] || 'Ausencia';
               }
 
               return (
@@ -339,6 +342,11 @@ function WeeklySchedule({
                   <TableCell>
                     <div className="font-medium capitalize">{format(day, 'E', { locale: es })}</div>
                     <div className="text-sm text-muted-foreground">{format(day, 'd/M')}</div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={displayTurno === 'LIB' ? 'outline' : 'secondary'}>
+                        {displayTurno}
+                    </Badge>
                   </TableCell>
                   <TableCell>{displayHorario}</TableCell>
                   <TableCell>{entryTime}</TableCell>
