@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import Link from "next/link";
-import { User, Lock } from "lucide-react";
+import { User, Lock, AlertCircle } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 
@@ -32,7 +32,7 @@ import { toast } from "@/hooks/use-toast";
 import { useAuth, useUser, useFirestore } from "@/firebase";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "firebase/auth";
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 
 const formSchema = z.object({
@@ -50,6 +50,7 @@ export function LoginForm({ selectedAccountEmail, onLoginSuccess }: LoginFormPro
   const auth = useAuth();
   const firestore = useFirestore();
   const { user, loading } = useUser();
+  const [showResetHint, setShowResetHint] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -111,30 +112,23 @@ export function LoginForm({ selectedAccountEmail, onLoginSuccess }: LoginFormPro
                     rol: "MASTER", Status: "active", tipoContrato: "INDEFINIDO", ubicacion: "OFICINA CENTRAL",
                 });
                 
-                toast({ title: 'Usuario administrador creado', description: 'Por favor, inicia sesión de nuevo. La contraseña se ha insertado por ti.' });
-                form.setValue('password', '1723518575JAER');
+                toast({ title: 'Usuario administrador creado', description: 'Iniciando sesión...' });
                 return;
-
             } catch (creationError: any) {
-                if (creationError.code === 'auth/email-already-in-use') {
-                    // This means user exists, so password must be wrong
-                    form.setError("password", { message: "Contraseña incorrecta para el usuario administrador." });
-                } else {
-                    form.setError("password", { message: `Error al crear admin: ${creationError.message}` });
-                }
+                form.setError("password", { message: "Credenciales incorrectas." });
                 return;
             }
         }
         
-        // For any other login error, show a more helpful message
+        setShowResetHint(true);
         form.setError("password", {
-          message: "Credenciales incorrectas. Si es tu primer ingreso o pediste un reset, usa tu número de cédula como contraseña."
+          message: "Credenciales incorrectas."
         });
     }
   }
   
   if (loading || user) {
-    return null; // Or a loading spinner
+    return null;
   }
 
   return (
@@ -197,12 +191,21 @@ export function LoginForm({ selectedAccountEmail, onLoginSuccess }: LoginFormPro
                     </div>
                   </FormControl>
                   <FormDescription className="text-[10px] leading-tight">
-                    Si es tu primer ingreso o fue reseteada, tu contraseña es tu número de cédula.
+                    Si es tu primer ingreso o fue reseteada, intenta con tu número de cédula.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
+            {showResetHint && (
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-md flex gap-2 items-start">
+                    <AlertCircle className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
+                    <p className="text-xs text-blue-800">
+                        Si solicitaste un reseteo de contraseña, tu clave momentánea es tu <strong>número de cédula</strong>.
+                    </p>
+                </div>
+            )}
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
             <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>

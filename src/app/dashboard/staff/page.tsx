@@ -160,7 +160,6 @@ const formatDateForInput = (dateStr: string | undefined) => {
     try {
         const date = new Date(dateStr);
         if (isNaN(date.getTime())) return '';
-        // Adjust for timezone issues by creating date in UTC
         const utcDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
         return format(utcDate, 'yyyy-MM-dd');
     } catch {
@@ -172,9 +171,9 @@ const normalizeEmail = (email: string | undefined | null): string => {
     if (!email) return '';
     return email
       .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '') // remove accents
-      .toLowerCase() // convert to lowercase
-      .replace(/\s+/g, '') // remove all whitespace
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/\s+/g, '')
       .trim();
 };
 
@@ -204,7 +203,7 @@ export default function StaffPage() {
 
   const normalizeCedulaForMatch = (cedula: string | undefined | null): string => {
     if (!cedula) return '';
-    return String(cedula).replace(/[^0-9]/g, ''); // Remove non-digit characters
+    return String(cedula).replace(/[^0-9]/g, ''); 
   };
 
   const firestore = useFirestore();
@@ -490,10 +489,8 @@ export default function StaffPage() {
     setResetError('');
 
     try {
-        // AUTOMATIC: Update Firestore flag to force change on next login
         const userDocRef = doc(firestore, 'users', userToReset.id);
         await updateDoc(userDocRef, { requiresPasswordChange: true });
-        
         setResetStatus('success');
     } catch (error: any) {
         console.error("Error resetting password flag:", error);
@@ -614,17 +611,12 @@ export default function StaffPage() {
     const utc_days  = Math.floor(serial - 25569);
     const utc_value = utc_days * 86400;                                        
     const date_info = new Date(utc_value * 1000);
-
     const fractional_day = serial - Math.floor(serial) + 0.0000001;
-
     let total_seconds = Math.floor(86400 * fractional_day);
-
     const seconds = total_seconds % 60;
     total_seconds -= seconds;
-
     const hours = Math.floor(total_seconds / (60 * 60));
     const minutes = Math.floor(total_seconds / 60) % 60;
-
     return new Date(date_info.getFullYear(), date_info.getMonth(), date_info.getDate(), hours, minutes, seconds);
   }
 
@@ -731,17 +723,14 @@ export default function StaffPage() {
                 toast({
                     variant: 'default',
                     title: 'Modificación de Email Omitida',
-                    description: `No se puede cambiar el email para ${existingUserByCedula.nombres} ${existingUserByCedula.apellidos} mediante importación. El email es el identificador de acceso.`,
+                    description: `No se puede cambiar el email para ${existingUserByCedula.nombres} ${existingUserByCedula.apellidos} mediante importación.`,
                     duration: 8000
                 });
             }
 
             Object.keys(importUser).forEach(key => {
                 const fieldKey = key as keyof typeof importUser;
-                if (fieldKey === 'email' || fieldKey === 'cedula') { 
-                    return; 
-                }
-
+                if (fieldKey === 'email' || fieldKey === 'cedula') { return; }
                 const newValue = importUser[fieldKey];
                 const oldValue = existingUserByCedula[fieldKey as keyof UserProfile];
                 if (normalizeText(String(newValue || '')) !== normalizeText(String(oldValue || ''))) {
@@ -754,38 +743,24 @@ export default function StaffPage() {
             }
         } else {
             if (existingUserByEmail) {
-                toast({
-                    variant: 'destructive',
-                    title: `Usuario Duplicado Omitido (Fila ${index + 2})`,
-                    description: `El email '${row.email}' ya está registrado con otra cédula.`,
-                });
+                toast({ variant: 'destructive', title: `Usuario Duplicado Omitido (Fila ${index + 2})`, description: `El email '${row.email}' ya está registrado con otra cédula.`, });
                 duplicatesFound = true;
                 return;
             }
             if (seenInFile.has(normalizedCedula) || seenInFile.has(email)) {
-                 toast({
-                    variant: 'destructive',
-                    title: `Duplicado en Archivo Omitido (Fila ${index + 2})`,
-                    description: `La cédula '${cedulaFromFile}' o el email '${row.email}' está repetido en el archivo de importación.`,
-                });
+                 toast({ variant: 'destructive', title: `Duplicado en Archivo Omitido (Fila ${index + 2})`, description: `Cédula o email repetido en el archivo.`, });
                 duplicatesFound = true;
                 return;
             }
-
             seenInFile.set(normalizedCedula, 'cedula');
             seenInFile.set(email, 'email');
             analysisResult.push({ user: importUser, status: 'new', changes: [] });
         }
     });
-    
     if (analysisResult.length === 0 && !duplicatesFound) {
-        toast({
-            title: "No hay cambios",
-            description: "No se encontraron usuarios nuevos ni actualizaciones en el archivo."
-        });
+        toast({ title: "No hay cambios", description: "No se encontraron usuarios nuevos ni actualizaciones." });
         return;
     }
-
     if (analysisResult.length > 0) {
       setImportAnalysis(analysisResult);
       setIsImportDialogOpen(true);
@@ -795,65 +770,40 @@ export default function StaffPage() {
 
   const confirmImport = async () => {
     if (!importAnalysis || !firestore) return;
-  
     const batch = writeBatch(firestore);
     const newUsersToCreate = importAnalysis.filter(i => i.status === 'new' && i.user.email && i.user.cedula);
     const usersToUpdate = importAnalysis.filter(i => i.status === 'update' && i.user.id);
-  
     usersToUpdate.forEach(item => {
         const userDocRef = doc(firestore, 'users', item.user.id!);
         const updateData: { [key: string]: any } = {};
-        item.changes.forEach(change => {
-          updateData[change.field] = change.newValue;
-        });
+        item.changes.forEach(change => { updateData[change.field] = change.newValue; });
         batch.update(userDocRef, updateData);
     });
-  
     let tempApp;
     try {
         if (newUsersToCreate.length > 0) {
             tempApp = initializeApp(firebaseConfig, `user-import-session-${Date.now()}`);
             const tempAuth = getAuth(tempApp);
-    
             for (const item of newUsersToCreate) {
                 try {
                     const userCredential = await createUserWithEmailAndPassword(tempAuth, item.user.email!, item.user.cedula!);
                     const userUid = userCredential.user.uid;
-        
                     const userDocRef = doc(firestore, 'users', userUid);
                     const userDataWithPasswordFlag = { ...item.user, requiresPasswordChange: true };
                     delete (userDataWithPasswordFlag as any).id;
                     batch.set(userDocRef, userDataWithPasswordFlag);
                 } catch (authError: any) {
                     console.error(`Failed to create auth account for ${item.user.email}:`, authError.message);
-                    toast({
-                        variant: 'destructive',
-                        title: `Error al crear cuenta para ${item.user.email}`,
-                        description: `Motivo: ${authError.message}`,
-                        duration: 7000
-                    });
                 }
             }
         }
-  
         await batch.commit();
-
-        toast({
-            title: "Importación Completada",
-            description: `${newUsersToCreate.length} usuarios creados y ${usersToUpdate.length} actualizados.`
-        });
-  
+        toast({ title: "Importación Completada", description: `${newUsersToCreate.length} creados, ${usersToUpdate.length} actualizados.` });
     } catch (error) {
         console.error("Error importing users:", error);
-        toast({
-            variant: "destructive",
-            title: "Error en la importación",
-            description: "Ocurrió un error al guardar los datos."
-        });
+        toast({ variant: "destructive", title: "Error en la importación", description: "Ocurrió un error al guardar los datos." });
     } finally {
-        if (tempApp) {
-            await deleteApp(tempApp);
-        }
+        if (tempApp) await deleteApp(tempApp);
         setIsImportDialogOpen(false);
         setImportAnalysis(null);
         setDataToImport([]);
@@ -898,13 +848,11 @@ export default function StaffPage() {
     const newMembers = isMember
       ? selectedGroup.members.filter(id => id !== userId)
       : [...selectedGroup.members, userId];
-    
     try {
         await updateDoc(groupDocRef, { members: newMembers });
-        toast({ title: 'Miembros actualizados', description: `Se ha actualizado la lista de miembros del grupo.` });
+        toast({ title: 'Miembros actualizados' });
     } catch (error) {
         console.error("Error updating members:", error);
-        toast({ variant: 'destructive', title: 'Error', description: 'No se pudo actualizar el grupo.'});
     }
   };
 
@@ -915,53 +863,26 @@ export default function StaffPage() {
         if(isNaN(date.getTime())) return dateStr;
         const adjustedDate = new Date(date.valueOf() + date.getTimezoneOffset() * 60 * 1000);
         return new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(adjustedDate);
-    } catch {
-        return dateStr;
-    }
+    } catch { return dateStr; }
   }
 
     const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file) return;
-
-        if (!file.type.startsWith('image/')) {
-            toast({
-                variant: 'destructive',
-                title: 'Archivo no válido',
-                description: 'Por favor, selecciona un archivo de imagen.',
-            });
-            return;
-        }
-
         const reader = new FileReader();
         reader.onload = (e) => {
             const img = document.createElement('img');
             img.onload = () => {
                 const canvas = document.createElement('canvas');
-                const MAX_WIDTH = 512;
-                const MAX_HEIGHT = 512;
-                let width = img.width;
-                let height = img.height;
-
-                if (width > height) {
-                    if (width > MAX_WIDTH) {
-                        height *= MAX_WIDTH / width;
-                        width = MAX_WIDTH;
-                    }
-                } else {
-                    if (height > MAX_HEIGHT) {
-                        width *= MAX_HEIGHT / height;
-                        height = MAX_HEIGHT;
-                    }
-                }
-                canvas.width = width;
-                canvas.height = height;
+                const MAX = 512;
+                let width = img.width; let height = img.height;
+                if (width > height) { if (width > MAX) { height *= MAX / width; width = MAX; } }
+                else { if (height > MAX) { width *= MAX / height; height = MAX; } }
+                canvas.width = width; canvas.height = height;
                 const ctx = canvas.getContext('2d');
                 if (!ctx) return;
                 ctx.drawImage(img, 0, 0, width, height);
-                
                 const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-
                 setImagePreview(dataUrl);
                 form.setValue('photoUrl', dataUrl, { shouldValidate: true });
             };
@@ -978,7 +899,7 @@ export default function StaffPage() {
       <div className="flex items-center justify-between">
         <div>
             <h1 className="text-2xl font-bold tracking-tight">Nómina</h1>
-            <p className="text-muted-foreground">Gestiona a los empleados de la empresa. Hay {filteredUsers.length} empleados visibles.</p>
+            <p className="text-muted-foreground">Gestiona a los empleados. Total visibles: {filteredUsers.length}.</p>
         </div>
         <div className="flex items-center gap-2">
             <Button variant="outline" onClick={() => setGroupDialogOpen(true)}><Users className="mr-2 h-4 w-4" /> Grupos</Button>
@@ -992,19 +913,12 @@ export default function StaffPage() {
             <AlertDialogHeader>
                 <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
                 <AlertDialogDescription>
-                    Esta acción es irreversible. Se eliminarán los perfiles de {selectedUsers.length} usuario(s) de la base de datos de Firestore.
-                    <br/><br/>
-                    <span className="font-bold text-destructive">Importante:</span> Las cuentas de autenticación de estos usuarios NO se eliminarán automáticamente. Deberás eliminarlas manually desde la Consola de Firebase para completar el proceso.
+                    Esta acción es irreversible. Se eliminarán los perfiles de {selectedUsers.length} usuario(s) de Firestore.
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction
-                    className="bg-destructive hover:bg-destructive/90"
-                    onClick={handleDeleteSelectedUsers}
-                >
-                    Sí, eliminar perfiles
-                </AlertDialogAction>
+                <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteSelectedUsers}>Sí, eliminar perfiles</AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -1012,25 +926,19 @@ export default function StaffPage() {
       <Dialog open={!!userToReset} onOpenChange={(open) => {
         if (!open) {
           setUserToReset(null);
-          setTimeout(() => {
-            setResetStatus('idle');
-            setResetError('');
-            setIsResetting(false);
-          }, 300);
+          setTimeout(() => { setResetStatus('idle'); setResetError(''); setIsResetting(false); }, 300);
         }
       }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-                {resetStatus === 'success' ? 'Perfil Marcado'
-                 : resetStatus === 'error' ? 'Error al Resetear'
-                 : 'Resetear Contraseña'}
+                {resetStatus === 'success' ? 'Perfil Marcado' : resetStatus === 'error' ? 'Error al Resetear' : 'Resetear Contraseña'}
             </DialogTitle>
             {resetStatus === 'idle' && (
               <DialogDescription>
-                  {`¿Deseas marcar el perfil de ${userToReset?.nombres} ${userToReset?.apellidos} para actualización obligatoria de contraseña?`}
+                  {`¿Deseas marcar el perfil de ${userToReset?.nombres} ${userToReset?.apellidos} para actualización obligatoria?`}
                   <br/><br/>
-                  Al confirmar, el sistema forzará al empleado a cambiar su clave en su próximo ingreso.
+                  El sistema marcará automáticamente el perfil y el trabajador podrá entrar usando su cédula como clave temporal.
               </DialogDescription>
             )}
           </DialogHeader>
@@ -1040,12 +948,12 @@ export default function StaffPage() {
                   <div className="flex gap-3">
                     <AlertTriangle className="h-5 w-5 text-red-600 shrink-0" />
                     <div className="text-xs text-red-800 space-y-2">
-                        <p className="font-bold">PASO OBLIGATORIO PARA EL ADMINISTRADOR:</p>
-                        <p>Dado que la plataforma no conoce la clave actual del trabajador, usted debe:</p>
+                        <p className="font-bold">INSTRUCCIÓN OBLIGATORIA PARA ADMINISTRADOR:</p>
+                        <p>Para que el trabajador pueda ingresar tras el reset, usted DEBE realizar lo siguiente en la consola de Firebase:</p>
                         <ol className="list-decimal pl-4 space-y-1">
-                            <li>Ir a la <span className="font-bold">Consola de Google Cloud (Identity Platform)</span> o Firebase.</li>
-                            <li>Buscar el usuario: <span className="font-bold">{userToReset?.email}</span>.</li>
-                            <li>Establecer como nueva contraseña su número de cédula:</li>
+                            <li>Vaya a la sección <span className="font-bold">Authentication</span>.</li>
+                            <li>Busque el correo <span className="font-bold">{userToReset?.email}</span>.</li>
+                            <li>Use la opción "Restablecer Contraseña" o establezca manualmente el número de cédula:</li>
                         </ol>
                     </div>
                   </div>
@@ -1056,7 +964,7 @@ export default function StaffPage() {
                       </p>
                   </div>
                   <p className="text-[10px] text-center text-muted-foreground italic">
-                    Una vez que el trabajador ingrese con su cédula, el sistema le pedirá su nueva clave privada.
+                    Una vez que el trabajador ingrese con su cédula, el sistema le pedirá automáticamente su nueva clave privada.
                   </p>
               </div>
           )}
@@ -1064,18 +972,10 @@ export default function StaffPage() {
           {resetStatus === 'success' && (
               <div className="py-4 text-center flex flex-col items-center gap-2">
                   <CheckCircle className="h-16 w-16 text-green-500" />
-                  <p className="text-sm">
-                      Perfil marcado exitosamente. El trabajador ahora está obligado a actualizar su clave al ingresar.
-                  </p>
+                  <p className="text-sm">Perfil marcado exitosamente en Firestore.</p>
                   <p className="text-xs text-muted-foreground mt-2 bg-muted p-3 rounded-md border border-dashed border-primary">
-                    RECUERDE: Cambie la clave a <span className="font-bold">{userToReset?.cedula}</span> en la consola administrativa para habilitar el ingreso temporal.
+                    RECUERDE: Cambie la clave a <span className="font-bold">{userToReset?.cedula}</span> en la consola administrativa para habilitar el ingreso.
                   </p>
-              </div>
-          )}
-          {resetStatus === 'error' && (
-              <div className="py-4 text-center flex flex-col items-center gap-2">
-                  <AlertTriangle className="h-16 w-16 text-destructive" />
-                  <p className="text-destructive-foreground bg-destructive/10 p-3 rounded-md">{resetError}</p>
               </div>
           )}
 
@@ -1085,18 +985,11 @@ export default function StaffPage() {
                     <Button variant="ghost" onClick={() => setUserToReset(null)} disabled={isResetting}>Cancelar</Button>
                     <Button onClick={handlePasswordReset} disabled={isResetting}>
                         {isResetting && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
-                        {isResetting ? 'Procesando...' : 'Confirmar Reset y Marcar Perfil'}
+                        {isResetting ? 'Procesando...' : 'Confirmar Reset'}
                     </Button>
                 </>
             ) : (
-                <Button onClick={() => {
-                    setUserToReset(null);
-                    setTimeout(() => {
-                        setResetStatus('idle');
-                        setResetError('');
-                        setIsResetting(false);
-                    }, 300);
-                }}>Finalizar</Button>
+                <Button onClick={() => { setUserToReset(null); }}>Finalizar</Button>
             )}
           </DialogFooter>
         </DialogContent>
@@ -1106,16 +999,13 @@ export default function StaffPage() {
         <DialogContent className="sm:max-w-4xl">
           <DialogHeader>
             <DialogTitle>Gestión de Grupos de Consultores</DialogTitle>
-            <DialogDescription>
-              Crea nuevos grupos, añade o elimina miembros de grupos existentes.
-            </DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
             <div className="space-y-4">
               <div className='space-y-2'>
                 <Label htmlFor="new-group-name">Crear Nuevo Grupo</Label>
                 <div className="flex gap-2">
-                    <Input id="new-group-name" placeholder="Nombre del nuevo grupo" value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} />
+                    <Input id="new-group-name" placeholder="Nombre" value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} />
                     <Button onClick={handleCreateGroup} disabled={!newGroupName.trim()}><PlusCircle className="mr-2 h-4 w-4" /> Crear</Button>
                 </div>
               </div>
@@ -1123,7 +1013,7 @@ export default function StaffPage() {
                 <Label>Gestionar Grupo Existente</Label>
                  <div className="flex items-center gap-2">
                     <Select onValueChange={setSelectedGroupId} value={selectedGroupId || ''}>
-                        <SelectTrigger><SelectValue placeholder="Selecciona un grupo..." /></SelectTrigger>
+                        <SelectTrigger><SelectValue placeholder="Selecciona..." /></SelectTrigger>
                         <SelectContent>
                             {consultantGroups?.map(group => (
                                 <SelectItem key={group.id} value={group.id}>{group.name}</SelectItem>
@@ -1148,19 +1038,16 @@ export default function StaffPage() {
                                         </li>
                                     ))}
                                 </ul>
-                            ) : (
-                                <p className="text-sm text-muted-foreground p-4 text-center">Este grupo no tiene miembros.</p>
-                            )}
+                            ) : ( <p className="text-sm text-muted-foreground p-4 text-center">Sin miembros.</p> )}
                         </CardContent>
                      </Card>
                 </div>
             </div>
-
             <div className="space-y-4">
-                <h3 className="font-semibold text-lg">Añadir Miembros al Grupo "{selectedGroup?.name || '...'}"</h3>
+                <h3 className="font-semibold text-lg">Añadir Miembros</h3>
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input placeholder="Buscar empleado por nombre, cargo, etc..." className="pl-10" value={memberSearch} onChange={(e) => setMemberSearch(e.target.value)} disabled={!selectedGroup} />
+                    <Input placeholder="Buscar..." className="pl-10" value={memberSearch} onChange={(e) => setMemberSearch(e.target.value)} disabled={!selectedGroup} />
                 </div>
                 <Card className="h-96 overflow-y-auto">
                     <CardContent className="p-2">
@@ -1181,88 +1068,22 @@ export default function StaffPage() {
                                         ))}
                                     </TableBody>
                                 </Table>
-                            ) : (
-                                <p className="text-sm text-muted-foreground p-4 text-center">No se encontraron empleados para añadir.</p>
-                            )
-                        ) : (
-                           <p className="text-sm text-muted-foreground p-4 text-center">Selecciona o crea un grupo para empezar a añadir miembros.</p>
-                        )}
+                            ) : ( <p className="text-sm text-muted-foreground p-4 text-center">No hay disponibles.</p> )
+                        ) : ( <p className="text-sm text-muted-foreground p-4 text-center">Selecciona un grupo.</p> )}
                     </CardContent>
                 </Card>
             </div>
           </div>
           <DialogFooter>
-            <DialogClose asChild>
-                <Button variant="outline">Cerrar</Button>
-            </DialogClose>
+            <DialogClose asChild><Button variant="outline">Cerrar</Button></DialogClose>
           </DialogFooter>
         </DialogContent>
       </Dialog>
       
-       <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
-            <DialogContent className="sm:max-w-4xl">
-                <DialogHeader>
-                    <DialogTitle>Resumen de la Importación</DialogTitle>
-                    <DialogDescription>
-                        Revisa los cambios antes de confirmar. Se crearán {importAnalysis?.filter(i => i.status === 'new').length || 0} usuarios y se actualizarán {importAnalysis?.filter(i => i.status === 'update').length || 0}.
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="max-h-[60vh] overflow-y-auto">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Usuario</TableHead>
-                                <TableHead>Cédula</TableHead>
-                                <TableHead>Estado</TableHead>
-                                <TableHead>Detalle de Cambios</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {importAnalysis?.map((item, index) => (
-                                <TableRow key={index}>
-                                    <TableCell className="font-medium">{item.user.nombres} {item.user.apellidos}</TableCell>
-                                    <TableCell>{item.user.cedula}</TableCell>
-                                    <TableCell>
-                                        {item.status === 'new' ? (
-                                            <Badge className="bg-green-100 text-green-800">NUEVO</Badge>
-                                        ) : (
-                                            <Badge className="bg-blue-100 text-blue-800">ACTUALIZACIÓN</Badge>
-                                        )}
-                                    </TableCell>
-                                    <TableCell className="text-xs">
-                                        {item.status === 'update' ? (
-                                            <ul className="list-disc pl-4 space-y-1">
-                                                {item.changes.map(change => (
-                                                    <li key={change.field}>
-                                                        <span className="font-semibold">{change.field}:</span>{' '}
-                                                        <span className="text-red-600 line-through">{String(change.oldValue || 'Vacío')}</span>{' '}
-                                                        <ArrowRight className="inline-block h-3 w-3" />{' '}
-                                                        <span className="text-green-700">{String(change.newValue || 'Vacío')}</span>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        ) : 'Se creará un nuevo registro.'}
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </div>
-                <DialogFooter>
-                    <Button variant="ghost" onClick={() => setIsImportDialogOpen(false)}>Cancelar</Button>
-                    <Button onClick={confirmImport}>Confirmar Importación</Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-
-
       <Dialog open={isFormOpen} onOpenChange={setFormOpen}>
         <DialogContent className="sm:max-w-4xl">
             <DialogHeader>
                 <DialogTitle>{editingUser ? 'Editar Usuario' : 'Registrar Nuevo Usuario'}</DialogTitle>
-                <DialogDescription>
-                    {editingUser ? 'Actualiza la información del usuario.' : 'Completa los campos para añadir un nuevo usuario a la nómina.'}
-                </DialogDescription>
             </DialogHeader>
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4 max-h-[70vh] overflow-y-auto pr-4">
@@ -1271,242 +1092,98 @@ export default function StaffPage() {
                         name="photoUrl"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Foto del Usuario (Opcional)</FormLabel>
+                                <FormLabel>Foto (Opcional)</FormLabel>
                                 <div className="flex items-center gap-4">
                                     <div className="w-20 text-center">
-                                      <Label htmlFor="photo-upload" className="cursor-pointer flex flex-col items-center">
-                                        <span className="text-xs text-muted-foreground mb-1">Vista previa</span>
                                         {imagePreview ? (
-                                            <Image
-                                                src={imagePreview}
-                                                alt="Vista previa"
-                                                width={80}
-                                                height={80}
-                                                className="rounded-full aspect-square object-cover"
-                                                unoptimized
-                                            />
+                                            <Image src={imagePreview} alt="Vista previa" width={80} height={80} className="rounded-full aspect-square object-cover" unoptimized />
                                         ) : (
                                             <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center">
                                                 <UserRound className="w-10 h-10 text-muted-foreground" />
                                             </div>
                                         )}
-                                      </Label>
                                     </div>
                                     <div className="flex-1 space-y-2">
-                                        <FormControl>
-                                            <Input
-                                                id="photo-upload"
-                                                type="file"
-                                                className="hidden"
-                                                accept="image/png, image/jpeg"
-                                                onChange={handleImageChange}
-                                            />
-                                        </FormControl>
-                                        <Button type="button" variant="outline" onClick={() => document.getElementById('photo-upload')?.click()}>
-                                            Seleccionar archivo
-                                        </Button>
-                                        <FormDescription>
-                                            La imagen se redimensionará y comprimirá.
-                                        </FormDescription>
+                                        <FormControl><Input type="file" accept="image/png, image/jpeg" onChange={handleImageChange} /></FormControl>
                                     </div>
                                 </div>
-                                <FormMessage />
                             </FormItem>
                         )}
                     />
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <FormField control={form.control} name="codigo" render={({ field }) => (
-                          <FormItem><FormLabel>Código</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                        )} />
-                        <FormField control={form.control} name="cedula" render={({ field }) => (
-                          <FormItem><FormLabel>Cédula</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                        )} />
-                        <FormField control={form.control} name="fechaIngreso" render={({ field }) => (
-                          <FormItem><FormLabel>Fecha Ingreso</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
-                        )} />
+                        <FormField control={form.control} name="codigo" render={({ field }) => ( <FormItem><FormLabel>Código</FormLabel><FormControl><Input {...field} /></FormControl></FormItem> )} />
+                        <FormField control={form.control} name="cedula" render={({ field }) => ( <FormItem><FormLabel>Cédula</FormLabel><FormControl><Input {...field} /></FormControl></FormItem> )} />
+                        <FormField control={form.control} name="fechaIngreso" render={({ field }) => ( <FormItem><FormLabel>Fecha Ingreso</FormLabel><FormControl><Input type="date" {...field} /></FormControl></FormItem> )} />
                     </div>
                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <FormField control={form.control} name="apellidos" render={({ field }) => (
-                            <FormItem><FormLabel>Apellidos</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                        )} />
-                        <FormField control={form.control} name="nombres" render={({ field }) => (
-                            <FormItem><FormLabel>Nombres</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                        )} />
-                        <FormField control={form.control} name="fechaNacimiento" render={({ field }) => (
-                            <FormItem><FormLabel>Fecha Nacimiento</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
-                        )} />
+                        <FormField control={form.control} name="apellidos" render={({ field }) => ( <FormItem><FormLabel>Apellidos</FormLabel><FormControl><Input {...field} /></FormControl></FormItem> )} />
+                        <FormField control={form.control} name="nombres" render={({ field }) => ( <FormItem><FormLabel>Nombres</FormLabel><FormControl><Input {...field} /></FormControl></FormItem> )} />
+                        <FormField control={form.control} name="fechaNacimiento" render={({ field }) => ( <FormItem><FormLabel>Fecha Nacimiento</FormLabel><FormControl><Input type="date" {...field} /></FormControl></FormItem> )} />
                     </div>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <FormField control={form.control} name="email" render={({ field }) => (
                             <FormItem>
-                                <div className="flex items-center gap-2">
-                                    <FormLabel>Email</FormLabel>
-                                    {editingUser && (
-                                        <TooltipProvider>
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <button type="button" tabIndex={-1}><Info className="h-4 w-4 text-muted-foreground cursor-help" /></button>
-                                                </TooltipTrigger>
-                                                <TooltipContent>
-                                                    <p className="max-w-xs">Para cambiar el email de acceso, se debe eliminar este perfil y crearlo de nuevo con el correo correcto.</p>
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        </TooltipProvider>
-                                    )}
-                                </div>
-                                <FormControl>
-                                    <Input
-                                        type="email"
-                                        {...field}
-                                        disabled={!!editingUser}
-                                    />
-                                </FormControl>
-                                <FormMessage />
+                                <FormLabel>Email</FormLabel>
+                                <FormControl><Input type="email" {...field} disabled={!!editingUser} /></FormControl>
                             </FormItem>
                         )} />
-                         <FormField
-                            control={form.control}
-                            name="rol"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Rol</FormLabel>
+                         <FormField control={form.control} name="rol" render={({ field }) => (
+                                <FormItem><FormLabel>Rol</FormLabel>
                                     <Select onValueChange={field.onChange} value={field.value}>
-                                        <FormControl>
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Seleccionar rol..." />
-                                            </SelectTrigger>
-                                        </FormControl>
+                                        <FormControl><SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger></FormControl>
                                         <SelectContent>
                                             {roles?.map(role => <SelectItem key={role.id} value={role.name}>{role.name}</SelectItem>)}
                                         </SelectContent>
                                     </Select>
-                                    <FormMessage />
                                 </FormItem>
                             )}
                         />
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                         <FormField control={form.control} name="empresa" render={({ field }) => (
-                            <FormItem><FormLabel>Empresa</FormLabel>
-                                <Combobox options={toOptions(empresas)} placeholder="Seleccionar empresa" {...field} allowCreate />
-                                <FormMessage />
-                            </FormItem>
-                         )} />
-                          <FormField control={form.control} name="ubicacion" render={({ field }) => (
-                            <FormItem><FormLabel>Ubicación</FormLabel>
-                                <Combobox options={toOptions(ubicaciones)} placeholder="Seleccionar ubicación" {...field} allowCreate />
-                                <FormMessage />
-                            </FormItem>
-                         )} />
-                         <FormField control={form.control} name="cargo" render={({ field }) => (
-                            <FormItem><FormLabel>Cargo</FormLabel>
-                                <Combobox options={toOptions(cargos)} placeholder="Seleccionar cargo" {...field} allowCreate />
-                                <FormMessage />
-                            </FormItem>
-                         )} />
-                         <FormField control={form.control} name="departamento" render={({ field }) => (
-                            <FormItem><FormLabel>Departamento</FormLabel>
-                               <Combobox options={toOptions(areas)} placeholder="Seleccionar departamento" {...field} allowCreate />
-                                <FormMessage />
-                            </FormItem>
-                         )} />
-                         <FormField control={form.control} name="centroCosto" render={({ field }) => (
-                            <FormItem><FormLabel>Centro de Costo</FormLabel>
-                                <Combobox options={toOptions(centrosCosto)} placeholder="Seleccionar centro de costo" {...field} allowCreate />
-                                <FormMessage />
-                            </FormItem>
-                         )} />
+                         <FormField control={form.control} name="empresa" render={({ field }) => ( <FormItem><FormLabel>Empresa</FormLabel><Combobox options={toOptions(empresas)} {...field} allowCreate /></FormItem> )} />
+                          <FormField control={form.control} name="ubicacion" render={({ field }) => ( <FormItem><FormLabel>Ubicación</FormLabel><Combobox options={toOptions(ubicaciones)} {...field} allowCreate /></FormItem> )} />
+                         <FormField control={form.control} name="cargo" render={({ field }) => ( <FormItem><FormLabel>Cargo</FormLabel><Combobox options={toOptions(cargos)} {...field} allowCreate /></FormItem> )} />
+                         <FormField control={form.control} name="departamento" render={({ field }) => ( <FormItem><FormLabel>Departamento</FormLabel><Combobox options={toOptions(areas)} {...field} allowCreate /></FormItem> )} />
+                         <FormField control={form.control} name="centroCosto" render={({ field }) => ( <FormItem><FormLabel>Centro de Costo</FormLabel><Combobox options={toOptions(centrosCosto)} {...field} allowCreate /></FormItem> )} />
                     </div>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="liderArea"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Líder de Área</FormLabel>
-                              <Combobox
-                                options={leaders.map(l => ({ value: l.email, label: `${l.nombres} ${l.apellidos}`, keywords: l.cargo }))}
-                                placeholder="Seleccionar líder..."
-                                searchPlaceholder="Buscar líder por nombre o cargo..."
-                                notFoundMessage="No se encontraron líderes."
-                                {...field}
-                                allowClear={true}
-                              />
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                         <FormField
-                          control={form.control}
-                          name="consultor"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Grupo de Consultoría</FormLabel>
+                        <FormField control={form.control} name="liderArea" render={({ field }) => ( <FormItem><FormLabel>Líder de Área</FormLabel><Combobox options={leaders.map(l => ({ value: l.email, label: `${l.nombres} ${l.apellidos}` }))} {...field} allowClear={true} /></FormItem> )} />
+                         <FormField control={form.control} name="consultor" render={({ field }) => (
+                            <FormItem><FormLabel>Grupo de Consultoría</FormLabel>
                                <Select onValueChange={field.onChange} value={field.value}>
-                                  <FormControl>
-                                      <SelectTrigger>
-                                          <SelectValue placeholder="Seleccionar grupo..." />
-                                      </SelectTrigger>
-                                  </FormControl>
+                                  <FormControl><SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger></FormControl>
                                   <SelectContent>
                                       {consultantGroups?.map(group => <SelectItem key={group.id} value={group.id}>{group.name}</SelectItem>)}
                                   </SelectContent>
                               </Select>
-                              <FormMessage />
                             </FormItem>
                           )}
                         />
                          <FormField control={form.control} name="tipoContrato" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Tipo de Contrato</FormLabel>
+                            <FormItem><FormLabel>Tipo de Contrato</FormLabel>
                                 <Select onValueChange={field.onChange} value={field.value}>
-                                    <FormControl>
-                                        <SelectTrigger><SelectValue placeholder="Seleccionar tipo..." /></SelectTrigger>
-                                    </FormControl>
+                                    <FormControl><SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger></FormControl>
                                     <SelectContent>
                                         <SelectItem value="INDEFINIDO">Indefinido</SelectItem>
                                         <SelectItem value="EMERGENTE">Emergente</SelectItem>
                                     </SelectContent>
                                 </Select>
-                                <FormMessage />
                             </FormItem>
                         )} />
                          <FormField control={form.control} name="Status" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Estado</FormLabel>
+                            <FormItem><FormLabel>Estado</FormLabel>
                                 <Select onValueChange={field.onChange} value={field.value}>
-                                    <FormControl>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Seleccionar estado..." />
-                                        </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                        <SelectItem value="active">Activo</SelectItem>
-                                        <SelectItem value="inactive">Inactivo</SelectItem>
-                                    </SelectContent>
+                                    <FormControl><SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger></FormControl>
+                                    <SelectContent><SelectItem value="active">Activo</SelectItem><SelectItem value="inactive">Inactivo</SelectItem></SelectContent>
                                 </Select>
-                                <FormMessage />
                             </FormItem>
                         )} />
                     </div>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField
-                            control={form.control}
-                            name="isLeader"
-                            render={({ field }) => (
+                        <FormField control={form.control} name="isLeader" render={({ field }) => (
                                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                                <div className="space-y-0.5">
-                                    <FormLabel className="text-base">Es Líder de Área</FormLabel>
-                                    <DialogDescription>
-                                        Marque esta opción si el usuario tiene un rol de liderazgo.
-                                    </DialogDescription>
-                                </div>
-                                <FormControl>
-                                    <Switch
-                                    checked={field.value}
-                                    onCheckedChange={field.onChange}
-                                    />
-                                </FormControl>
+                                <div className="space-y-0.5"><FormLabel className="text-base">Es Líder de Área</FormLabel></div>
+                                <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
                                 </FormItem>
                             )}
                         />
@@ -1514,11 +1191,7 @@ export default function StaffPage() {
                     <DialogFooter className="pt-4">
                         <Button type="button" variant="ghost" onClick={() => setFormOpen(false)}>Cancelar</Button>
                         <Button type="submit" disabled={form.formState.isSubmitting}>
-                            {form.formState.isSubmitting ? (
-                                <><LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> Guardando...</>
-                            ) : (
-                                <><Check className="mr-2 h-4 w-4" /> Guardar</>
-                            )}
+                            {form.formState.isSubmitting ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />} Guardar
                         </Button>
                     </DialogFooter>
                 </form>
@@ -1526,97 +1199,19 @@ export default function StaffPage() {
         </DialogContent>
       </Dialog>
       
-       <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
-            <DialogContent className="sm:max-w-4xl">
-                <DialogHeader>
-                    <DialogTitle>Resumen de la Importación</DialogTitle>
-                    <DialogDescription>
-                        Revisa los cambios antes de confirmar. Se crearán {importAnalysis?.filter(i => i.status === 'new').length || 0} usuarios y se actualizarán {importAnalysis?.filter(i => i.status === 'update').length || 0}.
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="max-h-[60vh] overflow-y-auto">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Usuario</TableHead>
-                                <TableHead>Cédula</TableHead>
-                                <TableHead>Estado</TableHead>
-                                <TableHead>Detalle de Cambios</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {importAnalysis?.map((item, index) => (
-                                <TableRow key={index}>
-                                    <TableCell className="font-medium">{item.user.nombres} {item.user.apellidos}</TableCell>
-                                    <TableCell>{item.user.cedula}</TableCell>
-                                    <TableCell>
-                                        {item.status === 'new' ? (
-                                            <Badge className="bg-green-100 text-green-800">NUEVO</Badge>
-                                        ) : (
-                                            <Badge className="bg-blue-100 text-blue-800">ACTUALIZACIÓN</Badge>
-                                        )}
-                                    </TableCell>
-                                    <TableCell className="text-xs">
-                                        {item.status === 'update' ? (
-                                            <ul className="list-disc pl-4 space-y-1">
-                                                {item.changes.map(change => (
-                                                    <li key={change.field}>
-                                                        <span className="font-semibold">{change.field}:</span>{' '}
-                                                        <span className="text-red-600 line-through">{String(change.oldValue || 'Vacío')}</span>{' '}
-                                                        <ArrowRight className="inline-block h-3 w-3" />{' '}
-                                                        <span className="text-green-700">{String(change.newValue || 'Vacío')}</span>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        ) : 'Se creará un nuevo registro.'}
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </div>
-                <DialogFooter>
-                    <Button variant="ghost" onClick={() => setIsImportDialogOpen(false)}>Cancelar</Button>
-                    <Button onClick={confirmImport}>Confirmar Importación</Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-
-
       <Card>
         <CardHeader>
             <CardTitle>Lista de Empleados</CardTitle>
-            <CardDescription>
-                Navega y gestiona la información de todos los empleados.
-            </CardDescription>
             <div className="flex items-center pt-4 justify-between">
                 <div className='relative w-full max-w-sm'>
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        placeholder="Buscar por nombre, cédula, cargo..."
-                        value={filter}
-                        onChange={(e) => setFilter(e.target.value)}
-                        className="pl-10"
-                    />
+                    <Input placeholder="Buscar por nombre, cédula, cargo..." value={filter} onChange={(e) => setFilter(e.target.value)} className="pl-10" />
                 </div>
                 <div className="flex gap-2">
-                    {selectedUsers.length > 0 && (
-                        <Button variant="destructive" onClick={() => setIsDeleteDialogOpen(true)}>
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Eliminar ({selectedUsers.length})
-                        </Button>
-                    )}
+                    {selectedUsers.length > 0 && <Button variant="destructive" onClick={() => setIsDeleteDialogOpen(true)}><Trash2 className="mr-2 h-4 w-4" /> Eliminar ({selectedUsers.length})</Button>}
                     <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="outline">
-                                <FileDown className="mr-2 h-4 w-4" />
-                                Exportar
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                            <DropdownMenuItem onClick={() => handleExport('csv')}>Exportar a CSV</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleExport('xlsx')}>Exportar a Excel (XLSX)</DropdownMenuItem>
-                        </DropdownMenuContent>
+                        <DropdownMenuTrigger asChild><Button variant="outline"><FileDown className="mr-2 h-4 w-4" /> Exportar</Button></DropdownMenuTrigger>
+                        <DropdownMenuContent><DropdownMenuItem onClick={() => handleExport('csv')}>Exportar a CSV</DropdownMenuItem><DropdownMenuItem onClick={() => handleExport('xlsx')}>Exportar a Excel (XLSX)</DropdownMenuItem></DropdownMenuContent>
                     </DropdownMenu>
                 </div>
             </div>
@@ -1627,16 +1222,7 @@ export default function StaffPage() {
                     <TableHeader>
                     <TableRow>
                         <TableHead className="w-12">
-                            <Checkbox 
-                                checked={filteredUsers.length > 0 && selectedUsers.length === filteredUsers.length}
-                                onCheckedChange={(checked) => {
-                                    if(checked) {
-                                        setSelectedUsers(filteredUsers.map(u => u.id))
-                                    } else {
-                                        setSelectedUsers([])
-                                    }
-                                }}
-                            />
+                            <Checkbox checked={filteredUsers.length > 0 && selectedUsers.length === filteredUsers.length} onCheckedChange={(checked) => { if(checked) { setSelectedUsers(filteredUsers.map(u => u.id)) } else { setSelectedUsers([]) } }} />
                         </TableHead>
                         <TableHead>Empleado</TableHead>
                         <TableHead>Cargo</TableHead>
@@ -1648,84 +1234,34 @@ export default function StaffPage() {
                     </TableRow>
                     </TableHeader>
                     <TableBody>
-                    {isLoading ? (
-                        Array.from({ length: 10 }).map((_, i) => (
-                        <TableRow key={`skel-${i}`}>
-                            <TableCell colSpan={8} className="p-4"><div className="h-10 bg-gray-200 rounded animate-pulse"></div></TableCell>
-                        </TableRow>
-                        ))
+                    {isLoading ? ( Array.from({ length: 10 }).map((_, i) => ( <TableRow key={`skel-${i}`}><TableCell colSpan={8} className="p-4"><div className="h-10 bg-gray-200 rounded animate-pulse"></div></TableCell></TableRow> ))
                     ) : filteredUsers.length > 0 ? (
                         filteredUsers.map((user) => (
                         <TableRow key={user.id} data-state={selectedUsers.includes(user.id) && "selected"}>
-                            <TableCell>
-                                <Checkbox
-                                    checked={selectedUsers.includes(user.id)}
-                                    onCheckedChange={() => {
-                                        setSelectedUsers(prev => prev.includes(user.id) ? prev.filter(id => id !== user.id) : [...prev, user.id])
-                                    }}
-                                />
-                            </TableCell>
+                            <TableCell><Checkbox checked={selectedUsers.includes(user.id)} onCheckedChange={() => { setSelectedUsers(prev => prev.includes(user.id) ? prev.filter(id => id !== user.id) : [...prev, user.id]) }} /></TableCell>
                             <TableCell>
                                 <div className="flex items-center gap-3">
-                                    <Avatar>
-                                        <AvatarImage src={user.photoUrl} />
-                                        <AvatarFallback>{user.nombres?.[0]}{user.apellidos?.[0]}</AvatarFallback>
-                                    </Avatar>
-                                    <div>
-                                        <div className="font-medium">{user.nombres} {user.apellidos}</div>
-                                        <div className="text-sm text-muted-foreground">{user.email}</div>
-                                    </div>
+                                    <Avatar><AvatarImage src={user.photoUrl} /><AvatarFallback>{user.nombres?.[0]}{user.apellidos?.[0]}</AvatarFallback></Avatar>
+                                    <div><div className="font-medium">{user.nombres} {user.apellidos}</div><div className="text-sm text-muted-foreground">{user.email}</div></div>
                                 </div>
                             </TableCell>
                             <TableCell>{user.cargo}</TableCell>
                             <TableCell><Badge variant="outline">{user.rol}</Badge></TableCell>
-                             <TableCell>
-                                <div className="flex items-center space-x-2">
-                                    <Switch
-                                    id={`status-switch-${user.id}`}
-                                    checked={user.Status === 'active'}
-                                    onCheckedChange={(newStatus) => handleStatusChange(user, newStatus)}
-                                    aria-label={`Estado de ${user.nombres}`}
-                                    />
-                                </div>
-                            </TableCell>
-                            <TableCell>
-                                <Switch
-                                    id={`leader-switch-${user.id}`}
-                                    checked={!!user.isLeader}
-                                    onCheckedChange={(newIsLeader) => handleIsLeaderChange(user, newIsLeader)}
-                                    aria-label={`Es líder ${user.nombres}`}
-                                    />
-                            </TableCell>
+                             <TableCell><Switch checked={user.Status === 'active'} onCheckedChange={(newStatus) => handleStatusChange(user, newStatus)} /></TableCell>
+                            <TableCell><Switch checked={!!user.isLeader} onCheckedChange={(newIsLeader) => handleIsLeaderChange(user, newIsLeader)} /></TableCell>
                             <TableCell>{displayDate(user.fechaIngreso)}</TableCell>
                             <TableCell className="text-right">
                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon">
-                                            <MoreHorizontal className="h-4 w-4" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
+                                    <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onSelect={() => handleOpenForm(user)}>
-                                            <Edit className="mr-2 h-4 w-4" />
-                                            <span>Editar</span>
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem onSelect={() => setUserToReset(user)}>
-                                            <KeyRound className="mr-2 h-4 w-4" />
-                                            <span>Resetear Contraseña</span>
-                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={() => handleOpenForm(user)}><Edit className="mr-2 h-4 w-4" /> <span>Editar</span></DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={() => setUserToReset(user)}><KeyRound className="mr-2 h-4 w-4" /> <span>Resetear Contraseña</span></DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                             </TableCell>
                         </TableRow>
                         ))
-                    ) : (
-                        <TableRow>
-                        <TableCell colSpan={8} className="h-24 text-center">
-                            No se encontraron usuarios.
-                        </TableCell>
-                        </TableRow>
-                    )}
+                    ) : ( <TableRow><TableCell colSpan={8} className="h-24 text-center">No se encontraron usuarios.</TableCell></TableRow> )}
                     </TableBody>
                 </Table>
             </div>
