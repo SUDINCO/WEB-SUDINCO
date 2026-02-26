@@ -182,7 +182,7 @@ function TimeTracker({ userProfile, schedule, onClockIn, onClockOut, latestRecor
   const entryTimeDisplay = latestRecord?.entryTime ? format(new Date(latestRecord.entryTime), 'HH:mm:ss') : '--:--:--';
   const exitTimeDisplay = latestRecord?.exitTime ? format(new Date(latestRecord.exitTime), 'HH:mm:ss') : '--:--:--';
 
-  const isGuard = userProfile?.cargo === 'GUARDIA DE SEGURIDAD';
+  const isGuard = normalizeText(userProfile?.cargo) === 'GUARDIA DE SEGURIDAD';
 
   return (
     <Card className={cn(isGuard && "border-primary shadow-lg")}>
@@ -578,9 +578,11 @@ function AttendancePageContent() {
     if (action === 'out' && !latestRecord) return;
 
     const todayStr = format(new Date(), 'yyyy-MM-dd');
+    const normalizedCargo = normalizeText(userProfile.cargo);
+    const isGuard = normalizedCargo === 'GUARDIA DE SEGURIDAD';
 
     // --- GUARD CLOCK-OUT VALIDATION ---
-    if (userProfile.cargo === 'GUARDIA DE SEGURIDAD' && action === 'out') {
+    if (isGuard && action === 'out') {
       const approvedHandover = equipmentHandovers?.find(h => 
         h.status === 'approved' && 
         h.outgoingGuardId === userProfile.id &&
@@ -599,7 +601,7 @@ function AttendancePageContent() {
     }
 
     // --- GUARD CLOCK-IN VALIDATION (Handover Required) ---
-    if (userProfile.cargo === 'GUARDIA DE SEGURIDAD' && action === 'in') {
+    if (isGuard && action === 'in') {
       const existingHandover = equipmentHandovers?.find(h => 
         h.date === todayStr && 
         h.incomingGuardId === userProfile.id
@@ -608,10 +610,11 @@ function AttendancePageContent() {
       if (!existingHandover) {
         if (users) {
           const location = userProfile.ubicacion || 'N/A';
+          const normalizedLocation = normalizeText(location);
           const potentialRelief = users.find(u => 
             u.id !== userProfile.id && 
-            u.cargo === 'GUARDIA DE SEGURIDAD' && 
-            u.ubicacion === location &&
+            normalizeText(u.cargo) === 'GUARDIA DE SEGURIDAD' && 
+            normalizeText(u.ubicacion) === normalizedLocation &&
             u.Status === 'active'
           );
           setReliefGuard(potentialRelief || null);
