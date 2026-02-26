@@ -50,6 +50,29 @@ interface GroupedSummary {
     employees: SummaryData[];
 }
 
+interface ScheduleDataSummaryDialogProps {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    savedSchedules: { [key: string]: SavedSchedule };
+    collaborators: Collaborator[];
+    days: Date[];
+    currentDate: Date;
+    periodTitle: string;
+    holidays: Holiday[];
+    overtimeRules: OvertimeRule[];
+    transfers: TemporaryTransfer[];
+    roleChanges: RoleChange[];
+    shiftPatterns: ShiftPattern[];
+    onPrevPeriod: () => void;
+    onNextPeriod: () => void;
+    locationOptions: Option[];
+    jobTitleOptions: Option[];
+    selectedLocation: string;
+    onLocationChange: (value: string) => void;
+    selectedJobTitle: string;
+    onJobTitleChange: (value: string) => void;
+}
+
 const SummaryTable = ({ groupedData, uniqueShifts }: { groupedData: GroupedSummary[], uniqueShifts: string[] }) => {
     const weekDaysLabels = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB'];
     
