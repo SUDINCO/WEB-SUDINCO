@@ -24,13 +24,23 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from '@/components/ui/badge';
-import { Check, Eraser, LoaderCircle, Shield, User, Camera, X, CheckCircle, Lock, Unlock, Send } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Check, Eraser, LoaderCircle, Shield, User, Camera, X, CheckCircle, Lock, Unlock, Send, Ban } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { useFirestore } from '@/firebase';
 import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
 import type { UserProfile, EquipmentHandover } from '@/lib/types';
 import Image from 'next/image';
+
+interface HandoverItem {
+  name: string;
+  present: boolean;
+  status: 'good' | 'issue';
+  issueType?: string;
+  notes: string;
+  photoUrl?: string | null;
+}
 
 interface HandoverDialogProps {
   open: boolean;
@@ -43,7 +53,7 @@ interface HandoverDialogProps {
   existingHandover?: EquipmentHandover;
 }
 
-const EQUIPMENT_CATALOG = ['Radio', 'Chaleco', 'Arma de Fuego', 'Celular', 'Bitácora'];
+const EQUIPMENT_CATALOG = ['Radio', 'Chaleco', 'Arma de Fuego', 'Celular', 'Bitácora', 'Vehículo'];
 
 const ISSUE_TYPES_MAP: Record<string, string[]> = {
   'Radio': ['Dañado / No funciona', 'Faltante', 'Pantalla rota', 'Botones trabados', 'Batería agotada / No carga', 'Antena dañada', 'Otro (especificar en notas)'],
@@ -51,12 +61,13 @@ const ISSUE_TYPES_MAP: Record<string, string[]> = {
   'Arma de Fuego': ['Mal estado mecánico', 'Faltante', 'Sin munición completa', 'Seguro dañado', 'Óxido / Falta limpieza', 'Otro (especificar en notas)'],
   'Celular': ['Pantalla rota', 'Faltante', 'No carga / Batería inflada', 'Botones trabados', 'Cámara dañada', 'Otro (especificar en notas)'],
   'Bitácora': ['Hojas faltantes', 'Faltante', 'Mal estado / Mojada', 'Sin espacio para registros', 'Otro (especificar en notas)'],
+  'Vehículo': ['Golpes / Rayones nuevos', 'Falta de combustible', 'Llantas en mal estado / bajas', 'Luces fundidas / no funcionan', 'Limpieza interna/externa deficiente', 'Sin documentos (Matrícula/Seguro)', 'Fallo mecánico detectado', 'Otro (especificar en notas)'],
   'default': ['Dañado / No funciona', 'Faltante', 'Mal estado estético', 'Otro (especificar en notas)']
 };
 
 export function HandoverDialog({ open, onOpenChange, location, currentUser, suggestedGuard, onSuccess, mode = 'create', existingHandover }: HandoverDialogProps) {
   const isApproving = mode === 'approve';
-  const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<HandoverItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const firestore = useFirestore();
   
@@ -69,12 +80,18 @@ export function HandoverDialog({ open, onOpenChange, location, currentUser, sugg
   useEffect(() => {
     if (open) {
       if (isApproving && existingHandover) {
-        setItems(existingHandover.items);
+        setItems(existingHandover.items as HandoverItem[]);
       } else {
-        setItems(EQUIPMENT_CATALOG.map(name => ({ name, status: 'good', issueType: '', notes: '', photoUrl: null })));
+        setItems(EQUIPMENT_CATALOG.map(name => ({ 
+          name, 
+          present: true, 
+          status: 'good', 
+          issueType: '', 
+          notes: '', 
+          photoUrl: null 
+        })));
       }
       setIsLocked(false);
-      // Wait for dialog animation to finish before clearing canvas
       setTimeout(() => clearCanvas(), 150);
     }
   }, [open, isApproving, existingHandover]);
@@ -93,6 +110,18 @@ export function HandoverDialog({ open, onOpenChange, location, currentUser, sugg
     }
   };
 
+  const handlePresenceToggle = (index: number, present: boolean) => {
+    if (isApproving) return;
+    const newItems = [...items];
+    newItems[index].present = present;
+    if (!present) {
+      newItems[index].status = 'good'; // Reset to good if not present
+      newItems[index].issueType = '';
+      newItems[index].photoUrl = null;
+    }
+    setItems(newItems);
+  };
+
   const handleStatusChange = (index: number, status: 'good' | 'issue') => {
     if (isApproving) return;
     const newItems = [...items];
@@ -104,10 +133,10 @@ export function HandoverDialog({ open, onOpenChange, location, currentUser, sugg
     setItems(newItems);
   };
 
-  const handleItemUpdate = (index: number, field: string, value: any) => {
+  const handleItemUpdate = (index: number, field: keyof HandoverItem, value: any) => {
     if (isApproving) return;
     const newItems = [...items];
-    newItems[index][field] = value;
+    (newItems[index] as any)[field] = value;
     setItems(newItems);
   };
 
@@ -138,27 +167,17 @@ export function HandoverDialog({ open, onOpenChange, location, currentUser, sugg
     setActivePhotoIndex(null);
   };
 
-  // Corrected coordinate calculation to fix distortion
   const getCoordinates = (e: any) => {
     if (!canvasRef.current) return { x: 0, y: 0 };
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
-    
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
     const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    
-    // Position relative to the element
     const offsetX = clientX - rect.left;
     const offsetY = clientY - rect.top;
-    
-    // Scale according to internal canvas resolution
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
-    
-    return {
-      x: offsetX * scaleX,
-      y: offsetY * scaleY
-    };
+    return { x: offsetX * scaleX, y: offsetY * scaleY };
   };
 
   const startDrawing = (e: any) => {
@@ -273,7 +292,8 @@ export function HandoverDialog({ open, onOpenChange, location, currentUser, sugg
             <Table>
               <TableHeader className="bg-muted/50">
                 <TableRow>
-                  <TableHead className="font-bold">Equipo</TableHead>
+                  <TableHead className="font-bold">Equipo / Vehículo</TableHead>
+                  <TableHead className="text-center font-bold">Asignado</TableHead>
                   <TableHead className="text-center font-bold">Estado</TableHead>
                   <TableHead className="font-bold">Novedad / Notas</TableHead>
                   <TableHead className="w-[100px] text-center font-bold">Evidencia</TableHead>
@@ -281,44 +301,64 @@ export function HandoverDialog({ open, onOpenChange, location, currentUser, sugg
               </TableHeader>
               <TableBody>
                 {items.map((item, index) => (
-                  <TableRow key={item.name} className={cn(item.status === 'issue' && "bg-red-50/30")}>
-                    <TableCell className="font-semibold">{item.name}</TableCell>
-                    <TableCell>
-                      <RadioGroup disabled={isApproving} value={item.status} onValueChange={(val) => handleStatusChange(index, val as 'good' | 'issue')} className="flex justify-center gap-4">
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="good" id={`good-${index}`} />
-                          <Label htmlFor={`good-${index}`} className="text-xs cursor-pointer">OPERATIVO</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="issue" id={`issue-${index}`} className="text-red-600" />
-                          <Label htmlFor={`issue-${index}`} className="text-xs cursor-pointer text-red-600 font-bold">NOVEDAD</Label>
-                        </div>
-                      </RadioGroup>
+                  <TableRow key={item.name} className={cn(item.status === 'issue' && "bg-red-50/30", !item.present && "opacity-60 bg-slate-50")}>
+                    <TableCell className="font-semibold">
+                      <div className="flex flex-col">
+                        <span>{item.name}</span>
+                        {!item.present && <span className="text-[10px] text-muted-foreground">No asignado en este puesto</span>}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Switch 
+                        checked={item.present} 
+                        onCheckedChange={(val) => handlePresenceToggle(index, val)}
+                        disabled={isApproving}
+                      />
                     </TableCell>
                     <TableCell>
-                      {item.status === 'issue' ? (
+                      {item.present ? (
+                        <RadioGroup disabled={isApproving} value={item.status} onValueChange={(val) => handleStatusChange(index, val as 'good' | 'issue')} className="flex justify-center gap-4">
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="good" id={`good-${index}`} />
+                            <Label htmlFor={`good-${index}`} className="text-xs cursor-pointer">OPERATIVO</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="issue" id={`issue-${index}`} className="text-red-600" />
+                            <Label htmlFor={`issue-${index}`} className="text-xs cursor-pointer text-red-600 font-bold">NOVEDAD</Label>
+                          </div>
+                        </RadioGroup>
+                      ) : (
+                        <div className="flex justify-center">
+                          <Badge variant="outline" className="text-[10px] text-muted-foreground">SIN EQUIPO</Badge>
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {item.present && item.status === 'issue' ? (
                         <div className="flex flex-col gap-1">
                           {isApproving ? (
                             <p className="text-xs font-bold text-red-700">{item.issueType}: <span className="font-normal italic">"{item.notes}"</span></p>
                           ) : (
                             <>
                               <Select value={item.issueType} onValueChange={(v) => handleItemUpdate(index, 'issueType', v)}>
-                                <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Tipo..." /></SelectTrigger>
+                                <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Tipo de novedad..." /></SelectTrigger>
                                 <SelectContent>{(ISSUE_TYPES_MAP[item.name] || ISSUE_TYPES_MAP['default']).map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
                               </Select>
-                              <Input placeholder="Notas..." value={item.notes} onChange={(e) => handleItemUpdate(index, 'notes', e.target.value)} className="h-7 text-xs" />
+                              <Input placeholder="Notas adicionales..." value={item.notes} onChange={(e) => handleItemUpdate(index, 'notes', e.target.value)} className="h-7 text-xs" />
                             </>
                           )}
                         </div>
-                      ) : <span className="text-xs text-muted-foreground">Sin novedad</span>}
+                      ) : (
+                        <span className="text-xs text-muted-foreground">{item.present ? "Sin novedad" : "-"}</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-center">
-                      {item.photoUrl && (
+                      {item.present && item.photoUrl && (
                         <div className="relative inline-block">
                           <Image src={item.photoUrl} alt="Evidencia" width={40} height={40} className="rounded border object-cover" unoptimized />
                         </div>
                       )}
-                      {!isApproving && item.status === 'issue' && !item.photoUrl && (
+                      {!isApproving && item.present && item.status === 'issue' && !item.photoUrl && (
                         <Button variant="outline" size="icon" className="h-8 w-8 border-dashed" onClick={() => { setActivePhotoIndex(index); fileInputRef.current?.click(); }}><Camera className="h-4 w-4" /></Button>
                       )}
                     </TableCell>
