@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -64,11 +64,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
-import { useCollection, useFirestore, useAuth } from '@/firebase';
-import { collection, doc, addDoc, updateDoc, setDoc, query, where, getDocs, writeBatch, deleteDoc } from 'firebase/firestore';
-import { createUserWithEmailAndPassword, getAuth } from 'firebase/auth';
-import { initializeApp, deleteApp } from 'firebase/app';
-import { firebaseConfig } from '@/firebase/config';
+import { useCollection, useFirestore } from '@/firebase';
+import { collection, doc, addDoc, updateDoc, query, where, getDocs, writeBatch, deleteDoc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { PlusCircle, Search, Edit, UserPlus, LoaderCircle, Check, KeyRound, MoreHorizontal, UserRound, CheckCircle, X, Camera, AlertTriangle, Trash2, Users } from 'lucide-react';
 import { format } from 'date-fns';
@@ -79,7 +76,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { normalizeText } from '@/lib/utils';
-import { resetUserPasswordAction } from '@/app/actions/auth';
+import { resetUserPasswordAction, createUserAction } from '@/app/actions/auth';
 import type { UserProfile, GenericOption, ConsultantGroup } from '@/lib/types';
 
 const userSchema = z.object({
@@ -151,7 +148,6 @@ export default function StaffPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const firestore = useFirestore();
-  const auth = useAuth();
   const usersCollectionRef = useMemo(() => firestore ? collection(firestore, 'users') : null, [firestore]);
   const rolesCollectionRef = useMemo(() => firestore ? collection(firestore, 'roles') : null, [firestore]);
   const leaderRulesCollectionRef = useMemo(() => firestore ? collection(firestore, 'leaderAssignmentRules') : null, [firestore]);
@@ -194,7 +190,7 @@ export default function StaffPage() {
     resolver: zodResolver(userSchema),
   });
 
-  const { watch, setValue } = form;
+  const { watch, setValue, handleSubmit, formState: { isSubmitting } } = form;
   const watchedFields = watch(['empresa', 'cargo', 'ubicacion', 'departamento', 'centroCosto']);
   
   const toOptions = (data: GenericOption[] | null | undefined) => {
@@ -265,7 +261,7 @@ export default function StaffPage() {
     setFormOpen(true);
   };
   
-  const onSubmit = async (data: UserFormData) => {
+  const handleOnSubmit = async (data: UserFormData) => {
     if (!usersCollectionRef || !firestore) return;
 
     const optionsBatch = writeBatch(firestore);
@@ -303,18 +299,15 @@ export default function StaffPage() {
             toast({ variant: "destructive", title: "Correo Duplicado", description: "Ya existe un usuario con este correo." });
             return;
         }
-        dataToSave.requiresPasswordChange = true;
-        let tempApp;
-        try {
-            tempApp = initializeApp(firebaseConfig, `user-creation-${Date.now()}`);
-            const tempAuth = getAuth(tempApp);
-            const userCredential = await createUserWithEmailAndPassword(tempAuth, dataToSave.email, data.cedula);
-            await setDoc(doc(firestore, 'users', userCredential.user.uid), dataToSave);
-            toast({ title: 'Usuario Registrado', description: `La cuenta ha sido creada con éxito.` });
+        
+        // AUTOMATIZACIÓN TOTAL: Crear vía Server Action
+        const result = await createUserAction(dataToSave);
+        if (result.success) {
+            toast({ title: 'Usuario Registrado', description: 'La cuenta ha sido creada y configurada automáticamente.' });
             setFormOpen(false);
-        } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Error al Crear Usuario', description: error.message });
-        } finally { if (tempApp) await deleteApp(tempApp); }
+        } else {
+            toast({ variant: 'destructive', title: 'Error al Crear Usuario', description: result.error });
+        }
     } else {
         try {
             await updateDoc(doc(firestore, 'users', editingUser.id), dataToSave);
@@ -425,14 +418,14 @@ export default function StaffPage() {
     reader.readAsDataURL(file);
   };
 
-  const isLoading = usersLoading || rolesLoading || consultantGroupsLoading || empresasLoading || cargosLoading || ubicacionesLoading || areasLoading || centrosCostoLoading;
+  const isLoadingData = usersLoading || rolesLoading || consultantGroupsLoading || empresasLoading || cargosLoading || ubicacionesLoading || areasLoading || centrosCostoLoading;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
             <h1 className="text-2xl font-bold tracking-tight">Nómina</h1>
-            <p className="text-muted-foreground">Gestiona el personal de la empresa.</p>
+            <p className="text-muted-foreground">Gestiona el personal de la empresa de forma automática.</p>
         </div>
         <div className="flex items-center gap-2">
             <Button variant="outline" onClick={() => setGroupDialogOpen(true)}><Users className="mr-2 h-4 w-4" /> Grupos</Button>
@@ -500,7 +493,7 @@ export default function StaffPage() {
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>{editingUser ? 'Editar Perfil' : 'Nuevo Empleado'}</DialogTitle></DialogHeader>
             <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pt-4">
+                <form onSubmit={form.handleSubmit(handleOnSubmit)} className="space-y-6 pt-4">
                     <div className="flex items-center gap-6 pb-4 border-b">
                         <div className="relative group">
                             <Avatar className="h-24 w-24 border-2">
@@ -542,7 +535,7 @@ export default function StaffPage() {
                         <FormField control={form.control} name="isLeader" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-3"><div className="space-y-0.5"><FormLabel>Es Líder de Área</FormLabel><FormDescription>Habilita la capacidad de evaluar otros.</FormDescription></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)} />
                         <FormField control={form.control} name="Status" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-3"><div className="space-y-0.5"><FormLabel>Estado Activo</FormLabel></div><FormControl><Switch checked={field.value === 'active'} onCheckedChange={(v) => field.onChange(v ? 'active' : 'inactive')} /></FormControl></FormItem>)} />
                     </div>
-                    <DialogFooter><Button type="submit" disabled={form.formState.isSubmitting}>{form.formState.isSubmitting ? <LoaderCircle className="animate-spin mr-2" /> : <Check className="mr-2" />}{editingUser ? 'Guardar Cambios' : 'Crear Usuario'}</Button></DialogFooter>
+                    <DialogFooter><Button type="submit" disabled={isSubmitting}>{isSubmitting ? <LoaderCircle className="animate-spin mr-2" /> : <Check className="mr-2" />}{editingUser ? 'Guardar Cambios' : 'Crear Usuario'}</Button></DialogFooter>
                 </form>
             </Form>
         </DialogContent>
@@ -605,7 +598,7 @@ export default function StaffPage() {
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {isLoading ? Array.from({ length: 5 }).map((_, i) => (<TableRow key={i}><TableCell colSpan={6}><div className="h-10 bg-muted animate-pulse rounded" /></TableCell></TableRow>)) :
+                    {isLoadingData ? Array.from({ length: 5 }).map((_, i) => (<TableRow key={i}><TableCell colSpan={6}><div className="h-10 bg-muted animate-pulse rounded" /></TableCell></TableRow>)) :
                     filteredUsers.map(u => (
                         <TableRow key={u.id}>
                             <TableCell><Checkbox checked={selectedUsers.includes(u.id)} onCheckedChange={() => setSelectedUsers(prev => prev.includes(u.id) ? prev.filter(id => id !== u.id) : [...prev, u.id])} /></TableCell>

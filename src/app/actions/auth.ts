@@ -3,12 +3,42 @@
 import { adminAuth, adminDb } from '@/lib/firebase-admin';
 
 /**
+ * Acción de servidor para crear un nuevo usuario.
+ */
+export async function createUserAction(userData: any) {
+  try {
+    if (!adminAuth || !adminDb) {
+      throw new Error('El SDK de Administración no está disponible en el servidor.');
+    }
+
+    // 1. Crear el usuario en Firebase Auth
+    const userRecord = await adminAuth.createUser({
+      email: userData.email,
+      password: userData.cedula, // Contraseña inicial: Cédula
+      displayName: `${userData.nombres} ${userData.apellidos}`,
+    });
+
+    // 2. Guardar el perfil en Firestore con la marca de cambio de clave obligatorio
+    const { email, ...rest } = userData;
+    await adminDb.collection('users').doc(userRecord.uid).set({
+      ...rest,
+      email: email.toLowerCase().trim(),
+      requiresPasswordChange: true,
+      id: userRecord.uid,
+    });
+
+    return { success: true, uid: userRecord.uid };
+  } catch (error: any) {
+    console.error('Error en createUserAction:', error);
+    return { 
+      success: false, 
+      error: error.message || 'Error al crear el usuario en el servidor.' 
+    };
+  }
+}
+
+/**
  * Acción de servidor para resetear la contraseña de un trabajador.
- * Utiliza el Admin SDK para actualizar la contraseña en Firebase Auth y
- * marca el documento en Firestore para forzar el cambio de clave.
- * 
- * @param uid UID del usuario en Firebase Auth.
- * @param cedula El número de cédula que servirá como contraseña temporal.
  */
 export async function resetUserPasswordAction(uid: string, cedula: string) {
   try {
@@ -33,15 +63,9 @@ export async function resetUserPasswordAction(uid: string, cedula: string) {
     return { success: true };
   } catch (error: any) {
     console.error('Error en resetUserPasswordAction:', error);
-    
-    let errorMessage = error.message || 'Error desconocido en el servidor.';
-    if (errorMessage.includes('credential')) {
-        errorMessage = 'Error de Permisos: El servidor no está autorizado para administrar usuarios.';
-    }
-
     return { 
       success: false, 
-      error: errorMessage 
+      error: error.message || 'Error desconocido en el servidor.' 
     };
   }
 }
