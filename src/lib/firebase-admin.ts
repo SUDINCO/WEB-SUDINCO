@@ -10,8 +10,8 @@ if (!admin.apps.length) {
   try {
     admin.initializeApp({
       projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-      // En entornos de Google Cloud/Firebase, esto suele funcionar sin llaves explícitas.
-      // Si corre localmente, requiere que la variable GOOGLE_APPLICATION_CREDENTIALS esté configurada.
+      // Se asume que el entorno (Vercel, Firebase Functions o local con ADC) 
+      // proporciona las credenciales necesarias.
     });
   } catch (error) {
     console.error('Error al inicializar Firebase Admin:', error);

@@ -16,6 +16,11 @@ export async function resetUserPasswordAction(uid: string, cedula: string) {
       throw new Error('UID y Cédula son obligatorios para el reseteo.');
     }
 
+    if (!adminAuth) {
+        throw new Error('El SDK de Administración no está disponible en el servidor.');
+    }
+
+    // Actualizamos la contraseña en el sistema de Autenticación de Firebase
     await adminAuth.updateUser(uid, {
       password: cedula,
     });
@@ -23,9 +28,16 @@ export async function resetUserPasswordAction(uid: string, cedula: string) {
     return { success: true };
   } catch (error: any) {
     console.error('Error en resetUserPasswordAction:', error);
+    
+    // Tratamos de dar un mensaje más útil según el error técnico
+    let errorMessage = error.message || 'Error desconocido en el servidor.';
+    if (errorMessage.includes('credential')) {
+        errorMessage = 'Error de Permisos: El servidor no está autorizado para cambiar contraseñas. Verifique la configuración de Firebase Admin.';
+    }
+
     return { 
       success: false, 
-      error: error.message || 'Error desconocido al actualizar la contraseña en el servidor.' 
+      error: errorMessage 
     };
   }
 }
