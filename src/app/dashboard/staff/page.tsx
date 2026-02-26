@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -105,6 +104,7 @@ type UserProfile = {
   tipoContrato: 'INDEFINIDO' | 'EMERGENTE';
   Status: 'active' | 'inactive';
   photoUrl?: string;
+  requiresPasswordChange?: boolean;
 };
 
 type GenericOption = {
@@ -196,7 +196,6 @@ export default function StaffPage() {
   const [isResetting, setIsResetting] = useState(false);
   const [resetStatus, setResetStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [resetError, setResetError] = useState<string>('');
-  const migrationCompleted = useRef(false);
 
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -340,7 +339,6 @@ export default function StaffPage() {
   const onSubmit = async (data: UserFormData) => {
     if (!usersCollectionRef || !firestore) return;
 
-    // --- Start: New logic to save new options ---
     const optionsBatch = writeBatch(firestore);
     const optionsToCreate = [
         { collectionName: 'empresas', data: empresas, value: data.empresa },
@@ -369,10 +367,9 @@ export default function StaffPage() {
         } catch (error) {
             console.error("Error guardando nuevas opciones:", error);
             toast({ variant: "destructive", title: "Error", description: "No se pudieron guardar las nuevas opciones." });
-            return; // Detener si no se pueden guardar las opciones
+            return;
         }
     }
-    // --- End: New logic ---
 
     const dataToSave: { [key: string]: any } = { ...data };
     
@@ -381,7 +378,6 @@ export default function StaffPage() {
         if (dataToSave[key] === undefined) {
             dataToSave[key] = ''; 
         }
-        // This is the important part: don't normalize the 'Status' field.
         if (key === 'Status') return;
         
         if (key === 'email' || key === 'liderArea') {
@@ -431,7 +427,7 @@ export default function StaffPage() {
         } finally {
              if (tempApp) await deleteApp(tempApp);
         }
-    } else { // Logic for editing an existing user
+    } else {
         try {
             const userDocRef = doc(firestore, 'users', editingUser.id);
             await updateDoc(userDocRef, dataToSave);
@@ -484,7 +480,7 @@ export default function StaffPage() {
   };
 
   const handlePasswordReset = async () => {
-    if (!userToReset || !auth) {
+    if (!userToReset || !auth || !firestore) {
         setUserToReset(null);
         return;
     }
@@ -494,11 +490,17 @@ export default function StaffPage() {
     setResetError('');
 
     try {
+        // Step 1: Update Firestore flag to force change on next login
+        const userDocRef = doc(firestore, 'users', userToReset.id);
+        await updateDoc(userDocRef, { requiresPasswordChange: true });
+
+        // Step 2: Send official reset email as a security measure
         await sendPasswordResetEmail(auth, userToReset.email);
+        
         setResetStatus('success');
     } catch (error: any) {
-        console.error("Error sending password reset email from staff page:", error);
-        let description = 'Ocurrió un error inesperado al enviar el correo.';
+        console.error("Error resetting password:", error);
+        let description = 'Ocurrió un error inesperado al procesar el reseteo.';
         if (error.code === 'auth/user-not-found') {
             description = "Este correo no tiene una cuenta de autenticación asociada. Debes crear el usuario primero.";
         }
@@ -728,7 +730,7 @@ export default function StaffPage() {
             Status: (String(row.estado || '').toLowerCase() === 'active' || String(row.estado || '').toLowerCase() === 'activo') ? 'active' : 'inactive',
         };
 
-        if (existingUserByCedula) { // Existing user found by cedula, prepare for update
+        if (existingUserByCedula) {
             const changes: ChangeDetail[] = [];
             const importUserEmail = normalizeEmail(row.email);
             const existingUserEmail = normalizeEmail(existingUserByCedula.email);
@@ -757,7 +759,7 @@ export default function StaffPage() {
             if (changes.length > 0) {
                 analysisResult.push({ user: { ...importUser, id: existingUserByCedula.id }, status: 'update', changes });
             }
-        } else { // This is a new user, check for potential duplicates
+        } else {
             if (existingUserByEmail) {
                 toast({
                     variant: 'destructive',
@@ -777,7 +779,6 @@ export default function StaffPage() {
                 return;
             }
 
-            // If no duplicates, mark as new and add to seen list
             seenInFile.set(normalizedCedula, 'cedula');
             seenInFile.set(email, 'email');
             analysisResult.push({ user: importUser, status: 'new', changes: [] });
@@ -806,7 +807,6 @@ export default function StaffPage() {
     const newUsersToCreate = importAnalysis.filter(i => i.status === 'new' && i.user.email && i.user.cedula);
     const usersToUpdate = importAnalysis.filter(i => i.status === 'update' && i.user.id);
   
-    // Handle updates first, as they don't involve auth creation
     usersToUpdate.forEach(item => {
         const userDocRef = doc(firestore, 'users', item.user.id!);
         const updateData: { [key: string]: any } = {};
@@ -816,7 +816,6 @@ export default function StaffPage() {
         batch.update(userDocRef, updateData);
     });
   
-    // Now handle new users with auth creation
     let tempApp;
     try {
         if (newUsersToCreate.length > 0) {
@@ -825,14 +824,12 @@ export default function StaffPage() {
     
             for (const item of newUsersToCreate) {
                 try {
-                    // 1. Create Auth user and get UID
                     const userCredential = await createUserWithEmailAndPassword(tempAuth, item.user.email!, item.user.cedula!);
                     const userUid = userCredential.user.uid;
         
-                    // 2. Use that UID for the Firestore document in the batch
                     const userDocRef = doc(firestore, 'users', userUid);
                     const userDataWithPasswordFlag = { ...item.user, requiresPasswordChange: true };
-                    delete (userDataWithPasswordFlag as any).id; // ensure no old 'id' field is present
+                    delete (userDataWithPasswordFlag as any).id;
                     batch.set(userDocRef, userDataWithPasswordFlag);
                 } catch (authError: any) {
                     console.error(`Failed to create auth account for ${item.user.email}:`, authError.message);
@@ -846,7 +843,6 @@ export default function StaffPage() {
             }
         }
   
-        // Commit all Firestore changes (updates and new users) at once
         await batch.commit();
 
         toast({
@@ -894,7 +890,7 @@ export default function StaffPage() {
     if (!selectedGroupId || !firestore) return;
     try {
         await deleteDoc(doc(firestore, 'consultantGroups', selectedGroupId));
-        toast({ title: 'Grupo Eliminado', description: `El grupo ha sido eliminado.` });
+        toast({ title: 'Grupo Eliminar', description: `El grupo ha sido eliminado.` });
         setSelectedGroupId(null);
     } catch (error) {
         console.error("Error deleting group:", error);
@@ -1033,15 +1029,20 @@ export default function StaffPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-                {resetStatus === 'success' ? 'Correo Enviado Exitosamente'
-                 : resetStatus === 'error' ? 'Error al Enviar Correo'
-                 : 'Enviar Correo de Recuperación'}
+                {resetStatus === 'success' ? 'Reset Exitoso'
+                 : resetStatus === 'error' ? 'Error al Resetear'
+                 : 'Resetear Contraseña'}
             </DialogTitle>
             {resetStatus === 'idle' && (
               <DialogDescription>
-                  {`¿Estás seguro de que quieres enviar un correo para restablecer la contraseña a ${userToReset?.nombres} ${userToReset?.apellidos} (${userToReset?.email})?`}
+                  {`¿Estás seguro de que quieres resetear la contraseña de ${userToReset?.nombres} ${userToReset?.apellidos} (${userToReset?.email})?`}
                   <br/><br/>
-                  El usuario recibirá un enlace para crear una nueva contraseña. Esto solo funcionará si el usuario ya tiene una cuenta de autenticación creada.
+                  <span className="font-bold text-primary">Flujo de Reset:</span>
+                  <ul className="list-disc pl-5 mt-2 space-y-1">
+                    <li>Se activará el cambio obligatorio de contraseña.</li>
+                    <li>Se enviará un correo de recuperación al empleado.</li>
+                    <li><span className="font-bold">Manual:</span> Debe cambiar la contraseña en la Consola a su número de cédula para que el empleado use esa clave temporal.</li>
+                  </ul>
               </DialogDescription>
             )}
           </DialogHeader>
@@ -1049,9 +1050,11 @@ export default function StaffPage() {
           {resetStatus === 'success' && (
               <div className="py-4 text-center flex flex-col items-center gap-2">
                   <CheckCircle className="h-16 w-16 text-green-500" />
-                  <p className="text-sm text-muted-foreground">
-                      Se ha enviado un correo electrónico a <strong className="text-foreground">{userToReset?.email}</strong>. 
-                      Por favor, indícale al usuario que revise su bandeja de entrada y su carpeta de spam.
+                  <p className="text-sm">
+                      Perfil marcado para actualización obligatoria de contraseña. Se ha enviado un correo a <strong className="text-foreground">{userToReset?.email}</strong>.
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-2 bg-muted p-2 rounded-md">
+                    Recuerde establecer la contraseña como <span className="font-bold">{userToReset?.cedula}</span> en el panel administrativo de Firebase.
                   </p>
               </div>
           )}
@@ -1068,7 +1071,7 @@ export default function StaffPage() {
                     <Button variant="ghost" onClick={() => setUserToReset(null)} disabled={isResetting}>Cancelar</Button>
                     <Button onClick={handlePasswordReset} disabled={isResetting}>
                         {isResetting && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
-                        {isResetting ? 'Enviando...' : 'Sí, Enviar Correo'}
+                        {isResetting ? 'Reseteando...' : 'Sí, Resetear'}
                     </Button>
                 </>
             ) : (
@@ -1126,7 +1129,7 @@ export default function StaffPage() {
                                 <ul className="space-y-1">
                                     {groupMembers.map(member => (
                                         <li key={member.id} className="flex justify-between items-center p-2 rounded-md hover:bg-muted">
-                                            <span className="text-sm">{member.nombres} ${member.apellidos}</span>
+                                            <span className="text-sm">{member.nombres} {member.apellidos}</span>
                                             <Button variant="ghost" size="sm" onClick={() => handleToggleMember(member.id)}>Quitar</Button>
                                         </li>
                                     ))}
@@ -1157,7 +1160,7 @@ export default function StaffPage() {
                                                     <Checkbox onCheckedChange={() => handleToggleMember(user.id)} />
                                                 </TableCell>
                                                 <TableCell>
-                                                    <div className="font-medium">{user.nombres} ${user.apellidos}</div>
+                                                    <div className="font-medium">{user.nombres} {user.apellidos}</div>
                                                     <div className="text-xs text-muted-foreground">{user.cargo}</div>
                                                 </TableCell>
                                             </TableRow>
@@ -1695,7 +1698,7 @@ export default function StaffPage() {
                                         </DropdownMenuItem>
                                         <DropdownMenuItem onSelect={() => setUserToReset(user)}>
                                             <KeyRound className="mr-2 h-4 w-4" />
-                                            <span>Restablecer Contraseña</span>
+                                            <span>Resetear Contraseña</span>
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
