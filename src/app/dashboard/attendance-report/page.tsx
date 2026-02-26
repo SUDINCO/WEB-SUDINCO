@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -276,7 +275,7 @@ function AttendanceReportPage() {
                 });
             });
             dataToExport = multiDayData;
-            sheetName = `Resumen_Diario_${format(range.from, 'yyyy-MM-dd')}_a_${format(range.to, 'yyyy-MM-dd')}`;
+            sheetName = `Diario_${format(range.from, 'MMdd')}_a_${format(range.to, 'MMdd')}`;
         } else { // resumen-periodo
             dataToExport = periodSummaryData.map(item => ({
                 'Código': item.collaborator.codigo,
@@ -296,12 +295,13 @@ function AttendanceReportPage() {
                 'H.E. 50%': item.he50,
                 'H.E. 100%': item.he100,
             }));
-            sheetName = `Resumen_Periodo_${periodDays.length > 0 ? format(periodDays[0], 'yyyy-MM') : ''}`;
+            sheetName = `Periodo_${periodDays.length > 0 ? format(periodDays[0], 'yyyy-MM') : 'Actual'}`;
         }
 
         const worksheet = XLSX.utils.json_to_sheet(dataToExport);
         const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+        // Excel limit: sheet names cannot exceed 31 characters
+        XLSX.utils.book_append_sheet(workbook, worksheet, sheetName.slice(0, 31));
         XLSX.writeFile(workbook, `Resumen_Asistencia.xlsx`);
         setIsExportDialogOpen(false);
     };
