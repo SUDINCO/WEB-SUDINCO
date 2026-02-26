@@ -207,10 +207,6 @@ export function ScheduleDataSummaryDialog({
       relevantCollaborators, unifiedSchedule, days, holidays, overtimeRules, transfers, roleChanges, shiftPatterns
     );
 
-    if (periodLocation === 'todos' && periodJobTitle === 'todos') {
-      return { groupedData: allGroupedData as GroupedSummary[], uniqueShifts };
-    }
-    
     const fullCollaboratorMap = new Map(collaborators.map(c => [c.id, c]));
 
     const filteredGroupedData = (allGroupedData as GroupedSummary[])
@@ -280,10 +276,6 @@ export function ScheduleDataSummaryDialog({
     const { groupedData, uniqueShifts } = calculateScheduleSummary(
         collaborators, fullYearSchedule, allYearDays, holidays, overtimeRules, transfers, roleChanges, shiftPatterns
     );
-    
-    if (annualLocation === 'todos' && annualJobTitle === 'todos') {
-      return { groupedData: groupedData as GroupedSummary[], uniqueShifts };
-    }
     
     const filteredGroupedData = (groupedData as GroupedSummary[]).map((group: GroupedSummary) => {
         const filteredEmployees = group.employees.filter((employee: SummaryData) => {

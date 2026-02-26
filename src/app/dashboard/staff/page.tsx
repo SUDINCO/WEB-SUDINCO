@@ -35,6 +35,7 @@ import {
     AlertDialogAction,
     AlertDialogCancel,
     AlertDialogContent,
+    AlertDialogDescription,
     AlertDialogHeader,
     AlertDialogTitle,
     AlertDialogFooter,
@@ -665,7 +666,16 @@ export default function StaffPage() {
       </Card>
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>¿Confirmar eliminación?</AlertDialogTitle><AlertDialogDescription>Se borrarán {selectedUsers.length} perfiles permanentemente.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction className="bg-destructive" onClick={handleDeleteSelectedUsers}>Eliminar</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Confirmar eliminación?</AlertDialogTitle>
+            <AlertDialogDescription>Se borrarán {selectedUsers.length} perfiles permanentemente.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive" onClick={handleDeleteSelectedUsers}>Eliminar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
       </AlertDialog>
     </div>
   );
