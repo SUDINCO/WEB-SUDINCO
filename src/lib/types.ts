@@ -41,9 +41,11 @@ export interface EquipmentHandover {
     notes: string;
     photoUrl?: string;
   }[];
-  outgoingSignature: string;
   incomingSignature: string;
+  outgoingSignature?: string;
+  status: 'pending' | 'approved' | 'rejected';
   timestamp: number;
+  approvalTimestamp?: number;
   attendanceRecordId?: string;
 }
 

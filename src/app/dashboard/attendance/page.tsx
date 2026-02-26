@@ -41,6 +41,7 @@ import {
   Hourglass,
   Info,
   ShieldCheck,
+  ClipboardList,
 } from 'lucide-react';
 import { useUser, useAuth, useFirestore, useCollection } from '@/firebase';
 import {
@@ -449,6 +450,8 @@ function AttendancePageContent() {
 
   // Equipment Handover State
   const [isHandoverOpen, setIsHandoverOpen] = useState(false);
+  const [isApprovalOpen, setIsApprovalOpen] = useState(false);
+  const [handoverToApprove, setHandoverToApprove] = useState<EquipmentHandover | null>(null);
   const [reliefGuard, setReliefGuard] = useState<UserProfile | null>(null);
 
   const context = useScheduleState();
@@ -464,6 +467,14 @@ function AttendancePageContent() {
     if (!firestore || !userProfile) return null;
     return query(collection(firestore, 'attendance'), where('collaboratorId', '==', userProfile.id));
   }, [firestore, userProfile]));
+
+  const pendingHandover = useMemo(() => {
+    if (!userProfile || !equipmentHandovers) return null;
+    return equipmentHandovers.find(h => 
+      h.status === 'pending' && 
+      h.outgoingGuardId === userProfile.id
+    ) || null;
+  }, [userProfile, equipmentHandovers]);
 
   const { schedule } = useMemo(() => {
     if (usersLoading || contextLoading || vacationsLoading) {
@@ -570,17 +581,18 @@ function AttendancePageContent() {
 
     // --- GUARD CLOCK-OUT VALIDATION ---
     if (userProfile.cargo === 'GUARDIA DE SEGURIDAD' && action === 'out') {
-      const handoverDone = equipmentHandovers?.some(h => 
-        h.date === todayStr && 
+      const approvedHandover = equipmentHandovers?.find(h => 
+        h.status === 'approved' && 
         h.outgoingGuardId === userProfile.id &&
-        h.location === userProfile.ubicacion
+        h.location === userProfile.ubicacion &&
+        h.date === todayStr
       );
 
-      if (!handoverDone) {
+      if (!approvedHandover) {
         toast({
           variant: 'destructive',
-          title: 'Acta No Gestionada',
-          description: 'No puede registrar su salida hasta que el relevo entrante haya completado el acta de dotación.',
+          title: 'Acta No Aprobada',
+          description: 'No puede registrar su salida hasta que su relevo entrante haya realizado el acta y usted la haya aprobado.',
         });
         return;
       }
@@ -745,6 +757,36 @@ function AttendancePageContent() {
           suggestedGuard={reliefGuard}
           onSuccess={() => handleClockAction('in')}
         />
+      )}
+
+      {isApprovalOpen && handoverToApprove && (
+        <HandoverDialog
+          open={isApprovalOpen}
+          onOpenChange={setIsApprovalOpen}
+          location={handoverToApprove.location}
+          currentUser={userProfile}
+          suggestedGuard={null}
+          mode="approve"
+          existingHandover={handoverToApprove}
+          onSuccess={() => toast({ title: 'Aprobación exitosa' })}
+        />
+      )}
+
+      {pendingHandover && (
+        <Card className="bg-primary/5 border-primary/20 animate-pulse">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <ClipboardList className="text-primary h-6 w-6" />
+              <div>
+                <p className="font-bold text-primary">Acta de Relevo Pendiente</p>
+                <p className="text-xs text-muted-foreground">Su relevo <strong>{pendingHandover.incomingGuardName}</strong> ha registrado la dotación. Debe revisarla y firmar para que ambos puedan finalizar el cambio de turno.</p>
+              </div>
+            </div>
+            <Button onClick={() => { setHandoverToApprove(pendingHandover); setIsApprovalOpen(true); }}>
+              Revisar y Firmar
+            </Button>
+          </CardContent>
+        </Card>
       )}
 
       <TimeTracker 

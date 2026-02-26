@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo, useState } from 'react';
@@ -35,6 +36,7 @@ import {
   MapPin,
   Camera,
   X,
+  Clock,
 } from 'lucide-react';
 import { useCollection, useFirestore } from '@/firebase';
 import { collection, query, orderBy, limit } from 'firebase/firestore';
@@ -69,10 +71,11 @@ export default function EquipmentControlPage() {
   }, [handovers, filter]);
 
   const stats = useMemo(() => {
-    if (!handovers) return { total: 0, withIssues: 0 };
+    if (!handovers) return { total: 0, withIssues: 0, pending: 0 };
     return {
       total: handovers.length,
-      withIssues: handovers.filter(h => h.items.some(i => i.status === 'issue')).length
+      withIssues: handovers.filter(h => h.items.some(i => i.status === 'issue')).length,
+      pending: handovers.filter(h => h.status === 'pending').length
     };
   }, [handovers]);
 
@@ -80,9 +83,10 @@ export default function EquipmentControlPage() {
     const XLSX = await import('xlsx');
     const dataToExport = filteredHandovers.map(h => ({
       Fecha: format(new Date(h.timestamp), 'dd/MM/yyyy HH:mm'),
+      Estado: h.status === 'approved' ? 'Aprobado' : 'Pendiente',
       Ubicación: h.location,
-      'Guardia Saliente': h.outgoingGuardName,
-      'Guardia Entrante': h.incomingGuardName,
+      'Guardia Saliente (Entregó)': h.outgoingGuardName,
+      'Guardia Entrante (Recibió)': h.incomingGuardName,
       'Novedades': h.items.filter(i => i.status === 'issue').map(i => `${i.name} (${i.issueType || 'Novedad'}): ${i.notes || ''}`).join('; ') || 'Ninguna'
     }));
 
@@ -97,7 +101,7 @@ export default function EquipmentControlPage() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Control de Dotación Premium</h1>
-          <p className="text-muted-foreground">Auditoría de relevos con doble firma y evidencia fotográfica.</p>
+          <p className="text-muted-foreground">Auditoría de relevos con doble identidad digital y validación personal.</p>
         </div>
         <Button onClick={handleExport} variant="outline">
           <Download className="mr-2 h-4 w-4" />
@@ -105,15 +109,21 @@ export default function EquipmentControlPage() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="bg-primary/5 border-primary/20">
-          <CardHeader className="pb-2 text-center">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card className="bg-primary/5 border-primary/20 text-center">
+          <CardHeader className="pb-2">
             <CardDescription>Total Relevos</CardDescription>
             <CardTitle className="text-3xl font-bold">{stats.total}</CardTitle>
           </CardHeader>
         </Card>
-        <Card className="bg-red-50 border-red-100">
-          <CardHeader className="pb-2 text-center">
+        <Card className="bg-yellow-50 border-yellow-100 text-center">
+          <CardHeader className="pb-2">
+            <CardDescription className="text-yellow-600 font-bold">Esperando Aprobación</CardDescription>
+            <CardTitle className="text-3xl font-bold text-yellow-700">{stats.pending}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card className="bg-red-50 border-red-100 text-center">
+          <CardHeader className="pb-2">
             <CardDescription className="text-red-600 font-bold">Actas con Novedades</CardDescription>
             <CardTitle className="text-3xl font-bold text-red-700">{stats.withIssues}</CardTitle>
           </CardHeader>
@@ -149,9 +159,9 @@ export default function EquipmentControlPage() {
               <TableRow>
                 <TableHead>Fecha / Hora</TableHead>
                 <TableHead>Ubicación</TableHead>
-                <TableHead>Saliente (Entrega)</TableHead>
-                <TableHead>Entrante (Recibe)</TableHead>
+                <TableHead>Relevo</TableHead>
                 <TableHead className="text-center">Estado</TableHead>
+                <TableHead className="text-center">Novedades</TableHead>
                 <TableHead className="text-right">Acción</TableHead>
               </TableRow>
             </TableHeader>
@@ -179,19 +189,33 @@ export default function EquipmentControlPage() {
                           {handover.location}
                         </div>
                       </TableCell>
-                      <TableCell className="text-xs">{handover.outgoingGuardName}</TableCell>
-                      <TableCell className="text-xs font-semibold">{handover.incomingGuardName}</TableCell>
+                      <TableCell>
+                        <div className="text-xs">
+                          <p><span className="text-blue-600 font-bold">Sal:</span> {handover.outgoingGuardName}</p>
+                          <p><span className="text-emerald-600 font-bold">Ent:</span> {handover.incomingGuardName}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {handover.status === 'approved' ? (
+                          <Badge variant="outline" className="text-emerald-600 border-emerald-200 bg-emerald-50 gap-1">
+                            <CheckCircle className="h-3 w-3" />
+                            Validado
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-yellow-600 border-yellow-200 bg-yellow-50 gap-1 animate-pulse">
+                            <Clock className="h-3 w-3" />
+                            Pendiente
+                          </Badge>
+                        )}
+                      </TableCell>
                       <TableCell className="text-center">
                         {hasIssues ? (
-                          <Badge variant="destructive" className="gap-1 animate-pulse">
+                          <Badge variant="destructive" className="gap-1">
                             <AlertTriangle className="h-3 w-3" />
                             Novedad
                           </Badge>
                         ) : (
-                          <Badge variant="outline" className="text-emerald-600 border-emerald-200 bg-emerald-50 gap-1">
-                            <CheckCircle className="h-3 w-3" />
-                            Todo OK
-                          </Badge>
+                          <span className="text-xs text-muted-foreground">Ninguna</span>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
@@ -234,21 +258,23 @@ export default function EquipmentControlPage() {
                     <p className="font-bold text-slate-800">{selectedHandover.location}</p>
                   </div>
                   <div className="col-span-2">
-                    <p className="text-[10px] text-muted-foreground font-bold uppercase">Fecha y Hora</p>
-                    <p className="font-bold text-slate-800">{format(new Date(selectedHandover.timestamp), 'PPP p', { locale: es })}</p>
+                    <p className="text-[10px] text-muted-foreground font-bold uppercase">Estado Acta</p>
+                    <Badge variant={selectedHandover.status === 'approved' ? 'default' : 'secondary'}>
+                      {selectedHandover.status === 'approved' ? 'APROBADA Y CERRADA' : 'PENDIENTE DE REVISIÓN SALIENTE'}
+                    </Badge>
                   </div>
                   <div className="col-span-2 pt-2 border-t">
-                    <p className="text-[10px] text-blue-600 font-bold uppercase">Saliente (Entregó)</p>
+                    <p className="text-[10px] text-blue-600 font-bold uppercase">Guardia Saliente</p>
                     <p className="font-bold">{selectedHandover.outgoingGuardName}</p>
                   </div>
                   <div className="col-span-2 pt-2 border-t">
-                    <p className="text-[10px] text-emerald-600 font-bold uppercase">Entrante (Recibe)</p>
+                    <p className="text-[10px] text-emerald-600 font-bold uppercase">Guardia Entrante</p>
                     <p className="font-bold">{selectedHandover.incomingGuardName}</p>
                   </div>
                 </div>
 
                 <div className="space-y-4">
-                  <h4 className="font-bold text-lg text-slate-800 border-l-4 border-primary pl-3">Checklist de Activos</h4>
+                  <h4 className="font-bold text-lg text-slate-800 border-l-4 border-primary pl-3">Checklist de Activos (Reportado por Relevo Entrante)</h4>
                   <div className="space-y-3">
                     {selectedHandover.items.map((item) => (
                       <div key={item.name} className={cn("p-4 border rounded-xl flex flex-col gap-3", item.status === 'issue' ? "bg-red-50/50 border-red-200" : "bg-white")}>
@@ -293,20 +319,25 @@ export default function EquipmentControlPage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t">
                   <div className="flex flex-col items-center">
-                    <p className="text-[10px] text-muted-foreground font-bold mb-2 uppercase">Firma Guardia Saliente</p>
-                    <div className="border bg-slate-50 rounded-lg p-2 w-full flex justify-center">
-                      <Image 
-                        src={selectedHandover.outgoingSignature} 
-                        alt="Firma Saliente" 
-                        width={300} 
-                        height={100} 
-                        className="max-h-[80px] w-auto object-contain"
-                        unoptimized
-                      />
+                    <p className="text-[10px] text-blue-600 font-bold mb-2 uppercase">Firma Guardia Saliente (Aprobación)</p>
+                    <div className="border bg-slate-50 rounded-lg p-2 w-full flex justify-center min-h-[80px] items-center">
+                      {selectedHandover.outgoingSignature ? (
+                        <Image 
+                          src={selectedHandover.outgoingSignature} 
+                          alt="Firma Saliente" 
+                          width={300} 
+                          height={100} 
+                          className="max-h-[80px] w-auto object-contain"
+                          unoptimized
+                        />
+                      ) : <span className="text-xs text-muted-foreground italic">Pendiente de firma en sesión personal</span>}
                     </div>
+                    {selectedHandover.approvalTimestamp && (
+                      <p className="text-[9px] text-muted-foreground mt-1">Aprobado: {format(new Date(selectedHandover.approvalTimestamp), 'dd/MM/yy HH:mm')}</p>
+                    )}
                   </div>
                   <div className="flex flex-col items-center">
-                    <p className="text-[10px] text-muted-foreground font-bold mb-2 uppercase">Firma Guardia Entrante</p>
+                    <p className="text-[10px] text-emerald-600 font-bold mb-2 uppercase">Firma Guardia Entrante (Registro)</p>
                     <div className="border bg-slate-50 rounded-lg p-2 w-full flex justify-center">
                       <Image 
                         src={selectedHandover.incomingSignature} 
@@ -317,6 +348,7 @@ export default function EquipmentControlPage() {
                         unoptimized
                       />
                     </div>
+                    <p className="text-[9px] text-muted-foreground mt-1">Registrado: {format(new Date(selectedHandover.timestamp), 'dd/MM/yy HH:mm')}</p>
                   </div>
                 </div>
               </div>
