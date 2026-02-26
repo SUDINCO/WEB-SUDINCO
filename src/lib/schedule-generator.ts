@@ -47,24 +47,6 @@ function seededRandom(seed: number) {
   };
 }
 
-/**
- * Mezcla un array de forma determinista basándose en una semilla.
- */
-function seededShuffle<T>(array: T[], seed: number): T[] {
-    const shuffled = [...array];
-    const random = seededRandom(seed);
-    let currentIndex = shuffled.length;
-    let randomIndex;
-
-    while (currentIndex !== 0) {
-        randomIndex = Math.floor(random() * currentIndex);
-        currentIndex--;
-        [shuffled[currentIndex], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[currentIndex]];
-    }
-
-    return shuffled;
-}
-
 const isNightShift = (shift: string | null): boolean => {
     if (!shift) return false;
     const s = shift.toUpperCase();
@@ -75,9 +57,8 @@ const isNightShift = (shift: string | null): boolean => {
  * Encuentra la posición en el ciclo basándose en el historial de los últimos días del periodo anterior.
  */
 function findCyclePosition(cycle: (string | null)[], history: (string | null)[]): number {
-    if (history.length === 0) return 0;
+    if (history.length === 0) return -1; // Indica que no hay historial inmediato
     
-    // Intentamos buscar una coincidencia de la secuencia de los últimos 3 días para mayor precisión
     const sequenceSize = Math.min(3, history.length);
     const lastSequence = history.slice(-sequenceSize);
 
@@ -90,13 +71,48 @@ function findCyclePosition(cycle: (string | null)[], history: (string | null)[])
                 break;
             }
         }
-        if (match) return (i + 1) % cycle.length; // Retornamos la siguiente posición
+        if (match) return (i + 1) % cycle.length; 
     }
 
-    // Si no hay coincidencia de secuencia, buscamos el último día
     const lastShift = history[history.length - 1];
     const lastIdx = cycle.indexOf(lastShift);
-    return lastIdx !== -1 ? (lastIdx + 1) % cycle.length : 0;
+    return lastIdx !== -1 ? (lastIdx + 1) % cycle.length : -1;
+}
+
+/**
+ * Calcula la "Deuda de Fines de Semana" analizando TODOS los cronogramas aprobados.
+ * Retorna un mapa de ID -> Score (proporción de fines de semana trabajados).
+ */
+function calculateWeekendEquity(collaborators: Collaborator[], savedSchedules: SavedSchedule[]): Map<string, number> {
+    const weekendStats = new Map<string, { worked: number, total: number }>();
+    
+    collaborators.forEach(c => weekendStats.set(c.id, { worked: 0, total: 0 }));
+
+    savedSchedules.forEach(saved => {
+        Object.entries(saved.schedule).forEach(([collabId, dayMap]) => {
+            const stats = weekendStats.get(collabId);
+            if (!stats) return;
+
+            Object.entries(dayMap).forEach(([dayKey, shift]) => {
+                const date = new Date(`${dayKey}T00:00:00`);
+                if (isSaturday(date) || isSunday(date)) {
+                    stats.total++;
+                    if (shift && !['LIB', 'VAC', 'TRA', 'PM', 'LIC', 'SUS', 'RET', 'FI'].includes(shift)) {
+                        stats.worked++;
+                    }
+                }
+            });
+        });
+    });
+
+    const equityScores = new Map<string, number>();
+    weekendStats.forEach((stats, id) => {
+        // Un score más alto significa que ha trabajado más fines de semana (más "deuda" de descanso)
+        const score = stats.total > 0 ? stats.worked / stats.total : 0.5;
+        equityScores.set(id, score);
+    });
+
+    return equityScores;
 }
 
 export function generarHorariosEstaticos(
@@ -122,17 +138,20 @@ export function generarHorariosEstaticos(
   const prevPeriodDate = subMonths(days[0], 1);
   const prevPeriodId = format(prevPeriodDate, 'yyyy-MM');
 
-  // Construir mapa de historial del periodo anterior desde los cronogramas aprobados
-  const historyMap = new Map<string, (string | null)[]>();
-  Object.values(savedSchedules).forEach(saved => {
+  // 1. Obtener historial inmediato para CONTINUIDAD técnica
+  const immediateHistoryMap = new Map<string, (string | null)[]>();
+  // 2. Obtener historial global para EQUIDAD de fines de semana
+  const allSaved = Object.values(savedSchedules);
+  const equityScores = calculateWeekendEquity(allCollaborators, allSaved);
+
+  allSaved.forEach(saved => {
       if (saved.id.startsWith(prevPeriodId)) {
           Object.entries(saved.schedule).forEach(([collabId, dayMap]) => {
-              if (!historyMap.has(collabId)) historyMap.set(collabId, []);
-              // Ordenar por fecha y extraer turnos
+              if (!immediateHistoryMap.has(collabId)) immediateHistoryMap.set(collabId, []);
               const sortedShifts = Object.entries(dayMap)
                   .sort((a, b) => a[0].localeCompare(b[0]))
                   .map(entry => entry[1]);
-              historyMap.set(collabId, sortedShifts);
+              immediateHistoryMap.set(collabId, sortedShifts);
           });
       }
   });
@@ -141,17 +160,20 @@ export function generarHorariosEstaticos(
     const collaboratorSchedule = new Map<string, string | null>();
     schedule.set(collaborator.id, collaboratorSchedule);
 
+    const history = immediateHistoryMap.get(collaborator.id) || [];
+    const equityScore = equityScores.get(collaborator.id) || 0.5;
+
     days.forEach((day, dayIndex) => {
       const dayKey = format(day, 'yyyy-MM-dd');
 
-      // 1. Prioridad: Overrides manuales (Aprobados por el Coordinador)
+      // 1. Prioridad: Overrides manuales
       const manualOverride = manualOverrides.get(collaborator.id)?.get(dayKey);
       if (manualOverride !== undefined) {
           collaboratorSchedule.set(dayKey, manualOverride.shift);
           return;
       }
       
-      // 2. Prioridad: Ausencias legales (Vacaciones/Permisos)
+      // 2. Prioridad: Ausencias legales
       const isOnVacation = vacations.some(v => v.requestType === 'vacaciones' && v.userId === collaborator.id && isWithinInterval(day, { start: new Date(v.startDate), end: new Date(v.endDate) }));
       if (isOnVacation) {
         collaboratorSchedule.set(dayKey, 'VAC');
@@ -166,7 +188,7 @@ export function generarHorariosEstaticos(
           return;
       }
       
-      // 3. Determinar detalles efectivos (Traslados/Cambios de Rol)
+      // 3. Determinar detalles efectivos
       const { location: effectiveLocation, jobTitle: effectiveJobTitle } = getEffectiveDetails(collaborator, day, transfers, roleChanges);
       const activeRoleChange = roleChanges.find(rc => rc.collaboratorId === collaborator.id && isWithinInterval(day, { start: rc.startDate, end: rc.endDate }));
 
@@ -175,7 +197,7 @@ export function generarHorariosEstaticos(
         return;
       }
 
-      // 4. Lógica de Ciclo con Memoria y Equidad
+      // 4. Lógica de Ciclo con Equidad Histórica
       const patternData = JOB_CYCLES.get(normalizeText(effectiveJobTitle));
       
       if (!patternData) {
@@ -191,18 +213,23 @@ export function generarHorariosEstaticos(
       }
       
       const cycle = patternData.cycle;
-      if (!cycle || cycle.length === 0) return;
+      let startPosition = findCyclePosition(cycle, history);
 
-      // Obtener punto de inicio basado en el historial aprobado del periodo anterior
-      const history = historyMap.get(collaborator.id) || [];
-      const baseOffset = findCyclePosition(cycle, history);
+      if (startPosition === -1) {
+          // Si no hay historial inmediato para dar continuidad, usamos la EQUIDAD HISTÓRICA
+          // para elegir el mejor punto de inicio que favorezca sus descansos en fin de semana
+          const personSeed = simpleHash(collaborator.id + periodIdentifier);
+          // Nudge basado en el score de equidad: si ha trabajado mucho (score > 0.6), 
+          // intentamos desplazar el ciclo para que sus "LIB" caigan en fin de semana.
+          const equityNudge = equityScore > 0.6 ? 2 : (equityScore < 0.4 ? -2 : 0);
+          startPosition = (personSeed + equityNudge) % cycle.length;
+      }
 
-      // Aplicar un "Staggering" (desplazamiento) basado en el ID para romper grupos, 
-      // pero que sea consistente dentro del mismo mes
-      const groupShuffleSeed = simpleHash(`${periodIdentifier}-${effectiveLocation}-${effectiveJobTitle}`);
-      const personOffset = simpleHash(collaborator.id + periodIdentifier) % cycle.length;
+      // Añadimos un factor de "rebarajeo" basado en el periodo para romper grupos fijos
+      // pero que se mantiene constante para la persona durante todo el mes generado
+      const groupShuffleFactor = simpleHash(periodIdentifier + effectiveLocation) % 3;
+      const currentCycleIndex = (startPosition + dayIndex + groupShuffleFactor) % cycle.length;
       
-      const currentCycleIndex = (baseOffset + dayIndex + personOffset) % cycle.length;
       let shift = cycle[currentCycleIndex];
 
       // 5. Protección de Lactancia
