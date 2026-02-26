@@ -202,7 +202,7 @@ export default function StaffPage() {
     if (!editingUser && leaderRules && !rulesLoading) {
       const [empresa, cargo, ubicacion, departamento, centroCosto] = watchedFields;
       if (departamento) { 
-          const matchingRule = leaderRules.find(rule => 
+          const matchingRule = leaderRules.find((rule: any) => 
               normalizeText(rule.conditions.empresa) === normalizeText(empresa) &&
               normalizeText(rule.conditions.cargo) === normalizeText(cargo) &&
               normalizeText(rule.conditions.ubicacion) === normalizeText(ubicacion) &&

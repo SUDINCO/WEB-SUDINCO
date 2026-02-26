@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -80,7 +79,10 @@ export function HandoverDialog({ open, onOpenChange, location, currentUser, sugg
   useEffect(() => {
     if (open) {
       if (isApproving && existingHandover) {
-        setItems(existingHandover.items as HandoverItem[]);
+        setItems(existingHandover.items.map(i => ({
+            ...i,
+            present: (i as any).present !== undefined ? (i as any).present : true
+        })) as HandoverItem[]);
       } else {
         setItems(EQUIPMENT_CATALOG.map(name => ({ 
           name, 
@@ -115,7 +117,7 @@ export function HandoverDialog({ open, onOpenChange, location, currentUser, sugg
     const newItems = [...items];
     newItems[index].present = present;
     if (!present) {
-      newItems[index].status = 'good'; // Reset to good if not present
+      newItems[index].status = 'good';
       newItems[index].issueType = '';
       newItems[index].photoUrl = null;
     }

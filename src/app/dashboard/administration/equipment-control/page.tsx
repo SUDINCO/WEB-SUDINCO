@@ -152,6 +152,7 @@ export default function EquipmentControlPage() {
             <CardDescription className="text-red-600 font-bold">Actas con Novedades</CardDescription>
             <CardTitle className="text-3xl font-bold text-red-700">{stats.withIssues}</CardTitle>
           </CardHeader>
+        </Card>
         <Card className="bg-emerald-50 border-emerald-100 text-center">
           <CardHeader className="pb-2">
             <CardDescription className="text-emerald-600 font-bold">Índice de Operatividad</CardDescription>
@@ -268,7 +269,6 @@ export default function EquipmentControlPage() {
         </CardContent>
       </Card>
 
-      {/* Delete Confirmation */}
       <AlertDialog open={!!handoverToDelete} onOpenChange={() => setHandoverToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -286,7 +286,6 @@ export default function EquipmentControlPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Detail Dialog */}
       <Dialog open={!!selectedHandover} onOpenChange={() => setSelectedHandover(null)}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           {selectedHandover && (
@@ -406,7 +405,6 @@ export default function EquipmentControlPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Photo Preview Dialog */}
       <Dialog open={!!viewPhoto} onOpenChange={() => setViewPhoto(null)}>
         <DialogContent className="max-w-3xl p-0 overflow-hidden bg-black border-none">
           {viewPhoto && (
