@@ -35,7 +35,7 @@ const initialData = {
         "ANALISTA DE INVENTARIOS", "ANALISTA DE MANTENIMIENTO MECANICO", 
         "ANALISTA DE NOMINA Y COMPENSACIONES", "ANALISTA DE OPERACIONES Y ATENCION AL CLIENTE", 
         "ANALISTA DE RECURSOS HUMANOS", "ANALISTA DE REDES", "ANALISTA DE SEGURIDAD DE LA INFORMACION", 
-        "ANALISTA DE SOPORTE TI", "ANALISTA DE SOSTENIBILIDAD", "ANALISTA LEGAL", 
+        "ANALISTA DE SOPORTE TI", "ANALISTA DE SOPORTE TI", "ANALISTA DE SOSTENIBILIDAD", "ANALISTA LEGAL", 
         "ARMADOR DE ESTRUCTURAS", "ARQUITECTO DE DATOS", "ASESOR DE SEGUROS", 
         "ASISTENTE ADMINISTRATIVO", "ASISTENTE ADMINISTRATIVO DE PEAJE", "ASISTENTE DE ADQUISICIONES", 
         "ASISTENTE DE ATENCION AL CLIENTE", "ASISTENTE DE COMUNICACIONES", "ASISTENTE DE CONTABILIDAD", 
@@ -221,8 +221,8 @@ const initialData = {
         {"jobTitle":"GUARDIA DE SEGURIDAD","dayType":"FESTIVO","shift":"N12","startTime":"18:00","endTime":"06:00","nightSurcharge":0,"sup50":0,"ext100":6},
         {"jobTitle":"GUARDIA DE SEGURIDAD","dayType":"NORMAL","shift":"D12","startTime":"06:00","endTime":"18:00","nightSurcharge":0,"sup50":0,"ext100":0},
         {"jobTitle":"GUARDIA DE SEGURIDAD","dayType":"NORMAL","shift":"N12","startTime":"18:00","endTime":"06:00","nightSurcharge":7,"sup50":0,"ext100":0},
-        {"jobTitle":"_DEFAULT_OFFICE_","dayType":"NORMAL","shift":"N9","startTime":"08:30","endTime":"17:30","nightSurcharge":0,"sup50":1,"ext100":0},
-        {"jobTitle":"_DEFAULT_OFFICE_","dayType":"FESTIVO","shift":"N9","startTime":"08:30","endTime":"17:30","nightSurcharge":0,"sup50":0,"ext100":9}
+        {"jobTitle":"HORARIO OFICINA","dayType":"NORMAL","shift":"N9","startTime":"08:30","endTime":"17:30","nightSurcharge":0,"sup50":1,"ext100":0},
+        {"jobTitle":"HORARIO OFICINA","dayType":"FESTIVO","shift":"N9","startTime":"08:30","endTime":"17:30","nightSurcharge":0,"sup50":0,"ext100":9}
     ]
 };
 
@@ -296,7 +296,7 @@ export async function seedDatabase(db: Firestore) {
         });
 
         const filteredOvertimeRules = initialData.overtimeRules.filter(rule => {
-            if (rule.jobTitle === '_DEFAULT_OFFICE_') return true; // Always include default rules
+            if (rule.jobTitle === 'HORARIO OFICINA') return true; // Always include default rules
             const allowedShifts = allowedShiftsByJobTitle.get(normalizeText(rule.jobTitle));
             return allowedShifts ? allowedShifts.has(rule.shift) : false;
         });
