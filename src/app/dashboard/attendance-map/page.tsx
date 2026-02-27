@@ -11,12 +11,13 @@ import { useCollection, useFirestore } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import { format, startOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Calendar as CalendarIcon, LoaderCircle, Search } from 'lucide-react';
+import { Calendar as CalendarIcon, LoaderCircle, Search, MapPin } from 'lucide-react';
 import type { WorkLocation, AttendanceRecord, LocationReport, UserProfile } from '@/lib/types';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Combobox } from '@/components/ui/combobox';
+import { cn } from '@/lib/utils';
 
 const AttendanceMap = dynamic(() => import('../../../components/map/attendance-map'), {
     ssr: false,
@@ -30,6 +31,10 @@ export default function AttendanceMapPage() {
   const [sheetFilter, setSheetFilter] = useState('');
   const [cargoFilter, setCargoFilter] = useState('todos');
   const [colaboradorFilter, setColaboradorFilter] = useState('todos');
+  
+  // Estado para centrar el mapa en un punto específico seleccionado desde la tabla
+  const [highlightedPoint, setHighlightedPoint] = useState<{ lat: number; lng: number; label: string } | null>(null);
+
   const firestore = useFirestore();
 
   const { data: workLocations, isLoading: locationsLoading } = useCollection<WorkLocation>(
@@ -163,6 +168,13 @@ export default function AttendanceMapPage() {
     });
   };
   
+  const handleShowOnMap = (lat: number | undefined, lng: number | undefined, label: string) => {
+    if (lat && lng) {
+        setHighlightedPoint({ lat, lng, label });
+        setSheetData(null); // Cerrar el panel para mostrar el mapa
+    }
+  };
+
   const filteredSheetRecords = useMemo(() => {
     if (!sheetData?.records) return [];
     if (!sheetFilter) return sheetData.records;
@@ -179,7 +191,7 @@ export default function AttendanceMapPage() {
   return (
     <div className="space-y-6">
       <Sheet open={!!sheetData} onOpenChange={(isOpen) => !isOpen && setSheetData(null)}>
-        <SheetContent className="sm:max-w-lg">
+        <SheetContent className="sm:max-w-3xl">
             <SheetHeader>
                 <SheetTitle>{sheetData?.title}</SheetTitle>
                 <SheetDescription>{sheetData?.description}</SheetDescription>
@@ -200,22 +212,55 @@ export default function AttendanceMapPage() {
                             <TableHead>Persona</TableHead>
                             <TableHead>Cargo</TableHead>
                             <TableHead>Entrada</TableHead>
+                            <TableHead>Ubicación Entrada</TableHead>
                             <TableHead>Salida</TableHead>
+                            <TableHead>Ubicación Salida</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {filteredSheetRecords && filteredSheetRecords.length > 0 ? (
-                            filteredSheetRecords.map(record => (
-                                <TableRow key={record.id}>
-                                    <TableCell>{record.userName}</TableCell>
-                                    <TableCell>{record.userCargo}</TableCell>
-                                    <TableCell>{record.entryTime ? format(record.entryTime, 'HH:mm:ss') : '-'}</TableCell>
-                                    <TableCell>{record.exitTime ? format(record.exitTime, 'HH:mm:ss') : '-'}</TableCell>
-                                </TableRow>
-                            ))
+                            filteredSheetRecords.map(record => {
+                                const isEntryOff = record.entryWorkLocationName === "Fuera de Zona";
+                                const isExitOff = record.exitWorkLocationName === "Fuera de Zona";
+
+                                return (
+                                    <TableRow key={record.id}>
+                                        <TableCell className="font-medium">{record.userName}</TableCell>
+                                        <TableCell className="text-xs">{record.userCargo}</TableCell>
+                                        <TableCell className="text-xs">{record.entryTime ? format(record.entryTime, 'HH:mm:ss') : '-'}</TableCell>
+                                        <TableCell className="text-xs">
+                                            {isEntryOff ? (
+                                                <button 
+                                                    onClick={() => handleShowOnMap(record.entryLatitude, record.entryLongitude, `Entrada: ${record.userName}`)}
+                                                    className="text-blue-600 hover:underline flex items-center gap-1 text-left"
+                                                >
+                                                    <MapPin className="h-3 w-3" />
+                                                    Ubicación no registrada
+                                                </button>
+                                            ) : (
+                                                <span className="text-muted-foreground">{record.entryWorkLocationName || '-'}</span>
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="text-xs">{record.exitTime ? format(record.exitTime, 'HH:mm:ss') : '-'}</TableCell>
+                                        <TableCell className="text-xs">
+                                            {isExitOff && record.exitTime ? (
+                                                <button 
+                                                    onClick={() => handleShowOnMap(record.exitLatitude, record.exitLongitude, `Salida: ${record.userName}`)}
+                                                    className="text-blue-600 hover:underline flex items-center gap-1 text-left"
+                                                >
+                                                    <MapPin className="h-3 w-3" />
+                                                    Ubicación no registrada
+                                                </button>
+                                            ) : (
+                                                <span className="text-muted-foreground">{record.exitWorkLocationName || '-'}</span>
+                                            )}
+                                        </TableCell>
+                                    </TableRow>
+                                )
+                            })
                         ) : (
                             <TableRow>
-                                <TableCell colSpan={4} className="text-center h-24">
+                                <TableCell colSpan={6} className="text-center h-24">
                                     No hay registros para esta selección.
                                 </TableCell>
                             </TableRow>
@@ -269,6 +314,7 @@ export default function AttendanceMapPage() {
               viewType={viewType}
               onLocationClick={handleLocationClick}
               onOutOfBoundsRecordClick={handleOutOfBoundsRecordClick}
+              highlightedPoint={highlightedPoint}
             />
           )}
         </CardContent>

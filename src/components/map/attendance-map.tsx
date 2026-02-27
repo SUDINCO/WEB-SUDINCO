@@ -7,7 +7,7 @@ import L from 'leaflet';
 import type { WorkLocation, AttendanceRecord, LocationReport } from '@/lib/types';
 import { format } from 'date-fns';
 
-// This component will adjust the map's view to fit the provided bounds.
+// This component adjusts the map's view to fit the provided bounds.
 function BoundsFitter({ bounds }: { bounds: L.LatLngBounds | null }) {
     const map = useMap();
     React.useEffect(() => {
@@ -15,6 +15,19 @@ function BoundsFitter({ bounds }: { bounds: L.LatLngBounds | null }) {
             map.fitBounds(bounds, { padding: [50, 50] });
         }
     }, [bounds, map]);
+    return null;
+}
+
+// Component to handle flying to a selected coordinate from external action
+function SelectionManager({ point }: { point: { lat: number; lng: number; label: string } | null }) {
+    const map = useMap();
+    React.useEffect(() => {
+        if (point) {
+            map.flyTo([point.lat, point.lng], 18, {
+                duration: 1.5
+            });
+        }
+    }, [point, map]);
     return null;
 }
 
@@ -47,6 +60,7 @@ interface AttendanceMapProps {
   viewType: 'attendance' | 'reports';
   onLocationClick?: (locationId: string) => void;
   onOutOfBoundsRecordClick?: (record: AttendanceRecord) => void;
+  highlightedPoint?: { lat: number; lng: number; label: string } | null;
 }
 
 // Type guard to check if a record is an AttendanceRecord
@@ -59,7 +73,7 @@ function isLocationReport(record: RecordWithUser): record is LocationReport & { 
     return 'timestamp' in record && 'photoUrl' in record;
 }
 
-export default function AttendanceMap({ workLocations, records, viewType, onLocationClick, onOutOfBoundsRecordClick }: AttendanceMapProps) {
+export default function AttendanceMap({ workLocations, records, viewType, onLocationClick, onOutOfBoundsRecordClick, highlightedPoint = null }: AttendanceMapProps) {
     const defaultCenter: [number, number] = [-2.14, -79.9]; // Guayaquil
 
     const locationIcon = React.useMemo(() => new L.Icon({
@@ -114,6 +128,8 @@ export default function AttendanceMap({ workLocations, records, viewType, onLoca
     }, [records, workLocations, viewType]);
 
     const bounds = React.useMemo(() => {
+        if (highlightedPoint) return null; // Don't fit bounds if we are focusing on a point
+
         const points: L.LatLngTuple[] = [];
 
         records.forEach(rec => {
@@ -137,7 +153,7 @@ export default function AttendanceMap({ workLocations, records, viewType, onLoca
         }
 
         return L.latLngBounds(points);
-    }, [records, workLocations, viewType]);
+    }, [records, workLocations, viewType, highlightedPoint]);
     
     const safelyFormatDate = (date: any) => {
         try {
@@ -158,7 +174,15 @@ export default function AttendanceMap({ workLocations, records, viewType, onLoca
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
             
+            <SelectionManager point={highlightedPoint} />
             {bounds && <BoundsFitter bounds={bounds} />}
+            
+            {/* Highlighted selection marker */}
+            {highlightedPoint && (
+                <Marker position={[highlightedPoint.lat, highlightedPoint.lng]} icon={locationIcon}>
+                    <Popup open>{highlightedPoint.label}</Popup>
+                </Marker>
+            )}
             
             {/* Render geofences and markers for attendance view */}
             {viewType === 'attendance' && workLocations.map(location => {
@@ -215,11 +239,13 @@ export default function AttendanceMap({ workLocations, records, viewType, onLoca
                         }}
                     >
                         <Popup>
-                            <strong>Fuera de Zona</strong><br />
-                            <strong>Empleado:</strong> {record.userName}<br />
-                            <strong>Cargo:</strong> {record.userCargo || 'N/A'}<br/>
-                            <strong>Hora:</strong> {safelyFormatDate(record.entryTime)}<br/>
-                            <strong>Ubicación Registrada:</strong> {record.entryWorkLocationName}
+                            <div className="p-1">
+                                <strong className="text-red-600">Fuera de Zona</strong><br />
+                                <strong>Empleado:</strong> {record.userName}<br />
+                                <strong>Cargo:</strong> {record.userCargo || 'N/A'}<br/>
+                                <strong>Hora:</strong> {safelyFormatDate(record.entryTime)}<br/>
+                                <strong>Ubicación Registrada:</strong> {record.entryWorkLocationName}
+                            </div>
                         </Popup>
                     </Marker>
                 );
