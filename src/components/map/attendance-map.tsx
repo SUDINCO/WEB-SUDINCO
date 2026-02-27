@@ -177,9 +177,10 @@ export default function AttendanceMap({ workLocations, records, viewType, onLoca
                         >
                             <Tooltip
                                 permanent
-                                direction="bottom"
-                                offset={[0, 10]}
+                                direction="top"
+                                offset={[0, -10]}
                                 className="leaflet-tooltip-label"
+                                opacity={0.9}
                             >
                                 {location.name} ({count})
                             </Tooltip>

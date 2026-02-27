@@ -187,26 +187,26 @@
     @apply text-accent;
 }
 
-/* Custom styles for Leaflet tooltips */
+/* Custom styles for Leaflet tooltips - Optimized for overlap */
 .leaflet-tooltip-label {
   background-color: hsl(var(--primary));
   border-color: transparent;
   color: hsl(var(--primary-foreground));
-  font-weight: 600;
-  padding: 6px 12px;
+  font-weight: 700;
+  padding: 4px 10px;
   border-radius: 9999px; /* Pill shape */
-  box-shadow: 0 3px 8px rgba(0,0,0,0.25);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
   border-width: 0;
-  position: relative;
+  pointer-events: none !important; /* Never block marker clicks */
+  white-space: nowrap;
+  font-size: 11px;
+  z-index: 1000 !important;
 }
 
-.leaflet-tooltip-label::before {
-  content: "";
-  position: absolute;
-  top: -8px; /* Position it above the tooltip */
-  left: 50%;
-  transform: translateX(-50%);
-  border-width: 0 6px 8px 6px; /* Creates a downward-pointing triangle */
-  border-style: solid;
-  border-color: transparent transparent hsl(var(--primary)) transparent;
+.leaflet-tooltip-top:before {
+  border-top-color: hsl(var(--primary)) !important;
+}
+
+.leaflet-tooltip-bottom:before {
+  border-bottom-color: hsl(var(--primary)) !important;
 }
