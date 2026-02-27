@@ -269,18 +269,16 @@ export function HandoverDialog({ open, onOpenChange, location, currentUser, sugg
         <div className="flex-1 overflow-y-auto p-4 md:p-10">
           <div className="bg-white shadow-2xl mx-auto max-w-4xl min-h-full border border-slate-200 relative flex flex-col">
             
-            {/* Institucional Letterhead Logo */}
-            <div className="w-full flex justify-center pt-8 px-8">
-              <div className="relative w-full max-w-[250px] h-[100px]">
-                <Image 
-                  src={LOGO_URL} 
-                  alt="Logo Cadenvill Security" 
-                  fill
-                  className="object-contain object-center"
-                  unoptimized
-                  data-ai-hint="cadenvill logo"
-                />
-              </div>
+            {/* Full Width Institucional Header Image */}
+            <div className="w-full relative h-[140px] border-b">
+              <Image 
+                src={LOGO_URL} 
+                alt="Header Cadenvill Security" 
+                fill
+                className="object-fill object-center"
+                unoptimized
+                data-ai-hint="cadenvill logo"
+              />
             </div>
 
             {/* Document Body */}
