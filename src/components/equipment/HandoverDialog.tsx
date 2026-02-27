@@ -54,7 +54,7 @@ interface HandoverDialogProps {
   existingHandover?: EquipmentHandover;
 }
 
-const LETTERHEAD_URL = 'https://i.postimg.cc/yd0XvXjt/Screenshot-2025-02-19-at-11-15-11.png';
+const LOGO_URL = 'https://i.postimg.cc/B6HGbmCz/LOGO-CADENVILL.png';
 
 const EQUIPMENT_CATALOG = ['Radio', 'Chaleco', 'Arma de Fuego', 'Celular', 'Bitácora', 'Vehículo'];
 
@@ -269,16 +269,18 @@ export function HandoverDialog({ open, onOpenChange, location, currentUser, sugg
         <div className="flex-1 overflow-y-auto p-4 md:p-10">
           <div className="bg-white shadow-2xl mx-auto max-w-4xl min-h-full border border-slate-200 relative flex flex-col">
             
-            {/* Institucional Letterhead */}
-            <div className="w-full relative h-[140px]">
-              <Image 
-                src={LETTERHEAD_URL} 
-                alt="Banner Cadenvill Security" 
-                fill
-                className="object-contain object-top"
-                unoptimized
-                data-ai-hint="cadenvill letterhead"
-              />
+            {/* Institucional Letterhead Logo */}
+            <div className="w-full flex justify-center pt-8 px-8">
+              <div className="relative w-full max-w-[250px] h-[100px]">
+                <Image 
+                  src={LOGO_URL} 
+                  alt="Logo Cadenvill Security" 
+                  fill
+                  className="object-contain object-center"
+                  unoptimized
+                  data-ai-hint="cadenvill logo"
+                />
+              </div>
             </div>
 
             {/* Document Body */}
