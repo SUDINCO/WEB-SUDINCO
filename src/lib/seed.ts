@@ -9,7 +9,7 @@ const initialData = {
                 "staff": true, "profile-evaluation": true, "approvals": true, "performance-evaluation": true,
                 "my-evaluations": true, "observed-evaluations": true, "vacation-requests": true, "schedule": true, 
                 "publications": true, "roles": true, "leader-assignment": true, "schedule-settings": true,
-                "work-locations": true, "attendance": true, "attendance-map": true
+                "work-locations": true, "attendance": true, "attendance-map": true, "equipment-control": true
             }
         },
         {
@@ -18,7 +18,7 @@ const initialData = {
                 "staff": true, "profile-evaluation": true, "approvals": true, "performance-evaluation": true,
                 "my-evaluations": true, "observed-evaluations": true, "vacation-requests": true, "schedule": true, 
                 "publications": true, "roles": false, "leader-assignment": true, "schedule-settings": true,
-                "work-locations": true, "attendance": true, "attendance-map": true
+                "work-locations": true, "attendance": true, "attendance-map": true, "equipment-control": true
             }
         }
     ],
@@ -225,7 +225,6 @@ async function seedCollection(db: Firestore, collectionName: string, data: any[]
     const snapshot = await getDocs(collectionRef);
 
     if (snapshot.empty) {
-        console.log(`Seeding '${collectionName}'...`);
         const batch = writeBatch(db);
         data.forEach(item => {
             let docRef;
@@ -247,7 +246,6 @@ async function seedCollection(db: Firestore, collectionName: string, data: any[]
             batch.set(docRef, dataToSet);
         });
         await batch.commit();
-        console.log(`'${collectionName}' has been seeded.`);
     }
 }
 
@@ -279,25 +277,13 @@ export async function seedDatabase(db: Firestore) {
             seedCollection(db, 'shiftPatterns', initialData.shiftPatterns, 'jobTitle'),
         ]);
 
-        const allowedShiftsByJobTitle = new Map<string, Set<string>>();
-        initialData.shiftPatterns.forEach(pattern => {
-            const shifts = new Set(pattern.cycle.filter((s): s is string => !!s && s !== 'LIB'));
-            allowedShiftsByJobTitle.set(normalizeText(pattern.jobTitle), shifts);
-        });
-
-        const filteredOvertimeRules = initialData.overtimeRules.filter(rule => {
-            if (rule.jobTitle === 'HORARIO OFICINA') return true; 
-            const allowedShifts = allowedShiftsByJobTitle.get(normalizeText(rule.jobTitle));
-            return allowedShifts ? allowedShifts.has(rule.shift) : false;
-        });
-
         const overtimeCollectionRef = collection(db, 'overtimeRules');
         const snapshot = await getDocs(overtimeCollectionRef);
         const batch = writeBatch(db);
 
         snapshot.docs.forEach(doc => batch.delete(doc.ref));
         
-        filteredOvertimeRules.forEach(rule => {
+        initialData.overtimeRules.forEach(rule => {
             const newDocRef = doc(overtimeCollectionRef);
             const dataToSet = {
                 ...rule,
@@ -310,7 +296,6 @@ export async function seedDatabase(db: Firestore) {
         });
 
         await batch.commit();
-        
         hasSeeded = true;
     } catch (error) {
         console.error("Error seeding database:", error);

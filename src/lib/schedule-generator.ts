@@ -18,7 +18,6 @@ import {
   subDays,
   subMonths,
 } from 'date-fns';
-import { es } from 'date-fns/locale';
 import type { Collaborator, Vacation, TemporaryTransfer, Lactation, AttendanceRecord, RoleChange, Holiday, OvertimeRule, ShiftPattern, Notification, ManualOverride, ManualOverrides, SavedSchedule } from '@/lib/types';
 import { getEffectiveDetails } from './schedule-utils';
 import { normalizeText } from './utils';
@@ -36,17 +35,6 @@ function simpleHash(str: string): number {
   return Math.abs(hash);
 }
 
-/**
- * Generador de números pseudoaleatorios con semilla.
- */
-function seededRandom(seed: number) {
-  let state = seed;
-  return function() {
-    state = (state * 9301 + 49297) % 233280;
-    return state / 233280;
-  };
-}
-
 const isNightShift = (shift: string | null): boolean => {
     if (!shift) return false;
     const s = shift.toUpperCase();
@@ -54,10 +42,10 @@ const isNightShift = (shift: string | null): boolean => {
 };
 
 /**
- * Encuentra la posición en el ciclo basándose en el historial de los últimos días del periodo anterior.
+ * Encuentra la posición en el ciclo basándose en el historial.
  */
 function findCyclePosition(cycle: (string | null)[], history: (string | null)[]): number {
-    if (history.length === 0) return -1; // Indica que no hay historial inmediato
+    if (history.length === 0) return -1;
     
     const sequenceSize = Math.min(3, history.length);
     const lastSequence = history.slice(-sequenceSize);
@@ -80,39 +68,55 @@ function findCyclePosition(cycle: (string | null)[], history: (string | null)[])
 }
 
 /**
- * Calcula la "Deuda de Fines de Semana" analizando TODOS los cronogramas aprobados.
- * Retorna un mapa de ID -> Score (proporción de fines de semana trabajados).
+ * Garantiza que para cargos no-cajeros haya exactamente 1 persona por turno en cada ubicación.
  */
-function calculateWeekendEquity(collaborators: Collaborator[], savedSchedules: SavedSchedule[]): Map<string, number> {
-    const weekendStats = new Map<string, { worked: number, total: number }>();
-    
-    collaborators.forEach(c => weekendStats.set(c.id, { worked: 0, total: 0 }));
+function enforceSingleCoverage(
+    schedule: Map<string, Map<string, string | null>>,
+    allCollaborators: Collaborator[],
+    days: Date[],
+    transfers: TemporaryTransfer[],
+    roleChanges: RoleChange[]
+) {
+    days.forEach(day => {
+        const dayKey = format(day, 'yyyy-MM-dd');
+        
+        // Agrupar por Ubicación Efectiva + Cargo Efectivo
+        const groups = new Map<string, string[]>();
+        allCollaborators.forEach(c => {
+            const { location, jobTitle } = getEffectiveDetails(c, day, transfers, roleChanges);
+            const groupKey = `${normalizeText(location)}|${normalizeText(jobTitle)}`;
+            if (!groups.has(groupKey)) groups.set(groupKey, []);
+            groups.get(groupKey)!.push(c.id);
+        });
 
-    savedSchedules.forEach(saved => {
-        Object.entries(saved.schedule).forEach(([collabId, dayMap]) => {
-            const stats = weekendStats.get(collabId);
-            if (!stats) return;
+        groups.forEach((collabIds, groupKey) => {
+            const [loc, cargo] = groupKey.split('|');
+            
+            // Excluir Cajeros y Personal de Oficina
+            if (cargo === 'CAJERO DE RECAUDO' || cargo === 'HORARIO OFICINA') return;
 
-            Object.entries(dayMap).forEach(([dayKey, shift]) => {
-                const date = new Date(`${dayKey}T00:00:00`);
-                if (isSaturday(date) || isSunday(date)) {
-                    stats.total++;
-                    if (shift && !['LIB', 'VAC', 'TRA', 'PM', 'LIC', 'SUS', 'RET', 'FI'].includes(shift)) {
-                        stats.worked++;
-                    }
+            const shiftsInGroup = new Map<string, string[]>();
+            collabIds.forEach(id => {
+                const shift = schedule.get(id)?.get(dayKey);
+                if (shift && !['LIB', 'VAC', 'TRA', 'PM', 'LIC', 'SUS', 'RET', 'FI'].includes(shift)) {
+                    if (!shiftsInGroup.has(shift)) shiftsInGroup.set(shift, []);
+                    shiftsInGroup.get(shift)!.push(id);
                 }
             });
+
+            // Regla 1: Si hay más de uno en el mismo turno, liberar al resto
+            shiftsInGroup.forEach((ids, shift) => {
+                if (ids.length > 1) {
+                    ids.slice(1).forEach(id => {
+                        schedule.get(id)?.set(dayKey, 'LIB');
+                    });
+                }
+            });
+
+            // Regla 2: Intentar cubrir turnos vacíos si hay gente en LIB
+            // (Esta parte es opcional dependiendo de si el patrón ya está balanceado)
         });
     });
-
-    const equityScores = new Map<string, number>();
-    weekendStats.forEach((stats, id) => {
-        // Un score más alto significa que ha trabajado más fines de semana (más "deuda" de descanso)
-        const score = stats.total > 0 ? stats.worked / stats.total : 0.5;
-        equityScores.set(id, score);
-    });
-
-    return equityScores;
 }
 
 export function generarHorariosEstaticos(
@@ -138,19 +142,11 @@ export function generarHorariosEstaticos(
   const prevPeriodDate = subMonths(days[0], 1);
   const prevPeriodId = format(prevPeriodDate, 'yyyy-MM');
 
-  // 1. Obtener historial inmediato para CONTINUIDAD técnica
   const immediateHistoryMap = new Map<string, (string | null)[]>();
-  // 2. Obtener historial global para EQUIDAD de fines de semana
-  const allSaved = Object.values(savedSchedules);
-  const equityScores = calculateWeekendEquity(allCollaborators, allSaved);
-
-  allSaved.forEach(saved => {
+  Object.values(savedSchedules).forEach(saved => {
       if (saved.id.startsWith(prevPeriodId)) {
           Object.entries(saved.schedule).forEach(([collabId, dayMap]) => {
-              if (!immediateHistoryMap.has(collabId)) immediateHistoryMap.set(collabId, []);
-              const sortedShifts = Object.entries(dayMap)
-                  .sort((a, b) => a[0].localeCompare(b[0]))
-                  .map(entry => entry[1]);
+              const sortedShifts = Object.entries(dayMap).sort((a, b) => a[0].localeCompare(b[0])).map(e => e[1]);
               immediateHistoryMap.set(collabId, sortedShifts);
           });
       }
@@ -161,19 +157,16 @@ export function generarHorariosEstaticos(
     schedule.set(collaborator.id, collaboratorSchedule);
 
     const history = immediateHistoryMap.get(collaborator.id) || [];
-    const equityScore = equityScores.get(collaborator.id) || 0.5;
 
     days.forEach((day, dayIndex) => {
       const dayKey = format(day, 'yyyy-MM-dd');
 
-      // 1. Prioridad: Overrides manuales
       const manualOverride = manualOverrides.get(collaborator.id)?.get(dayKey);
       if (manualOverride !== undefined) {
           collaboratorSchedule.set(dayKey, manualOverride.shift);
           return;
       }
       
-      // 2. Prioridad: Ausencias legales
       const isOnVacation = vacations.some(v => v.requestType === 'vacaciones' && v.userId === collaborator.id && isWithinInterval(day, { start: new Date(v.startDate), end: new Date(v.endDate) }));
       if (isOnVacation) {
         collaboratorSchedule.set(dayKey, 'VAC');
@@ -188,7 +181,6 @@ export function generarHorariosEstaticos(
           return;
       }
       
-      // 3. Determinar detalles efectivos
       const { location: effectiveLocation, jobTitle: effectiveJobTitle } = getEffectiveDetails(collaborator, day, transfers, roleChanges);
       const activeRoleChange = roleChanges.find(rc => rc.collaboratorId === collaborator.id && isWithinInterval(day, { start: rc.startDate, end: rc.endDate }));
 
@@ -197,7 +189,6 @@ export function generarHorariosEstaticos(
         return;
       }
 
-      // 4. Lógica de Ciclo con Equidad Histórica
       const patternData = JOB_CYCLES.get(normalizeText(effectiveJobTitle));
       
       if (!patternData) {
@@ -216,23 +207,13 @@ export function generarHorariosEstaticos(
       let startPosition = findCyclePosition(cycle, history);
 
       if (startPosition === -1) {
-          // Si no hay historial inmediato para dar continuidad, usamos la EQUIDAD HISTÓRICA
-          // para elegir el mejor punto de inicio que favorezca sus descansos en fin de semana
           const personSeed = simpleHash(collaborator.id + periodIdentifier);
-          // Nudge basado en el score de equidad: si ha trabajado mucho (score > 0.6), 
-          // intentamos desplazar el ciclo para que sus "LIB" caigan en fin de semana.
-          const equityNudge = equityScore > 0.6 ? 2 : (equityScore < 0.4 ? -2 : 0);
-          startPosition = (personSeed + equityNudge) % cycle.length;
+          startPosition = personSeed % cycle.length;
       }
 
-      // Añadimos un factor de "rebarajeo" basado en el periodo para romper grupos fijos
-      // pero que se mantiene constante para la persona durante todo el mes generado
-      const groupShuffleFactor = simpleHash(periodIdentifier + effectiveLocation) % 3;
-      const currentCycleIndex = (startPosition + dayIndex + groupShuffleFactor) % cycle.length;
-      
+      const currentCycleIndex = (startPosition + dayIndex) % cycle.length;
       let shift = cycle[currentCycleIndex];
 
-      // 5. Protección de Lactancia
       const isOnLactationThisDay = lactations.some(l => l.collaboratorId === collaborator.id && isWithinInterval(day, { start: l.startDate, end: l.endDate }));
       if (isOnLactationThisDay && isNightShift(shift)) {
           shift = 'M8';
@@ -241,6 +222,9 @@ export function generarHorariosEstaticos(
       collaboratorSchedule.set(dayKey, shift);
     });
   });
+
+  // Aplicar Post-Proceso de Cobertura 1:1
+  enforceSingleCoverage(schedule, allCollaborators, days, transfers, roleChanges);
 
   return schedule;
 }
@@ -262,12 +246,13 @@ export function applyConditioningRebalance(
       const shift = rebalancedSchedule.get(c.id)?.get(dayKey);
       const s = shift as 'M8' | 'T8' | 'N8' | null;
       
-      if (s === 'M8' || s === 'T8' || s === 'N8' || s === null) {
-        if (s === null) dailyShiftCounts.LIB++;
-        else dailyShiftCounts[s]++;
+      if (s === 'M8' || s === 'T8' || s === 'N8' || s === null || s as any === 'LIB') {
+        const normalizedS = (s as any === 'LIB' ? null : s);
+        if (normalizedS === null) dailyShiftCounts.LIB++;
+        else dailyShiftCounts[normalizedS]++;
         
-        if (!shiftAssignments.has(s)) shiftAssignments.set(s, []);
-        shiftAssignments.get(s)!.push(c.id);
+        if (!shiftAssignments.has(normalizedS)) shiftAssignments.set(normalizedS, []);
+        shiftAssignments.get(normalizedS)!.push(c.id);
       }
     });
 
@@ -325,10 +310,9 @@ export const getShiftDetailsFromRules = (shift: string, effectiveJobTitle: strin
         r.dayType === dayType
     );
     
-    if (!rule && shift === 'N9') {
+    if (!rule && (shift === 'N9' || shift === 'HORARIO OFICINA')) {
         rule = overtimeRules.find(r => 
             normalizeText(r.jobTitle) === 'HORARIO OFICINA' &&
-            r.shift === shift &&
             r.dayType === dayType
         );
     }
@@ -385,7 +369,6 @@ export function obtenerHorarioUnificado(
   const locationFilter = filters?.location;
   const cargoFilter = filters?.jobTitle;
 
-  // LÓGICA PARA ROLES QUE SOLO VEN LO APROBADO (Colaboradores, RRHH en reportes, etc.)
   if (role !== 'coordinator') {
       const resultSchedule = new Map<string, Map<string, string | null>>();
       const shiftPatternsByCargo = new Map(shiftPatterns.map(p => [normalizeText(p.jobTitle), p]));
@@ -394,7 +377,6 @@ export function obtenerHorarioUnificado(
           const userSchedule = new Map<string, string | null>();
           const normalizedJobTitle = normalizeText(c.originalJobTitle);
           
-          // Si NO tiene patrón asignado, es personal de oficina -> Mostrar horario estándar automáticamente
           if (!shiftPatternsByCargo.has(normalizedJobTitle)) {
               days.forEach(day => {
                   const dayKey = format(day, 'yyyy-MM-dd');
@@ -405,7 +387,6 @@ export function obtenerHorarioUnificado(
           resultSchedule.set(c.id, userSchedule);
       });
 
-      // Sobrescribir con los cronogramas aprobados (guardados) para el personal operativo
       Object.values(savedSchedules).forEach(saved => {
           Object.entries(saved.schedule).forEach(([collabId, dayMap]) => {
               if (resultSchedule.has(collabId)) {
@@ -419,7 +400,6 @@ export function obtenerHorarioUnificado(
       return resultSchedule;
   }
 
-  // LÓGICA PARA COORDINADOR (Generación de borrador)
   let schedule = generarHorariosEstaticos(
     allCollaborators,
     days,
@@ -487,9 +467,8 @@ export function calculateScheduleSummary(
 
             if (shift) {
                 const { jobTitle: effectiveJobTitle } = getEffectiveDetails(collaborator, day, allTransfers, allRoleChanges);
-                const normalizedJT = normalizeText(effectiveJobTitle);
                 const rule = allOvertimeRules.find(r => 
-                    normalizeText(r.jobTitle) === normalizedJT && 
+                    normalizeText(r.jobTitle) === normalizeText(effectiveJobTitle) && 
                     r.shift === shift && 
                     r.dayType === jornada
                 );
