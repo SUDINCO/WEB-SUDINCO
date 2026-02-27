@@ -24,13 +24,15 @@ import {
 } from "@/components/ui/select";
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Check, Eraser, LoaderCircle, Shield, User, Camera, X, CheckCircle, Lock, Unlock, Send, Ban } from 'lucide-react';
+import { Check, Eraser, LoaderCircle, Shield, User, Camera, X, CheckCircle, Lock, Unlock, Send, Printer, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { useFirestore } from '@/firebase';
 import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
 import type { UserProfile, EquipmentHandover } from '@/lib/types';
 import Image from 'next/image';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 interface HandoverItem {
   name: string;
@@ -51,6 +53,8 @@ interface HandoverDialogProps {
   mode?: 'create' | 'approve';
   existingHandover?: EquipmentHandover;
 }
+
+const LETTERHEAD_URL = 'https://i.postimg.cc/yd0XvXjt/Screenshot-2025-02-19-at-11-15-11.png';
 
 const EQUIPMENT_CATALOG = ['Radio', 'Chaleco', 'Arma de Fuego', 'Celular', 'Bitácora', 'Vehículo'];
 
@@ -258,159 +262,208 @@ export function HandoverDialog({ open, onOpenChange, location, currentUser, sugg
 
   return (
     <Dialog open={open} onOpenChange={(val) => !isSubmitting && onOpenChange(val)}>
-      <DialogContent className="max-w-5xl max-h-[95vh] flex flex-col overflow-hidden">
+      <DialogContent className="max-w-5xl max-h-[95vh] p-0 flex flex-col overflow-hidden bg-slate-100 border-none">
         <input type="file" ref={fileInputRef} accept="image/*" capture="environment" className="hidden" onChange={handlePhotoCapture} />
         
-        <DialogHeader className="border-b pb-4">
-          <DialogTitle className="flex items-center gap-2 text-2xl text-primary font-bold">
-            <Shield className="h-7 w-7" />
-            {isApproving ? 'APROBACIÓN DE RELEVO DE PUESTO' : 'ACTA DE RELEVO - RECEPCIÓN DE PUESTO'}
-          </DialogTitle>
-          <DialogDescription>
-            {isApproving ? 'Revise el estado reportado por su relevo y firme para autorizar la entrega.' : 'Realice el checklist de los equipos recibidos y envíe para aprobación del guardia saliente.'}
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="flex-1 overflow-y-auto pr-2 space-y-6 py-6">
-          <Card className={cn("transition-all", isApproving ? "bg-blue-50 border-blue-200" : "bg-emerald-50 border-emerald-200")}>
-            <CardContent className="p-4 flex justify-between items-center">
-              <div className="flex items-center gap-4">
-                <div className={cn("p-2 rounded-full", isApproving ? "bg-blue-100 text-blue-600" : "bg-emerald-100 text-emerald-600")}>
-                  <User className="h-6 w-6" />
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider">{isApproving ? 'Entregado por (Usted)' : 'Recibido por (Usted)'}</p>
-                  <p className="font-bold">{currentUser.nombres} {currentUser.apellidos}</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-[10px] text-muted-foreground font-bold uppercase">Compañero de Relevo</p>
-                <p className="font-semibold">{isApproving ? existingHandover?.incomingGuardName : (suggestedGuard ? `${suggestedGuard.nombres} ${suggestedGuard.apellidos}` : '...')}</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="rounded-xl border shadow-sm overflow-hidden bg-white">
-            <Table>
-              <TableHeader className="bg-muted/50">
-                <TableRow>
-                  <TableHead className="font-bold">Equipo / Vehículo</TableHead>
-                  <TableHead className="text-center font-bold">Asignado</TableHead>
-                  <TableHead className="text-center font-bold">Estado</TableHead>
-                  <TableHead className="font-bold">Novedad / Notas</TableHead>
-                  <TableHead className="w-[100px] text-center font-bold">Evidencia</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {items.map((item, index) => (
-                  <TableRow key={item.name} className={cn(item.status === 'issue' && "bg-red-50/30", !item.present && "opacity-60 bg-slate-50")}>
-                    <TableCell className="font-semibold">
-                      <div className="flex flex-col">
-                        <span>{item.name}</span>
-                        {!item.present && <span className="text-[10px] text-muted-foreground">No asignado en este puesto</span>}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Switch 
-                        checked={item.present} 
-                        onCheckedChange={(val) => handlePresenceToggle(index, val)}
-                        disabled={isApproving}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      {item.present ? (
-                        <RadioGroup disabled={isApproving} value={item.status} onValueChange={(val) => handleStatusChange(index, val as 'good' | 'issue')} className="flex justify-center gap-4">
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="good" id={`good-${index}`} />
-                            <Label htmlFor={`good-${index}`} className="text-xs cursor-pointer">OPERATIVO</Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="issue" id={`issue-${index}`} className="text-red-600" />
-                            <Label htmlFor={`issue-${index}`} className="text-xs cursor-pointer text-red-600 font-bold">NOVEDAD</Label>
-                          </div>
-                        </RadioGroup>
-                      ) : (
-                        <div className="flex justify-center">
-                          <Badge variant="outline" className="text-[10px] text-muted-foreground">SIN EQUIPO</Badge>
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {item.present && item.status === 'issue' ? (
-                        <div className="flex flex-col gap-1">
-                          {isApproving ? (
-                            <p className="text-xs font-bold text-red-700">{item.issueType}: <span className="font-normal italic">"{item.notes}"</span></p>
-                          ) : (
-                            <>
-                              <Select value={item.issueType} onValueChange={(v) => handleItemUpdate(index, 'issueType', v)}>
-                                <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Tipo de novedad..." /></SelectTrigger>
-                                <SelectContent>{(ISSUE_TYPES_MAP[item.name] || ISSUE_TYPES_MAP['default']).map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-                              </Select>
-                              <Input placeholder="Notas adicionales..." value={item.notes} onChange={(e) => handleItemUpdate(index, 'notes', e.target.value)} className="h-7 text-xs" />
-                            </>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">{item.present ? "Sin novedad" : "-"}</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {item.present && item.photoUrl && (
-                        <div className="relative inline-block">
-                          <Image src={item.photoUrl} alt="Evidencia" width={40} height={40} className="rounded border object-cover" unoptimized />
-                        </div>
-                      )}
-                      {!isApproving && item.present && item.status === 'issue' && !item.photoUrl && (
-                        <Button variant="outline" size="icon" className="h-8 w-8 border-dashed" onClick={() => { setActivePhotoIndex(index); fileInputRef.current?.click(); }}><Camera className="h-4 w-4" /></Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-
-          <div className={cn("p-4 rounded-xl border space-y-3", isLocked ? "bg-muted border-primary/20" : "bg-slate-50")}>
-            <div className="flex justify-between items-center">
-              <Label className="font-bold flex items-center gap-2"><Check className="h-4 w-4" /> SU FIRMA DIGITAL OBLIGATORIA</Label>
-              {isLocked && <Badge>CERTIFICADA</Badge>}
-            </div>
-            <div className="border-2 border-dashed rounded-lg bg-white relative overflow-hidden">
-              <canvas
-                ref={canvasRef}
-                width={800}
-                height={240}
-                className={cn(
-                  "w-full h-[120px] cursor-crosshair touch-none",
-                  isLocked && "pointer-events-none opacity-50"
-                )}
-                onMouseDown={startDrawing}
-                onMouseMove={draw}
-                onMouseUp={stopDrawing}
-                onMouseOut={stopDrawing}
-                onTouchStart={startDrawing}
-                onTouchMove={draw}
-                onTouchEnd={stopDrawing}
+        {/* Document Container */}
+        <div className="flex-1 overflow-y-auto p-4 md:p-10">
+          <div className="bg-white shadow-2xl mx-auto max-w-4xl min-h-full border border-slate-200 relative flex flex-col">
+            
+            {/* Institucional Letterhead */}
+            <div className="w-full relative h-[140px]">
+              <Image 
+                src={LETTERHEAD_URL} 
+                alt="Banner Cadenvill Security" 
+                fill
+                className="object-contain object-top"
+                unoptimized
+                data-ai-hint="cadenvill letterhead"
               />
-              {!isLocked && (
-                <Button variant="ghost" size="icon" className="absolute bottom-1 right-1" onClick={clearCanvas}>
-                  <Eraser className="h-4 w-4" />
-                </Button>
-              )}
             </div>
-            <Button variant={isLocked ? "outline" : "default"} className="w-full gap-2" onClick={() => setIsLocked(!isLocked)}>
-              {isLocked ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
-              {isLocked ? "Modificar Firma" : "Certificar Firma"}
-            </Button>
+
+            {/* Document Body */}
+            <div className="px-8 md:px-16 py-6 flex-1 space-y-8">
+              
+              <div className="text-center space-y-1">
+                <h2 className="text-2xl font-black tracking-tighter text-slate-900 border-b-2 border-primary inline-block px-4 pb-1 uppercase italic">
+                  {isApproving ? 'Validación de Entrega de Equipos' : 'Acta de Recepción de Puesto y Activos'}
+                </h2>
+                <p className="text-[10px] font-bold text-slate-500 tracking-[0.2em] uppercase">Documento de Control Operativo Interno</p>
+              </div>
+
+              {/* Meta Data Grid */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 p-6 bg-slate-50 border border-slate-200 rounded-lg">
+                <div className="space-y-1">
+                  <p className="text-[9px] font-black text-slate-400 uppercase">Ubicación / Puesto</p>
+                  <p className="text-sm font-bold text-slate-800">{location}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[9px] font-black text-slate-400 uppercase">Fecha de Registro</p>
+                  <p className="text-sm font-bold text-slate-800">{format(new Date(), 'dd/MM/yyyy', { locale: es })}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[9px] font-black text-slate-400 uppercase">Relevo Entrante</p>
+                  <p className="text-sm font-bold text-emerald-700">{isApproving ? existingHandover?.incomingGuardName : `${currentUser.nombres} ${currentUser.apellidos}`}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[9px] font-black text-slate-400 uppercase">Relevo Saliente</p>
+                  <p className="text-sm font-bold text-blue-700">{isApproving ? `${currentUser.nombres} ${currentUser.apellidos}` : (suggestedGuard ? `${suggestedGuard.nombres} ${suggestedGuard.apellidos}` : 'No identificado')}</p>
+                </div>
+              </div>
+
+              {/* Checklist Table */}
+              <div className="space-y-4">
+                <h3 className="text-xs font-black text-slate-900 flex items-center gap-2 border-l-4 border-primary pl-3 bg-slate-100 py-2">
+                  <FileText className="h-4 w-4" />
+                  INVENTARIO DE DOTACIÓN Y ESTADO OPERATIVO
+                </h3>
+                
+                <div className="border rounded-md overflow-hidden">
+                  <Table>
+                    <TableHeader className="bg-slate-900">
+                      <TableRow>
+                        <TableHead className="text-white font-bold h-10 text-[10px] uppercase">Activo</TableHead>
+                        <TableHead className="text-white font-bold h-10 text-center text-[10px] uppercase">Asignado</TableHead>
+                        <TableHead className="text-white font-bold h-10 text-center text-[10px] uppercase">Estado</TableHead>
+                        <TableHead className="text-white font-bold h-10 text-[10px] uppercase">Observaciones / Novedad</TableHead>
+                        <TableHead className="text-white font-bold h-10 text-center text-[10px] uppercase">Evidencia</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {items.map((item, index) => (
+                        <TableRow key={item.name} className={cn("h-14", item.status === 'issue' && "bg-red-50", !item.present && "opacity-50 bg-slate-50")}>
+                          <TableCell className="font-bold text-slate-700 text-xs">{item.name}</TableCell>
+                          <TableCell className="text-center">
+                            <Switch 
+                              checked={item.present} 
+                              onCheckedChange={(val) => handlePresenceToggle(index, val)}
+                              disabled={isApproving}
+                              className="scale-75"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            {item.present ? (
+                              <RadioGroup disabled={isApproving} value={item.status} onValueChange={(val) => handleStatusChange(index, val as 'good' | 'issue')} className="flex justify-center gap-2">
+                                <div className="flex items-center space-x-1">
+                                  <RadioGroupItem value="good" id={`good-${index}`} className="h-3 w-3" />
+                                  <Label htmlFor={`good-${index}`} className="text-[10px] font-bold cursor-pointer">OK</Label>
+                                </div>
+                                <div className="flex items-center space-x-1">
+                                  <RadioGroupItem value="issue" id={`issue-${index}`} className="h-3 w-3 text-red-600 border-red-600" />
+                                  <Label htmlFor={`issue-${index}`} className="text-[10px] font-bold cursor-pointer text-red-600">NOVEDAD</Label>
+                                </div>
+                              </RadioGroup>
+                            ) : (
+                              <div className="flex justify-center"><Badge variant="outline" className="text-[8px] h-4">N/A</Badge></div>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {item.present && item.status === 'issue' ? (
+                              <div className="flex flex-col gap-1 py-1">
+                                {isApproving ? (
+                                  <p className="text-[10px] leading-tight"><span className="font-bold text-red-700 uppercase">{item.issueType}:</span> <span className="italic text-slate-600">"{item.notes}"</span></p>
+                                ) : (
+                                  <>
+                                    <Select value={item.issueType} onValueChange={(v) => handleItemUpdate(index, 'issueType', v)}>
+                                      <SelectTrigger className="h-6 text-[10px] bg-white"><SelectValue placeholder="Tipo..." /></SelectTrigger>
+                                      <SelectContent>{(ISSUE_TYPES_MAP[item.name] || ISSUE_TYPES_MAP['default']).map(t => <SelectItem key={t} value={t} className="text-xs">{t}</SelectItem>)}</SelectContent>
+                                    </Select>
+                                    <Input placeholder="Notas..." value={item.notes} onChange={(e) => handleItemUpdate(index, 'notes', e.target.value)} className="h-6 text-[10px] bg-white" />
+                                  </>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-[10px] text-slate-400 font-medium">{item.present ? "Sin novedad" : "-"}</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {item.present && item.photoUrl && (
+                              <div className="relative inline-block group">
+                                <Image src={item.photoUrl} alt="Evidencia" width={32} height={32} className="rounded border object-cover shadow-sm" unoptimized />
+                              </div>
+                            )}
+                            {!isApproving && item.present && item.status === 'issue' && !item.photoUrl && (
+                              <Button variant="outline" size="icon" className="h-6 w-6 border-dashed" onClick={() => { setActivePhotoIndex(index); fileInputRef.current?.click(); }}><Camera className="h-3 w-3" /></Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+
+              {/* Signature Section */}
+              <div className="space-y-4 pt-4">
+                <h3 className="text-xs font-black text-slate-900 flex items-center gap-2 border-l-4 border-primary pl-3 bg-slate-100 py-2">
+                  <CheckCircle className="h-4 w-4" />
+                  CERTIFICACIÓN DE FIRMA DIGITAL
+                </h3>
+                
+                <div className={cn("p-6 rounded-xl border-2 transition-all", isLocked ? "bg-slate-50 border-primary/20" : "bg-white border-dashed border-slate-300")}>
+                  <div className="flex justify-between items-center mb-4">
+                    <div className="space-y-1">
+                      <Label className="text-sm font-black text-slate-800 uppercase flex items-center gap-2">
+                        {isApproving ? 'Firma de Conformidad (Saliente)' : 'Firma de Responsabilidad (Entrante)'}
+                      </Label>
+                      <p className="text-[10px] text-slate-500 font-medium">Esta firma vincula legalmente al usuario con el estado reportado en el acta.</p>
+                    </div>
+                    {isLocked && <Badge className="bg-primary hover:bg-primary font-black px-3 py-1">CERTIFICADA</Badge>}
+                  </div>
+                  
+                  <div className="bg-white border rounded-lg relative overflow-hidden ring-offset-2 ring-primary/20 focus-within:ring-2">
+                    <canvas
+                      ref={canvasRef}
+                      width={800}
+                      height={200}
+                      className={cn(
+                        "w-full h-[100px] cursor-crosshair touch-none",
+                        isLocked && "pointer-events-none opacity-50 grayscale"
+                      )}
+                      onMouseDown={startDrawing}
+                      onMouseMove={draw}
+                      onMouseUp={stopDrawing}
+                      onMouseOut={stopDrawing}
+                      onTouchStart={startDrawing}
+                      onTouchMove={draw}
+                      onTouchEnd={stopDrawing}
+                    />
+                    {!isLocked && (
+                      <Button variant="ghost" size="icon" className="absolute bottom-2 right-2 h-8 w-8 hover:bg-slate-100" onClick={clearCanvas}>
+                        <Eraser className="h-4 w-4 text-slate-400" />
+                      </Button>
+                    )}
+                  </div>
+                  
+                  <div className="mt-4">
+                    <Button variant={isLocked ? "outline" : "default"} className="w-full gap-2 font-black text-xs uppercase h-10" onClick={() => setIsLocked(!isLocked)}>
+                      {isLocked ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+                      {isLocked ? "Modificar Firma" : "Bloquear y Certificar Firma"}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Terms Footer */}
+              <div className="pt-8 border-t border-slate-100">
+                <p className="text-[8px] text-slate-400 leading-tight text-center italic">
+                  Este documento digital tiene validez legal de acuerdo con las normativas internas de Cadenvill Security. 
+                  La adulteración o el registro de información falsa será motivo de sanción administrativa severa.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 
-        <DialogFooter className="border-t pt-4">
-          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isSubmitting}>Cancelar</Button>
-          <Button onClick={handleSubmit} disabled={isSubmitting || !isLocked} size="lg" className="min-w-[200px]">
-            {isSubmitting ? <LoaderCircle className="animate-spin mr-2 h-4 w-4" /> : <Send className="mr-2 h-4 w-4" />}
-            {isApproving ? 'Aprobar y Finalizar Relevo' : 'Enviar para Aprobación'}
-          </Button>
+        {/* Action Footer */}
+        <DialogFooter className="bg-slate-900 p-4 border-t border-slate-800">
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isSubmitting} className="text-white hover:bg-white/10">Cancelar</Button>
+          <div className="flex gap-2">
+            <Button onClick={handleSubmit} disabled={isSubmitting || !isLocked} size="lg" className="min-w-[240px] font-black uppercase text-xs tracking-widest bg-primary hover:bg-primary/90 text-primary-foreground">
+              {isSubmitting ? <LoaderCircle className="animate-spin mr-2 h-4 w-4" /> : <Send className="mr-2 h-4 w-4" />}
+              {isApproving ? 'Confirmar y Finalizar Relevo' : 'Enviar para Aprobación'}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -47,6 +47,8 @@ import {
   X,
   Clock,
   Trash2,
+  Printer,
+  ShieldCheck,
 } from 'lucide-react';
 import { useCollection, useFirestore } from '@/firebase';
 import { collection, query, orderBy, limit, doc, deleteDoc } from 'firebase/firestore';
@@ -56,6 +58,8 @@ import type { EquipmentHandover } from '@/lib/types';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
+
+const LETTERHEAD_URL = 'https://i.postimg.cc/yd0XvXjt/Screenshot-2025-02-19-at-11-15-11.png';
 
 export default function EquipmentControlPage() {
   const [filter, setFilter] = useState('');
@@ -126,7 +130,7 @@ export default function EquipmentControlPage() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Control de Dotación</h1>
-          <p className="text-muted-foreground">Auditoría de relevos con doble identidad digital y validación personal.</p>
+          <p className="text-muted-foreground">Auditoría de relevos con doble identidad digital y validación institucional.</p>
         </div>
         <Button onClick={handleExport} variant="outline" className="shrink-0">
           <Download className="mr-2 h-4 w-4" />
@@ -160,13 +164,13 @@ export default function EquipmentControlPage() {
               {stats.total > 0 ? Math.round(((stats.total - stats.withIssues) / stats.total) * 100) : 0}%
             </CardTitle>
           </CardHeader>
-        </Card>
+        </div>
       </div>
 
       <Card>
         <CardHeader>
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <CardTitle>Historial de Auditoría</CardTitle>
+            <CardTitle>Historial de Auditoría Institucional</CardTitle>
             <div className="relative w-full md:max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -247,7 +251,7 @@ export default function EquipmentControlPage() {
                         <div className="flex justify-end gap-2">
                           <Button variant="ghost" size="sm" onClick={() => setSelectedHandover(handover)}>
                             <Eye className="h-4 w-4 mr-2" />
-                            Ver
+                            Ver Acta
                           </Button>
                           <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => setHandoverToDelete(handover)}>
                             <Trash2 className="h-4 w-4" />
@@ -287,117 +291,169 @@ export default function EquipmentControlPage() {
       </AlertDialog>
 
       <Dialog open={!!selectedHandover} onOpenChange={() => setSelectedHandover(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-5xl max-h-[95vh] p-0 flex flex-col overflow-hidden bg-slate-100 border-none">
           {selectedHandover && (
             <>
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2 text-xl font-bold border-b pb-2">
-                  <FileText className="h-6 w-6 text-primary" />
-                  Acta de Relevo Digital #{selectedHandover.id.slice(-6).toUpperCase()}
-                </DialogTitle>
-              </DialogHeader>
-              
-              <div className="space-y-8 py-4">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-slate-50 rounded-xl border">
-                  <div className="col-span-2">
-                    <p className="text-[10px] text-muted-foreground font-bold uppercase">Ubicación</p>
-                    <p className="font-bold text-slate-800">{selectedHandover.location}</p>
+              {/* Document Scrollable Area */}
+              <div className="flex-1 overflow-y-auto p-4 md:p-10">
+                <div className="bg-white shadow-2xl mx-auto max-w-4xl min-h-full border border-slate-200 relative flex flex-col">
+                  
+                  {/* Institucional Letterhead */}
+                  <div className="w-full relative h-[140px]">
+                    <Image 
+                      src={LETTERHEAD_URL} 
+                      alt="Banner Cadenvill Security" 
+                      fill
+                      className="object-contain object-top"
+                      unoptimized
+                    />
                   </div>
-                  <div className="col-span-2">
-                    <p className="text-[10px] text-muted-foreground font-bold uppercase">Estado Acta</p>
-                    <Badge variant={selectedHandover.status === 'approved' ? 'default' : 'secondary'}>
-                      {selectedHandover.status === 'approved' ? 'APROBADA Y CERRADA' : 'PENDIENTE DE REVISIÓN SALIENTE'}
-                    </Badge>
-                  </div>
-                  <div className="col-span-2 pt-2 border-t">
-                    <p className="text-[10px] text-blue-600 font-bold uppercase">Guardia Saliente</p>
-                    <p className="font-bold">{selectedHandover.outgoingGuardName}</p>
-                  </div>
-                  <div className="col-span-2 pt-2 border-t">
-                    <p className="text-[10px] text-emerald-600 font-bold uppercase">Guardia Entrante</p>
-                    <p className="font-bold">{selectedHandover.incomingGuardName}</p>
-                  </div>
-                </div>
 
-                <div className="space-y-4">
-                  <h4 className="font-bold text-lg text-slate-800 border-l-4 border-primary pl-3">Checklist de Activos (Reportado por Relevo Entrante)</h4>
-                  <div className="space-y-3">
-                    {selectedHandover.items.map((item) => (
-                      <div key={item.name} className={cn("p-4 border rounded-xl flex flex-col gap-3", item.status === 'issue' ? "bg-red-50/50 border-red-200" : "bg-white")}>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            {item.status === 'good' ? (
-                              <CheckCircle className="h-5 w-5 text-emerald-500" />
-                            ) : (
-                              <AlertTriangle className="h-5 w-5 text-red-500" />
-                            )}
-                            <span className="font-bold text-slate-700">{item.name}</span>
-                          </div>
-                          <Badge variant={item.status === 'good' ? 'outline' : 'destructive'}>
-                            {item.status === 'good' ? 'OPERATIVO' : 'NOVEDAD'}
-                          </Badge>
-                        </div>
-                        {item.status === 'issue' && (
-                          <div className="pl-7 grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-1">
-                              <p className="text-[10px] font-bold text-red-700 uppercase">Problema Reportado</p>
-                              <p className="text-sm font-semibold">{item.issueType || 'Novedad'}</p>
-                              <p className="text-xs text-muted-foreground italic">"{item.notes || 'Sin notas'}"</p>
-                            </div>
-                            {item.photoUrl && (
-                              <div className="flex justify-end">
-                                <button className="relative group" onClick={() => setViewPhoto(item.photoUrl!)}>
-                                  <div className="w-24 h-16 rounded border-2 border-white shadow-sm overflow-hidden">
-                                    <Image src={item.photoUrl} alt="Evidencia" width={96} height={64} className="object-cover" unoptimized />
-                                  </div>
-                                  <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <Camera className="h-4 w-4 text-white" />
-                                  </div>
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        )}
+                  {/* Document Body */}
+                  <div className="px-8 md:px-16 py-6 space-y-8 flex-1">
+                    
+                    <div className="text-center space-y-1">
+                      <h2 className="text-2xl font-black tracking-tighter text-slate-900 border-b-2 border-primary inline-block px-4 pb-1 uppercase italic">
+                        Acta de Relevo Digital de Puesto
+                      </h2>
+                      <p className="text-[10px] font-bold text-slate-500 tracking-[0.2em] uppercase">Control de Auditoría #{selectedHandover.id.slice(-6).toUpperCase()}</p>
+                    </div>
+
+                    {/* Meta Data Grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6 p-6 bg-slate-50 border border-slate-200 rounded-lg">
+                      <div className="space-y-1">
+                        <p className="text-[9px] font-black text-slate-400 uppercase">Ubicación / Puesto</p>
+                        <p className="text-sm font-bold text-slate-800">{selectedHandover.location}</p>
                       </div>
-                    ))}
+                      <div className="space-y-1">
+                        <p className="text-[9px] font-black text-slate-400 uppercase">Estado del Acta</p>
+                        <Badge className={cn("text-[9px] font-black uppercase", selectedHandover.status === 'approved' ? "bg-emerald-600" : "bg-yellow-600")}>
+                          {selectedHandover.status === 'approved' ? 'VALIDADO' : 'PENDIENTE'}
+                        </Badge>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[9px] font-black text-slate-400 uppercase">Relevo Entrante</p>
+                        <p className="text-sm font-bold text-emerald-700">{selectedHandover.incomingGuardName}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[9px] font-black text-slate-400 uppercase">Relevo Saliente</p>
+                        <p className="text-sm font-bold text-blue-700">{selectedHandover.outgoingGuardName}</p>
+                      </div>
+                    </div>
+
+                    {/* Inventory */}
+                    <div className="space-y-4">
+                      <h3 className="text-xs font-black text-slate-900 flex items-center gap-2 border-l-4 border-primary pl-3 bg-slate-100 py-2">
+                        <ShieldCheck className="h-4 w-4" />
+                        REPORTE DE ESTADO DE ACTIVOS RECIBIDOS
+                      </h3>
+                      
+                      <div className="border rounded-md overflow-hidden">
+                        <Table>
+                          <TableHeader className="bg-slate-900">
+                            <TableRow>
+                              <TableHead className="text-white font-bold h-10 text-[10px] uppercase">Activo</TableHead>
+                              <TableHead className="text-white font-bold h-10 text-center text-[10px] uppercase">Estado</TableHead>
+                              <TableHead className="text-white font-bold h-10 text-[10px] uppercase">Novedad Detallada</TableHead>
+                              <TableHead className="text-white font-bold h-10 text-center text-[10px] uppercase">Evidencia</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {selectedHandover.items.map((item) => (
+                              <TableRow key={item.name} className={cn("h-14", item.status === 'issue' && "bg-red-50")}>
+                                <TableCell className="font-bold text-slate-700 text-xs">{item.name}</TableCell>
+                                <TableCell className="text-center">
+                                  <Badge variant={item.status === 'good' ? 'outline' : 'destructive'} className="text-[9px] font-bold">
+                                    {item.status === 'good' ? 'OPERATIVO' : 'NOVEDAD'}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  {item.status === 'issue' ? (
+                                    <div className="space-y-0.5 py-1">
+                                      <p className="text-[10px] font-bold text-red-700 uppercase">{item.issueType || 'Novedad'}</p>
+                                      <p className="text-[10px] text-slate-600 italic">"{item.notes || 'Sin descripción'}"</p>
+                                    </div>
+                                  ) : (
+                                    <span className="text-[10px] text-slate-400">Sin novedad reportada</span>
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  {item.photoUrl && (
+                                    <button onClick={() => setViewPhoto(item.photoUrl!)} className="hover:scale-110 transition-transform">
+                                      <Image src={item.photoUrl} alt="Foto" width={32} height={32} className="rounded border object-cover shadow-sm" unoptimized />
+                                    </button>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+
+                    {/* Signatures Section */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-12 pt-10">
+                      <div className="flex flex-col items-center space-y-4">
+                        <p className="text-[10px] font-black text-blue-700 uppercase tracking-widest border-b pb-1 w-full text-center">Firma de Entrega (Saliente)</p>
+                        <div className="w-full h-32 border bg-slate-50 rounded-lg flex items-center justify-center p-2">
+                          {selectedHandover.outgoingSignature ? (
+                            <Image 
+                              src={selectedHandover.outgoingSignature} 
+                              alt="Firma Saliente" 
+                              width={250} 
+                              height={100} 
+                              className="max-h-full w-auto object-contain"
+                              unoptimized
+                            />
+                          ) : <span className="text-[10px] text-slate-400 italic">Pendiente de validación</span>}
+                        </div>
+                        <div className="text-center">
+                          <p className="text-[11px] font-bold text-slate-800">{selectedHandover.outgoingGuardName}</p>
+                          {selectedHandover.approvalTimestamp && (
+                            <p className="text-[8px] text-slate-400 font-medium">Validado: {format(new Date(selectedHandover.approvalTimestamp), 'dd/MM/yy HH:mm')}</p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col items-center space-y-4">
+                        <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest border-b pb-1 w-full text-center">Firma de Recepción (Entrante)</p>
+                        <div className="w-full h-32 border bg-slate-50 rounded-lg flex items-center justify-center p-2">
+                          {selectedHandover.incomingSignature && (
+                            <Image 
+                              src={selectedHandover.incomingSignature} 
+                              alt="Firma Entrante" 
+                              width={250} 
+                              height={100} 
+                              className="max-h-full w-auto object-contain"
+                              unoptimized
+                            />
+                          )}
+                        </div>
+                        <div className="text-center">
+                          <p className="text-[11px] font-bold text-slate-800">{selectedHandover.incomingGuardName}</p>
+                          <p className="text-[8px] text-slate-400 font-medium">Registrado: {format(new Date(selectedHandover.timestamp), 'dd/MM/yy HH:mm')}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Terms Footer */}
+                    <div className="pt-12 border-t border-slate-100 pb-4">
+                      <p className="text-[8px] text-slate-400 leading-tight text-center italic">
+                        Documento oficial emitido por la plataforma Performa para Cadenvill Security. 
+                        Este registro electrónico constituye una prueba auditable del estado de los activos en el momento del relevo.
+                      </p>
+                    </div>
                   </div>
                 </div>
+              </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t">
-                  <div className="flex flex-col items-center">
-                    <p className="text-[10px] text-blue-600 font-bold mb-2 uppercase">Firma Guardia Saliente (Aprobación)</p>
-                    <div className="border bg-slate-50 rounded-lg p-2 w-full flex justify-center min-h-[80px] items-center">
-                      {selectedHandover.outgoingSignature ? (
-                        <Image 
-                          src={selectedHandover.outgoingSignature} 
-                          alt="Firma Saliente" 
-                          width={300} 
-                          height={100} 
-                          className="max-h-[80px] w-auto object-contain"
-                          unoptimized
-                        />
-                      ) : <span className="text-xs text-muted-foreground italic">Pendiente de firma en sesión personal</span>}
-                    </div>
-                    {selectedHandover.approvalTimestamp && (
-                      <p className="text-[9px] text-muted-foreground mt-1">Aprobado: {format(new Date(selectedHandover.approvalTimestamp), 'dd/MM/yy HH:mm')}</p>
-                    )}
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <p className="text-[10px] text-emerald-600 font-bold mb-2 uppercase">Firma Guardia Entrante (Registro)</p>
-                    <div className="border bg-slate-50 rounded-lg p-2 w-full flex justify-center">
-                      {selectedHandover.incomingSignature && (
-                        <Image 
-                          src={selectedHandover.incomingSignature} 
-                          alt="Firma Entrante" 
-                          width={300} 
-                          height={100} 
-                          className="max-h-[80px] w-auto object-contain"
-                          unoptimized
-                        />
-                      )}
-                    </div>
-                    <p className="text-[9px] text-muted-foreground mt-1">Registrado: {format(new Date(selectedHandover.timestamp), 'dd/MM/yy HH:mm')}</p>
-                  </div>
+              {/* Action Bar */}
+              <div className="bg-slate-900 p-4 flex justify-between items-center px-8 border-t border-slate-800">
+                <Button variant="ghost" onClick={() => setSelectedHandover(null)} className="text-white hover:bg-white/10">Cerrar Vista</Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" className="bg-transparent text-white border-white/20 hover:bg-white/10" onClick={() => window.print()}>
+                    <Printer className="mr-2 h-4 w-4" /> Imprimir
+                  </Button>
                 </div>
               </div>
             </>
