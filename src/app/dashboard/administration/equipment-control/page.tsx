@@ -45,8 +45,9 @@ import {
   X,
   Clock,
   Trash2,
-  Printer,
+  FileDown,
   ShieldCheck,
+  LoaderCircle,
 } from 'lucide-react';
 import { useCollection, useFirestore } from '@/firebase';
 import { collection, query, orderBy, limit, doc, deleteDoc } from 'firebase/firestore';
@@ -64,6 +65,7 @@ export default function EquipmentControlPage() {
   const [selectedHandover, setSelectedHandover] = useState<EquipmentHandover | null>(null);
   const [handoverToDelete, setHandoverToDelete] = useState<EquipmentHandover | null>(null);
   const [viewPhoto, setViewPhoto] = useState<string | null>(null);
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
   const firestore = useFirestore();
 
   const handoversQuery = useMemo(() => {
@@ -106,7 +108,7 @@ export default function EquipmentControlPage() {
     }
   };
 
-  const handleExport = async () => {
+  const handleExportExcel = async () => {
     const XLSX = await import('xlsx');
     const dataToExport = filteredHandovers.map(h => ({
       Fecha: format(new Date(h.timestamp), 'dd/MM/yyyy HH:mm'),
@@ -123,6 +125,21 @@ export default function EquipmentControlPage() {
     XLSX.writeFile(wb, `Reporte_Dotacion_${format(new Date(), 'yyyyMMdd')}.xlsx`);
   };
 
+  const handleDownloadPDF = async () => {
+    if (!selectedHandover) return;
+    setIsExportingPDF(true);
+    try {
+      const { generateHandoverPDF } = await import('@/lib/pdf-generator');
+      await generateHandoverPDF(selectedHandover);
+      toast({ title: 'PDF Generado', description: 'El documento se ha descargado correctamente.' });
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      toast({ variant: 'destructive', title: 'Error', description: 'No se pudo generar el PDF.' });
+    } finally {
+      setIsExportingPDF(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -130,7 +147,7 @@ export default function EquipmentControlPage() {
           <h1 className="text-2xl font-bold tracking-tight">Control de Dotación</h1>
           <p className="text-muted-foreground">Auditoría de relevos con doble identidad digital y validación institucional.</p>
         </div>
-        <Button onClick={handleExport} variant="outline" className="shrink-0">
+        <Button onClick={handleExportExcel} variant="outline" className="shrink-0">
           <Download className="mr-2 h-4 w-4" />
           Exportar Excel
         </Button>
@@ -432,7 +449,7 @@ export default function EquipmentControlPage() {
                         </div>
                         <div className="text-center">
                           <p className="text-[11px] font-bold text-slate-800">{selectedHandover.incomingGuardName}</p>
-                          <p className="text-[8px] text-slate-400 font-medium">Registrado: {format(new Date(selectedHandover.timestamp), 'dd/MM/yy HH:mm')}</p>
+                          <p className="text-[8px] text-slate-400 font-medium">Registrado: {format(new Date(selectedHandover.timestamp), 'dd/MM/yyyy HH:mm')}</p>
                         </div>
                       </div>
                     </div>
@@ -450,8 +467,14 @@ export default function EquipmentControlPage() {
               <div className="bg-slate-900 p-4 flex justify-between items-center px-8 border-t border-slate-800">
                 <Button variant="ghost" onClick={() => setSelectedHandover(null)} className="text-white hover:bg-white/10">Cerrar Vista</Button>
                 <div className="flex gap-2">
-                  <Button variant="outline" className="bg-transparent text-white border-white/20 hover:bg-white/10" onClick={() => window.print()}>
-                    <Printer className="mr-2 h-4 w-4" /> Imprimir
+                  <Button 
+                    variant="outline" 
+                    className="bg-transparent text-white border-white/20 hover:bg-white/10" 
+                    onClick={handleDownloadPDF}
+                    disabled={isExportingPDF}
+                  >
+                    {isExportingPDF ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />} 
+                    Descargar Acta PDF
                   </Button>
                 </div>
               </div>

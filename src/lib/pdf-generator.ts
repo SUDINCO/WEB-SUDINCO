@@ -2,7 +2,9 @@ import { type CellHookData } from 'jspdf-autotable';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { PersonDTO, EvaluationDTO } from './contracts';
+import type { EquipmentHandover } from './types';
 
+const LOGO_URL = 'https://i.postimg.cc/B6HGbmCz/LOGO-CADENVILL.png';
 
 const formatDate = (dateStr: string | undefined | number) => {
     if (!dateStr) return 'N/A';
@@ -149,7 +151,7 @@ export const generateEvaluationPDF = async (worker: PersonDTO, evaluator: Person
         }
 
         const selectedRating = (evaluation as any)[criterion.key];
-        const justification = (evaluation as any)[`'${criterion.key}Justification'`] || '';
+        const justification = (evaluation as any)[`${criterion.key}Justification`] || '';
 
         // Draw containing box
         doc.setDrawColor(200);
@@ -223,11 +225,11 @@ export const generateEvaluationPDF = async (worker: PersonDTO, evaluator: Person
     doc.text('Evaluación General', evalX + evalWidth / 2, lastY + 7, { align: 'center' });
     doc.setFontSize(22);
     doc.setTextColor(221, 14, 58); // primary color
-    doc.text(`'${evaluation.generalEvaluation}%'`, evalX + evalWidth / 2, lastY + 17, { align: 'center' });
+    doc.text(`${evaluation.generalEvaluation}%`, evalX + evalWidth / 2, lastY + 17, { align: 'center' });
     doc.setTextColor(0);
 
     // Save the PDF
-    const fileName = `Evaluacion_'${worker.nombreCompleto.replace(/\s+/g, '_')}'.pdf`;
+    const fileName = `Evaluacion_${worker.nombreCompleto.replace(/\s+/g, '_')}.pdf`;
     doc.save(fileName);
 };
 
@@ -301,11 +303,11 @@ const addPage1Header = (doc: any, approval: HiringApproval) => {
     
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
-    doc.text(`Fecha de Emisión: '${format(new Date(approval.createdAt), 'dd/MM/yyyy')}'`, margin, lastY);
+    doc.text(`Fecha de Emisión: ${format(new Date(approval.createdAt), 'dd/MM/yyyy')}`, margin, lastY);
     
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
-    const codeText = `Código: SUD-PLF-'${new Date(approval.createdAt).getFullYear()}'-'${approval.id.slice(0, 4)}'`;
+    const codeText = `Código: SUD-PLF-${new Date(approval.createdAt).getFullYear()}-${approval.id.slice(0, 4)}`;
     doc.text(codeText, pageWidth - margin, lastY, { align: 'right' });
     
     lastY += 8;
@@ -339,7 +341,7 @@ const addSignatureBlock = (doc: any, x: number, y: number, signatory: Signatory,
     const signatureWidth = 65;
     doc.setFontSize(8);
     doc.setFont('helvetica', 'bold');
-    doc.text(`'${signatory.nombres} '${signatory.apellidos}'.toUpperCase()`, x + signatureWidth / 2, y - 3, { align: 'center' });
+    doc.text(`${signatory.nombres} ${signatory.apellidos}`.toUpperCase(), x + signatureWidth / 2, y - 3, { align: 'center' });
     
     doc.setDrawColor(0);
     doc.setLineWidth(0.2);
@@ -398,8 +400,8 @@ export const generateHiringApprovalPDF = async (
         doc.setTextColor(0);
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(7);
-        const effectiveDateText = `Fecha de Ingreso Efectiva: '${formatDate(approval.processInfo.effectiveHiringDate)}'`;
-        const justificationText = `Justificación: '${approval.processInfo.justificationForRetroactive || 'No se proporcionó justificación.'}'`;
+        const effectiveDateText = `Fecha de Ingreso Efectiva: ${formatDate(approval.processInfo.effectiveHiringDate)}`;
+        const justificationText = `Justificación: ${approval.processInfo.justificationForRetroactive || 'No se proporcionó justificación.'}`;
         
         doc.text(effectiveDateText, margin + 4, page1Y + 9);
         doc.text(justificationText, margin + 4, page1Y + 13, { maxWidth: pageWidth - margin * 2 - 8 });
@@ -412,15 +414,15 @@ export const generateHiringApprovalPDF = async (
     const cargo = approval.processInfo?.cargo || '';
     const year = new Date(approval.createdAt).getFullYear().toString().slice(-2);
     const sequence = approval.id.slice(0, 4).toUpperCase();
-    const codEval = `'${getInitials(empresa)}'-'${getInitials(cargo)}'-'${year}'-'${sequence}'`;
+    const codEval = `${getInitials(empresa)}-${getInitials(cargo)}-${year}-${sequence}`;
     
     const tableBody = [[
-        `'${candidate.apellidos}' '${candidate.nombres}'`,
+        `${candidate.apellidos} ${candidate.nombres}`,
         approval.processInfo?.cargo || 'N/A',
         'N/A', 
         'N/A', 
         approval.processInfo?.isRetroactive ? formatDate(approval.processInfo.effectiveHiringDate) : (approval.bossSelection?.selectionDate ? formatDate(approval.bossSelection.selectionDate) : 'N/A'),
-        evaluation.aspiracionSalarial ? `$'${evaluation.aspiracionSalarial.toFixed(2)}'` : 'N/A',
+        evaluation.aspiracionSalarial ? `$${evaluation.aspiracionSalarial.toFixed(2)}` : 'N/A',
         codEval,
         approval.bossSelection?.bossComments || 'APROBADO'
     ]];
@@ -480,12 +482,12 @@ export const generateHiringApprovalPDF = async (
     const competenciasResultado = ((evaluation.competencias - 1) / 4) * competenciasPct;
 
     const mainTableBody2 = [[
-        `'${candidate.apellidos}' '${candidate.nombres}'`,
+        `${candidate.apellidos} ${candidate.nombres}`,
         approval.processInfo?.cargo || 'N/A',
-        `'${formacionResultado.toFixed(0)}'%`,
-        `'${conocimientosResultado.toFixed(0)}'%`,
-        `'${experienciaResultado.toFixed(0)}'%`,
-        `'${competenciasResultado.toFixed(0)}'%`,
+        `${formacionResultado.toFixed(0)}%`,
+        `${conocimientosResultado.toFixed(0)}%`,
+        `${experienciaResultado.toFixed(0)}%`,
+        `${competenciasResultado.toFixed(0)}%`,
     ]];
 
     (doc as any).autoTable({
@@ -505,10 +507,10 @@ export const generateHiringApprovalPDF = async (
     ];
 
     const ponderacionBody = [
-        ['FORMACIÓN ACADÉMICA', `'${formacionPct}'%`, 'Cumple(1)/No Cumple(0)', evaluation.formacionAcademica, `'${formacionResultado.toFixed(0)}'%`],
-        ['CONOCIMIENTOS TÉCNICOS', `'${conocimientosPct}'%`, '1 - 10', evaluation.conocimientosTecnicos, `'${experienciaResultado.toFixed(0)}'%`],
-        ['EXPERIENCIA', `'${experienciaPct}'%`, '0 - 20', evaluation.experiencia, `'${experienciaResultado.toFixed(0)}'%`],
-        ['COMPETENCIAS', `'${competenciasPct}'%`, '1 - 5', evaluation.competencias, `'${competenciasResultado.toFixed(0)}'%`],
+        ['FORMACIÓN ACADÉMICA', `${formacionPct}%`, 'Cumple(1)/No Cumple(0)', evaluation.formacionAcademica, `${formacionResultado.toFixed(0)}%`],
+        ['CONOCIMIENTOS TÉCNICOS', `${conocimientosPct}%`, '1 - 10', evaluation.conocimientosTecnicos, `${experienciaResultado.toFixed(0)}%`],
+        ['EXPERIENCIA', `${experienciaPct}%`, '0 - 20', evaluation.experiencia, `${experienciaResultado.toFixed(0)}%`],
+        ['COMPETENCIAS', `${competenciasPct}%`, '1 - 5', evaluation.competencias, `${competenciasResultado.toFixed(0)}%`],
     ];
 
     (doc as any).autoTable({
@@ -535,7 +537,7 @@ export const generateHiringApprovalPDF = async (
     (doc as any).autoTable({
         startY: summaryTableStartY,
         head: [['EVALUACIÓN GENERAL', 'STATUS']],
-        body: [[`'${evaluation.notaGeneral}'%`, statusLabel]],
+        body: [[`${evaluation.notaGeneral}%`, statusLabel]],
         theme: 'grid',
         tableWidth: (pageWidth - margin * 2) * 0.7,
         margin: { left: margin },
@@ -572,13 +574,170 @@ export const generateHiringApprovalPDF = async (
         doc.setPage(i);
         doc.setFontSize(8);
         doc.text(
-            `Página '${i}' de '${pageCount}'`,
+            `Página ${i} de ${pageCount}`,
             pageWidth - margin,
             pageHeight - 10,
             { align: 'right' }
         );
     }
     
-    const fileName = `Aprobacion_'${candidate.apellidos}'_'${candidate.nombres}'.pdf`;
+    const fileName = `Aprobacion_${candidate.apellidos}_${candidate.nombres}.pdf`;
     doc.save(fileName);
+};
+
+/**
+ * Genera un PDF profesional de página completa para el Acta de Relevo.
+ */
+export const generateHandoverPDF = async (handover: EquipmentHandover) => {
+    const { default: jsPDF } = await import('jspdf');
+    await import('jspdf-autotable');
+
+    const doc = new jsPDF({
+        orientation: 'p',
+        unit: 'mm',
+        format: 'a4'
+    });
+
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 10;
+    let currentY = 0;
+
+    // 1. Header Logo (Full width)
+    const headerHeight = 35;
+    doc.addImage(LOGO_URL, 'PNG', 0, 0, pageWidth, headerHeight);
+    currentY = headerHeight + 5;
+
+    // 2. Title
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.setTextColor(30, 41, 59); // Slate-800
+    doc.text('ACTA DE RELEVO DIGITAL DE PUESTO', pageWidth / 2, currentY, { align: 'center' });
+    currentY += 6;
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139); // Slate-500
+    doc.text(`Control de Auditoría #${handover.id.slice(-8).toUpperCase()}`, pageWidth / 2, currentY, { align: 'center' });
+    currentY += 8;
+
+    // 3. Metadata Grid
+    const metadata = [
+        ['UBICACIÓN / PUESTO', handover.location, 'ESTADO DEL ACTA', handover.status === 'approved' ? 'VALIDADO' : 'PENDIENTE'],
+        ['FECHA Y HORA REG.', format(new Date(handover.timestamp), 'dd/MM/yyyy HH:mm', { locale: es }), 'ID AUDITORÍA', handover.id.slice(-12).toUpperCase()]
+    ];
+
+    (doc as any).autoTable({
+        startY: currentY,
+        body: metadata,
+        theme: 'grid',
+        styles: { fontSize: 8, cellPadding: 2 },
+        columnStyles: {
+            0: { fontStyle: 'bold', fillColor: [241, 245, 249], cellWidth: 35 },
+            1: { cellWidth: 55 },
+            2: { fontStyle: 'bold', fillColor: [241, 245, 249], cellWidth: 35 },
+            3: { cellWidth: 55 }
+        },
+        margin: { left: margin, right: margin }
+    });
+    currentY = (doc as any).lastAutoTable.finalY + 5;
+
+    // 4. Personal Section
+    const staff = [
+        ['PERSONAL ENTRANTE (RECIBE)', handover.incomingGuardName, 'PERSONAL SALIENTE (ENTREGA)', handover.outgoingGuardName]
+    ];
+    (doc as any).autoTable({
+        startY: currentY,
+        body: staff,
+        theme: 'grid',
+        styles: { fontSize: 9, cellPadding: 3 },
+        columnStyles: {
+            0: { fontStyle: 'bold', textColor: [5, 150, 105], cellWidth: 45 }, // Emerald
+            1: { fontStyle: 'bold', cellWidth: 45 },
+            2: { fontStyle: 'bold', textColor: [37, 99, 235], cellWidth: 45 }, // Blue
+            3: { fontStyle: 'bold', cellWidth: 45 }
+        },
+        margin: { left: margin, right: margin }
+    });
+    currentY = (doc as any).lastAutoTable.finalY + 8;
+
+    // 5. Inventory Table
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(30, 41, 59);
+    doc.text('INVENTARIO DE DOTACIÓN Y ESTADO OPERATIVO', margin, currentY);
+    currentY += 4;
+
+    const tableBody = handover.items.map(item => [
+        item.name,
+        item.status === 'good' ? 'OPERATIVO' : 'NOVEDAD',
+        item.status === 'issue' ? `${item.issueType || 'Novedad'}: ${item.notes || ''}` : 'Sin novedad reportada',
+        item.photoUrl ? '' : '-' // Placeholder for photo
+    ]);
+
+    (doc as any).autoTable({
+        startY: currentY,
+        head: [['ACTIVO', 'ESTADO', 'DETALLE DE NOVEDAD', 'EVIDENCIA']],
+        body: tableBody,
+        theme: 'grid',
+        headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontSize: 8, halign: 'center' },
+        styles: { fontSize: 8, cellPadding: 4, valign: 'middle' },
+        columnStyles: {
+            0: { fontStyle: 'bold', cellWidth: 35 },
+            1: { halign: 'center', cellWidth: 25 },
+            2: { cellWidth: 90 },
+            3: { halign: 'center', cellWidth: 30 }
+        },
+        margin: { left: margin, right: margin },
+        didDrawCell: (data: any) => {
+            if (data.section === 'body' && data.column.index === 3) {
+                const item = handover.items[data.row.index];
+                if (item.photoUrl) {
+                    try {
+                        doc.addImage(item.photoUrl, 'JPEG', data.cell.x + 5, data.cell.y + 2, 20, 20);
+                    } catch (e) {
+                        console.error('Error adding image to PDF', e);
+                    }
+                }
+            }
+        }
+    });
+    currentY = (doc as any).lastAutoTable.finalY + 15;
+
+    // 6. Signatures (Balanced at bottom)
+    const sigWidth = 70;
+    const sigHeight = 25;
+    const sigY = 250; // Force towards bottom
+
+    // Outgoing Signature
+    doc.setDrawColor(200);
+    doc.line(margin, sigY, margin + sigWidth, sigY);
+    doc.setFontSize(8);
+    doc.text('FIRMA DE ENTREGA (SALIENTE)', margin + sigWidth / 2, sigY + 4, { align: 'center' });
+    doc.setFont('helvetica', 'bold');
+    doc.text(handover.outgoingGuardName, margin + sigWidth / 2, sigY + 8, { align: 'center' });
+    if (handover.outgoingSignature) {
+        doc.addImage(handover.outgoingSignature, 'PNG', margin + 5, sigY - 22, sigWidth - 10, 20);
+    }
+
+    // Incoming Signature
+    doc.line(pageWidth - margin - sigWidth, sigY, pageWidth - margin, sigY);
+    doc.setFont('helvetica', 'normal');
+    doc.text('FIRMA DE RECEPCIÓN (ENTRANTE)', pageWidth - margin - sigWidth / 2, sigY + 4, { align: 'center' });
+    doc.setFont('helvetica', 'bold');
+    doc.text(handover.incomingGuardName, pageWidth - margin - sigWidth / 2, sigY + 8, { align: 'center' });
+    if (handover.incomingSignature) {
+        doc.addImage(handover.incomingSignature, 'PNG', pageWidth - margin - sigWidth + 5, sigY - 22, sigWidth - 10, 20);
+    }
+
+    // 7. Legal Footer
+    const footerY = 280;
+    doc.setDrawColor(241, 245, 249);
+    doc.line(margin, footerY - 5, pageWidth - margin, footerY - 5);
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(7);
+    doc.setTextColor(148, 163, 184);
+    const legalText = 'Documento oficial emitido por la plataforma Performa para Cadenvill Security. Este registro electrónico constituye una prueba auditable del estado de los activos en el momento del relevo bajo la normativa legal vigente de firmas electrónicas.';
+    doc.text(doc.splitTextToSize(legalText, pageWidth - margin * 2), pageWidth / 2, footerY, { align: 'center' });
+
+    // Save
+    doc.save(`Acta_Relevo_${handover.location.replace(/\s+/g, '_')}_${format(new Date(handover.timestamp), 'yyyyMMdd_HHmm')}.pdf`);
 };
