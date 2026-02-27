@@ -213,6 +213,21 @@ export function HandoverDialog({ open, onOpenChange, location, currentUser, sugg
 
   const handleSubmit = async () => {
     if (!firestore) return;
+
+    // Validation for issues (Tipo and Observación mandatory if status is 'issue')
+    for (const item of items) {
+      if (item.present && item.status === 'issue') {
+        if (!item.issueType || !item.notes || item.notes.trim() === '') {
+          toast({ 
+            variant: 'destructive', 
+            title: 'Datos incompletos', 
+            description: `Para el activo "${item.name}" con novedad, el Tipo y la Observación son obligatorios.` 
+          });
+          return;
+        }
+      }
+    }
+
     if (!isLocked) {
       toast({ variant: 'destructive', title: 'Firma requerida', description: 'Debe certificar su firma para continuar.' });
       return;
@@ -277,7 +292,6 @@ export function HandoverDialog({ open, onOpenChange, location, currentUser, sugg
                 fill
                 className="object-fill object-center"
                 unoptimized
-                data-ai-hint="cadenvill logo"
               />
             </div>
 
@@ -365,10 +379,15 @@ export function HandoverDialog({ open, onOpenChange, location, currentUser, sugg
                                 ) : (
                                   <>
                                     <Select value={item.issueType} onValueChange={(v) => handleItemUpdate(index, 'issueType', v)}>
-                                      <SelectTrigger className="h-6 text-[10px] bg-white"><SelectValue placeholder="Tipo..." /></SelectTrigger>
+                                      <SelectTrigger className={cn("h-6 text-[10px] bg-white", !item.issueType && "border-red-500")}><SelectValue placeholder="Tipo (Obligatorio)..." /></SelectTrigger>
                                       <SelectContent>{(ISSUE_TYPES_MAP[item.name] || ISSUE_TYPES_MAP['default']).map(t => <SelectItem key={t} value={t} className="text-xs">{t}</SelectItem>)}</SelectContent>
                                     </Select>
-                                    <Input placeholder="Notas..." value={item.notes} onChange={(e) => handleItemUpdate(index, 'notes', e.target.value)} className="h-6 text-[10px] bg-white" />
+                                    <Input 
+                                      placeholder="Obs. Obligatoria..." 
+                                      value={item.notes} 
+                                      onChange={(e) => handleItemUpdate(index, 'notes', e.target.value)} 
+                                      className={cn("h-6 text-[10px] bg-white", !item.notes.trim() && "border-red-500")} 
+                                    />
                                   </>
                                 )}
                               </div>
