@@ -72,6 +72,7 @@ export function HandoverDialog({ open, onOpenChange, location, currentUser, sugg
   const isApproving = mode === 'approve';
   const [items, setItems] = useState<HandoverItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
   const firestore = useFirestore();
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -81,6 +82,7 @@ export function HandoverDialog({ open, onOpenChange, location, currentUser, sugg
   const [isLocked, setIsLocked] = useState(false);
 
   useEffect(() => {
+    let timer: NodeJS.Timeout;
     if (open) {
       if (isApproving && existingHandover) {
         setItems(existingHandover.items.map(i => ({
@@ -96,10 +98,13 @@ export function HandoverDialog({ open, onOpenChange, location, currentUser, sugg
           notes: '', 
           photoUrl: null 
         })));
+        // Actualizar hora cada minuto para el nuevo registro
+        timer = setInterval(() => setCurrentTime(new Date()), 60000);
       }
       setIsLocked(false);
       setTimeout(() => clearCanvas(), 150);
     }
+    return () => clearInterval(timer);
   }, [open, isApproving, existingHandover]);
 
   const clearCanvas = () => {
@@ -214,7 +219,6 @@ export function HandoverDialog({ open, onOpenChange, location, currentUser, sugg
   const handleSubmit = async () => {
     if (!firestore) return;
 
-    // Validation for issues (Tipo and Observación mandatory if status is 'issue')
     for (const item of items) {
       if (item.present && item.status === 'issue') {
         if (!item.issueType || !item.notes || item.notes.trim() === '') {
@@ -312,8 +316,12 @@ export function HandoverDialog({ open, onOpenChange, location, currentUser, sugg
                   <p className="text-sm font-bold text-slate-800">{location}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-[9px] font-black text-slate-400 uppercase">Fecha de Registro</p>
-                  <p className="text-sm font-bold text-slate-800">{format(new Date(), 'dd/MM/yyyy', { locale: es })}</p>
+                  <p className="text-[9px] font-black text-slate-400 uppercase">Fecha / Hora de Registro</p>
+                  <p className="text-sm font-bold text-slate-800">
+                    {isApproving && existingHandover 
+                      ? format(new Date(existingHandover.timestamp), 'dd/MM/yyyy HH:mm', { locale: es })
+                      : format(currentTime, 'dd/MM/yyyy HH:mm', { locale: es })}
+                  </p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-[9px] font-black text-slate-400 uppercase">Relevo Entrante</p>

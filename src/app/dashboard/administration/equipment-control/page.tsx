@@ -164,8 +164,7 @@ export default function EquipmentControlPage() {
               {stats.total > 0 ? Math.round(((stats.total - stats.withIssues) / stats.total) * 100) : 0}%
             </CardTitle>
           </CardHeader>
-        </Card>
-      </div>
+        </div>
 
       <Card>
         <CardHeader>
@@ -332,13 +331,25 @@ export default function EquipmentControlPage() {
                         </Badge>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-[9px] font-black text-slate-400 uppercase">Relevo Entrante</p>
-                        <p className="text-sm font-bold text-emerald-700">{selectedHandover.incomingGuardName}</p>
+                        <p className="text-[9px] font-black text-slate-400 uppercase">Fecha / Hora de Registro</p>
+                        <p className="text-sm font-bold text-slate-800">{format(new Date(selectedHandover.timestamp), 'dd/MM/yyyy HH:mm')}</p>
                       </div>
-                      <div className="space-y-1">
-                        <p className="text-[9px] font-black text-slate-400 uppercase">Relevo Saliente</p>
-                        <p className="text-sm font-bold text-blue-700">{selectedHandover.outgoingGuardName}</p>
+                      <div className="space-y-1 text-right">
+                        <p className="text-[9px] font-black text-slate-400 uppercase">ID Auditoría</p>
+                        <p className="text-[10px] font-mono font-bold text-slate-500">#{selectedHandover.id.slice(-12).toUpperCase()}</p>
                       </div>
+                    </div>
+
+                    {/* Relevo Info */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-y py-4">
+                        <div className="space-y-1">
+                            <p className="text-[10px] font-black text-emerald-700 uppercase">Personal Entrante (Recibe)</p>
+                            <p className="text-md font-bold text-slate-800">{selectedHandover.incomingGuardName}</p>
+                        </div>
+                        <div className="space-y-1">
+                            <p className="text-[10px] font-black text-blue-700 uppercase">Personal Saliente (Entrega)</p>
+                            <p className="text-md font-bold text-slate-800">{selectedHandover.outgoingGuardName}</p>
+                        </div>
                     </div>
 
                     {/* Inventory */}
