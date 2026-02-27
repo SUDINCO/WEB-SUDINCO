@@ -18,6 +18,7 @@ import {
   subDays,
   subMonths,
 } from 'date-fns';
+import { es } from 'date-fns/locale';
 import type { Collaborator, Vacation, TemporaryTransfer, Lactation, AttendanceRecord, RoleChange, Holiday, OvertimeRule, ShiftPattern, Notification, ManualOverride, ManualOverrides, SavedSchedule } from '@/lib/types';
 import { getEffectiveDetails } from './schedule-utils';
 import { normalizeText } from './utils';
@@ -106,7 +107,6 @@ function calculateWeekendEquity(collaborators: Collaborator[], savedSchedules: S
 
     const equityScores = new Map<string, number>();
     weekendStats.forEach((stats, id) => {
-        // Un score más alto significa que ha trabajado más fines de semana (más "deuda" de descanso)
         const score = stats.total > 0 ? stats.worked / stats.total : 0.5;
         equityScores.set(id, score);
     });
@@ -137,9 +137,7 @@ export function generarHorariosEstaticos(
   const prevPeriodDate = subMonths(days[0], 1);
   const prevPeriodId = format(prevPeriodDate, 'yyyy-MM');
 
-  // 1. Obtener historial inmediato para CONTINUIDAD técnica
   const immediateHistoryMap = new Map<string, (string | null)[]>();
-  // 2. Obtener historial global para EQUIDAD de fines de semana
   const allSaved = Object.values(savedSchedules);
   const equityScores = calculateWeekendEquity(allCollaborators, allSaved);
 
@@ -165,14 +163,12 @@ export function generarHorariosEstaticos(
     days.forEach((day, dayIndex) => {
       const dayKey = format(day, 'yyyy-MM-dd');
 
-      // 1. Prioridad: Overrides manuales
       const manualOverride = manualOverrides.get(collaborator.id)?.get(dayKey);
       if (manualOverride !== undefined) {
           collaboratorSchedule.set(dayKey, manualOverride.shift);
           return;
       }
       
-      // 2. Prioridad: Ausencias legales
       const isOnVacation = vacations.some(v => v.requestType === 'vacaciones' && v.userId === collaborator.id && isWithinInterval(day, { start: new Date(v.startDate), end: new Date(v.endDate) }));
       if (isOnVacation) {
         collaboratorSchedule.set(dayKey, 'VAC');
@@ -187,7 +183,6 @@ export function generarHorariosEstaticos(
           return;
       }
       
-      // 3. Determinar detalles efectivos
       const { location: effectiveLocation, jobTitle: effectiveJobTitle } = getEffectiveDetails(collaborator, day, transfers, roleChanges);
       const activeRoleChange = roleChanges.find(rc => rc.collaboratorId === collaborator.id && isWithinInterval(day, { start: rc.startDate, end: rc.endDate }));
 
@@ -196,7 +191,6 @@ export function generarHorariosEstaticos(
         return;
       }
 
-      // 4. Lógica de Ciclo con Equidad Histórica
       const patternData = JOB_CYCLES.get(normalizeText(effectiveJobTitle));
       
       if (!patternData) {
@@ -215,23 +209,16 @@ export function generarHorariosEstaticos(
       let startPosition = findCyclePosition(cycle, history);
 
       if (startPosition === -1) {
-          // Si no hay historial inmediato para dar continuidad, usamos la EQUIDAD HISTÓRICA
-          // para elegir el mejor punto de inicio que favorezca sus descansos en fin de semana
           const personSeed = simpleHash(collaborator.id + periodIdentifier);
-          // Nudge basado en el score de equidad: si ha trabajado mucho (score > 0.6), 
-          // intentamos desplazar el ciclo para que sus "LIB" caigan en fin de semana.
           const equityNudge = equityScore > 0.6 ? 2 : (equityScore < 0.4 ? -2 : 0);
           startPosition = (personSeed + equityNudge) % cycle.length;
       }
 
-      // Añadimos un factor de "rebarajeo" basado en el periodo para romper grupos fijos
-      // pero que se mantiene constante para la persona durante todo el mes generado
       const groupShuffleFactor = simpleHash(periodIdentifier + effectiveLocation) % 3;
       const currentCycleIndex = (startPosition + dayIndex + groupShuffleFactor) % cycle.length;
       
       let shift = cycle[currentCycleIndex];
 
-      // 5. Protección de Lactancia
       const isOnLactationThisDay = lactations.some(l => l.collaboratorId === collaborator.id && isWithinInterval(day, { start: l.startDate, end: l.endDate }));
       if (isOnLactationThisDay && isNightShift(shift)) {
           shift = 'M8';
@@ -385,12 +372,26 @@ export function obtenerHorarioUnificado(
   const cargoFilter = filters?.jobTitle;
 
   // LÓGICA PARA ROLES QUE SOLO VEN LO APROBADO (Colaboradores, RRHH en reportes, etc.)
-  // IMPORTANTE: Se unifican todos los cronogramas aprobados sin filtrar por periodID estático
-  // para evitar que aparezca 'PENDIENTE' erróneamente en vistas multi-periodo.
   if (role !== 'coordinator') {
       const resultSchedule = new Map<string, Map<string, string | null>>();
-      allCollaborators.forEach(c => resultSchedule.set(c.id, new Map()));
+      const shiftPatternsByCargo = new Map(shiftPatterns.map(p => [normalizeText(p.jobTitle), p]));
 
+      allCollaborators.forEach(collaborator => {
+          const userSchedule = new Map<string, string | null>();
+          const normalizedJobTitle = normalizeText(collaborator.originalJobTitle);
+          
+          // REGLA: El personal de oficina (sin patrón de rotación asignado) NO requiere aprobación manual
+          if (!shiftPatternsByCargo.has(normalizedJobTitle)) {
+              days.forEach(day => {
+                  const dayKey = format(day, 'yyyy-MM-dd');
+                  const isWeekend = isSaturday(day) || isSunday(day);
+                  userSchedule.set(dayKey, isWeekend ? null : 'N9');
+              });
+          }
+          resultSchedule.set(collaborator.id, userSchedule);
+      });
+
+      // Añadir cronogramas aprobados (sobrescriben o completan según el caso)
       Object.values(savedSchedules).forEach(saved => {
           Object.entries(saved.schedule).forEach(([collabId, dayMap]) => {
               if (resultSchedule.has(collabId)) {
@@ -473,7 +474,7 @@ export function calculateScheduleSummary(
             if (shift) {
                 const { jobTitle: effectiveJobTitle } = getEffectiveDetails(collaborator, day, allTransfers, allRoleChanges);
                 const rule = allOvertimeRules.find(r => 
-                    normalizeText(r.jobTitle) === normalizeText(effectiveJobTitle) && 
+                    normalizeText(r.jobTitle) === normalizedJobTitle && 
                     r.shift === shift && 
                     r.dayType === jornada
                 );

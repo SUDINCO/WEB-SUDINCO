@@ -1,4 +1,3 @@
-
 import { collection, getDocs, writeBatch, Firestore, doc } from 'firebase/firestore';
 import { parse, format } from 'date-fns';
 
@@ -85,12 +84,12 @@ const initialData = {
         "OPERADOR DE RODILLO DE AFIRMADO", "OPERADOR DE RODILLO DE ASFALTO", "OPERADOR DE TENDEDORA DE HORMIGON", 
         "OPERADOR DE TRACK DRILL", "OPERADOR DE TRACTOR", "OPERADOR DE TRITURADORA", 
         "OPERADOR DE VEHICULO DE EMERGENCIA", "OPERADOR DE VEHICULO DE PINTURA", "PASANTE", 
-        "PINTOR", "PLANIFICADOR DE MANTENIMIENTO MECANICO", "PRESIDENTE", "RECEPCIONISTA", 
+        "PINTOR", "PINTOR", "PLANIFICADOR DE MANTENIMIENTO MECANICO", "PRESIDENTE", "RECEPCIONISTA", 
         "RESIDENTE", "RESIDENTE / ESPECIALISTA TECNICO", "RESIDENTE DE CONTROL DE CALIDAD", 
         "RESIDENTE DE OBRA", "RESIDENTE QUIMICO DE CONTROL DE CALIDAD", "RESPONSABLE DE ATENCION PREHOSPITALARIA", 
         "SALONERO", "SOLDADOR", "SOLDADOR DE ESTRUCTURAS", "SOLDADOR TORNERO", "SUB CONTADOR", 
         "SUPERINTENDENTE DE OBRA", "SUPERINTENDENTE DE PRODUCCION", "SUPERINTENDENTE DE PROYECTOS", 
-        "SUPERINTENDENTE TECNICO DE CONTROL DE CALIDAD", "SUPERVISOR ADMINISTRATIVO Y DE COMPRAS", 
+        "SUPERINTENDENTE TECNICO DE CONTROL DE CALIDAD", "SUPERVISOR ADMINISTRATIVO y DE COMPRAS", 
         "SUPERVISOR DE ATENCION PREHOSPITALARIA", "SUPERVISOR DE CAJAS", "SUPERVISOR DE COCINA", 
         "SUPERVISOR DE CONSTRUCCIONES", "SUPERVISOR DE CONTROL DE CALIDAD", "SUPERVISOR DE LOCAL", 
         "SUPERVISOR DE MANTENIMIENTO", "SUPERVISOR DE MANTENIMIENTO MECANICO", "SUPERVISOR DE PATIO", 
@@ -221,7 +220,7 @@ const initialData = {
         {"jobTitle":"GUARDIA DE SEGURIDAD","dayType":"FESTIVO","shift":"N12","startTime":"18:00","endTime":"06:00","nightSurcharge":0,"sup50":0,"ext100":6},
         {"jobTitle":"GUARDIA DE SEGURIDAD","dayType":"NORMAL","shift":"D12","startTime":"06:00","endTime":"18:00","nightSurcharge":0,"sup50":0,"ext100":0},
         {"jobTitle":"GUARDIA DE SEGURIDAD","dayType":"NORMAL","shift":"N12","startTime":"18:00","endTime":"06:00","nightSurcharge":7,"sup50":0,"ext100":0},
-        {"jobTitle":"HORARIO OFICINA","dayType":"NORMAL","shift":"N9","startTime":"08:30","endTime":"17:30","nightSurcharge":0,"sup50":1,"ext100":0},
+        {"jobTitle":"HORARIO OFICINA","dayType":"NORMAL","shift":"N9","startTime":"08:30","endTime":"17:30","nightSurcharge":0,"sup50":0,"ext100":0},
         {"jobTitle":"HORARIO OFICINA","dayType":"FESTIVO","shift":"N9","startTime":"08:30","endTime":"17:30","nightSurcharge":0,"sup50":0,"ext100":9}
     ]
 };
@@ -235,7 +234,6 @@ async function seedCollection(db: Firestore, collectionName: string, data: any[]
         const batch = writeBatch(db);
         data.forEach(item => {
             let docRef;
-            // Use specific key for roles and shiftPatterns for predictable IDs
             if ((collectionName === 'roles' || collectionName === 'shiftPatterns') && keyField && item[keyField]) {
                 const docId = item[keyField].toUpperCase().replace(/\s+/g, '_');
                 docRef = doc(collectionRef, docId);
@@ -258,7 +256,6 @@ async function seedCollection(db: Firestore, collectionName: string, data: any[]
     }
 }
 
-// Flag to prevent multiple seeding calls
 let isSeeding = false;
 let hasSeeded = false;
 
@@ -277,7 +274,6 @@ export async function seedDatabase(db: Firestore) {
 
     isSeeding = true;
     try {
-        // Seed collections that only need to be filled once if empty
         await Promise.all([
             seedCollection(db, 'roles', initialData.roles, 'name'),
             seedCollection(db, 'empresas', initialData.empresas),
@@ -288,7 +284,6 @@ export async function seedDatabase(db: Firestore) {
             seedCollection(db, 'shiftPatterns', initialData.shiftPatterns, 'jobTitle'),
         ]);
 
-        // ---- Robust Logic for Overtime Rules ----
         const allowedShiftsByJobTitle = new Map<string, Set<string>>();
         initialData.shiftPatterns.forEach(pattern => {
             const shifts = new Set(pattern.cycle.filter((s): s is string => !!s && s !== 'LIB'));
@@ -296,7 +291,7 @@ export async function seedDatabase(db: Firestore) {
         });
 
         const filteredOvertimeRules = initialData.overtimeRules.filter(rule => {
-            if (rule.jobTitle === 'HORARIO OFICINA') return true; // Always include default rules
+            if (rule.jobTitle === 'HORARIO OFICINA') return true; 
             const allowedShifts = allowedShiftsByJobTitle.get(normalizeText(rule.jobTitle));
             return allowedShifts ? allowedShifts.has(rule.shift) : false;
         });
@@ -305,10 +300,8 @@ export async function seedDatabase(db: Firestore) {
         const snapshot = await getDocs(overtimeCollectionRef);
         const batch = writeBatch(db);
 
-        // 1. Delete all existing rules
         snapshot.docs.forEach(doc => batch.delete(doc.ref));
         
-        // 2. Add the correctly filtered rules
         filteredOvertimeRules.forEach(rule => {
             const newDocRef = doc(overtimeCollectionRef);
             const dataToSet = {
@@ -321,9 +314,7 @@ export async function seedDatabase(db: Firestore) {
             batch.set(newDocRef, dataToSet);
         });
 
-        // 3. Commit all changes
         await batch.commit();
-        console.log(`'overtimeRules' has been re-seeded with ${filteredOvertimeRules.length} correct rules.`);
         
         hasSeeded = true;
     } catch (error) {
