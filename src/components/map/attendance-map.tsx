@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -269,7 +268,7 @@ export default function AttendanceMap({ workLocations, records, viewType, onLoca
                             <strong>Empleado:</strong> {report.userName}<br />
                             <strong>Cargo:</strong> {report.userCargo || 'N/A'}<br/>
                             <strong>Hora:</strong> {format(new Date(report.timestamp), 'HH:mm:ss')}<br/>
-                            {report.notes && `<strong>Comentario:</strong> ${report.notes}`}<br/>
+                            {report.notes && <span>{report.notes}</span>}<br/>
                             {report.photoUrl && <img src={report.photoUrl} alt="Evidencia" style={{ width: '150px', marginTop: '5px' }} />}
                         </Popup>
                     </Marker>

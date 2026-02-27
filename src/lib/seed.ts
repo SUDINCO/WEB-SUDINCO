@@ -34,7 +34,7 @@ const initialData = {
         "ANALISTA DE INVENTARIOS", "ANALISTA DE MANTENIMIENTO MECANICO", 
         "ANALISTA DE NOMINA Y COMPENSACIONES", "ANALISTA DE OPERACIONES Y ATENCION AL CLIENTE", 
         "ANALISTA DE RECURSOS HUMANOS", "ANALISTA DE REDES", "ANALISTA DE SEGURIDAD DE LA INFORMACION", 
-        "ANALISTA DE SOPORTE TI", "ANALISTA DE SOPORTE TI", "ANALISTA DE SOSTENIBILIDAD", "ANALISTA LEGAL", 
+        "ANALISTA DE SOPORTE TI", "ANALISTA DE SOSTENIBILIDAD", "ANALISTA LEGAL", 
         "ARMADOR DE ESTRUCTURAS", "ARQUITECTO DE DATOS", "ASESOR DE SEGUROS", 
         "ASISTENTE ADMINISTRATIVO", "ASISTENTE ADMINISTRATIVO DE PEAJE", "ASISTENTE DE ADQUISICIONES", 
         "ASISTENTE DE ATENCION AL CLIENTE", "ASISTENTE DE COMUNICACIONES", "ASISTENTE DE CONTABILIDAD", 
@@ -84,12 +84,12 @@ const initialData = {
         "OPERADOR DE RODILLO DE AFIRMADO", "OPERADOR DE RODILLO DE ASFALTO", "OPERADOR DE TENDEDORA DE HORMIGON", 
         "OPERADOR DE TRACK DRILL", "OPERADOR DE TRACTOR", "OPERADOR DE TRITURADORA", 
         "OPERADOR DE VEHICULO DE EMERGENCIA", "OPERADOR DE VEHICULO DE PINTURA", "PASANTE", 
-        "PINTOR", "PINTOR", "PLANIFICADOR DE MANTENIMIENTO MECANICO", "PRESIDENTE", "RECEPCIONISTA", 
+        "PINTOR", "PLANIFICADOR DE MANTENIMIENTO MECANICO", "PRESIDENTE", "RECEPCIONISTA", 
         "RESIDENTE", "RESIDENTE / ESPECIALISTA TECNICO", "RESIDENTE DE CONTROL DE CALIDAD", 
         "RESIDENTE DE OBRA", "RESIDENTE QUIMICO DE CONTROL DE CALIDAD", "RESPONSABLE DE ATENCION PREHOSPITALARIA", 
         "SALONERO", "SOLDADOR", "SOLDADOR DE ESTRUCTURAS", "SOLDADOR TORNERO", "SUB CONTADOR", 
         "SUPERINTENDENTE DE OBRA", "SUPERINTENDENTE DE PRODUCCION", "SUPERINTENDENTE DE PROYECTOS", 
-        "SUPERINTENDENTE TECNICO DE CONTROL DE CALIDAD", "SUPERVISOR ADMINISTRATIVO y DE COMPRAS", 
+        "SUPERINTENDENTE TECNICO DE CONTROL DE CALIDAD", "SUPERVISOR ADMINISTRATIVO Y DE COMPRAS", 
         "SUPERVISOR DE ATENCION PREHOSPITALARIA", "SUPERVISOR DE CAJAS", "SUPERVISOR DE COCINA", 
         "SUPERVISOR DE CONSTRUCCIONES", "SUPERVISOR DE CONTROL DE CALIDAD", "SUPERVISOR DE LOCAL", 
         "SUPERVISOR DE MANTENIMIENTO", "SUPERVISOR DE MANTENIMIENTO MECANICO", "SUPERVISOR DE PATIO", 
@@ -207,11 +207,6 @@ const initialData = {
         {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"FESTIVO","shift":"M8","startTime":"06:00","endTime":"14:00","nightSurcharge":0,"sup50":0,"ext100":8},
         {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"FESTIVO","shift":"N8","startTime":"22:00","endTime":"06:00","nightSurcharge":6,"sup50":0,"ext100":2},
         {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"FESTIVO","shift":"T8","startTime":"14:00","endTime":"22:00","nightSurcharge":0,"sup50":0,"ext100":8},
-        {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"FESTIVO","shift":"D12","startTime":"06:00","endTime":"18:00","nightSurcharge":0,"sup50":0,"ext100":12},
-        {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"FESTIVO","shift":"MYT","startTime":"06:00","endTime":"22:00","nightSurcharge":0,"sup50":0,"ext100":16},
-        {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"FESTIVO","shift":"N12","startTime":"18:00","endTime":"06:00","nightSurcharge":2,"sup50":0,"ext100":10},
-        {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"FESTIVO","shift":"NYM","startTime":"22:00","endTime":"14:00","nightSurcharge":6,"sup50":4,"ext100":6},
-        {"jobTitle":"SUPERVISOR DE CAJAS","dayType":"FESTIVO","shift":"TYN","startTime":"14:00","endTime":"06:00","nightSurcharge":2,"sup50":0,"ext100":14},
         {"jobTitle":"SUPERVISOR VIAL","dayType":"FESTIVO","shift":"D12","startTime":"06:00","endTime":"18:00","nightSurcharge":0,"sup50":0,"ext100":12},
         {"jobTitle":"SUPERVISOR VIAL","dayType":"FESTIVO","shift":"N12","startTime":"18:00","endTime":"06:00","nightSurcharge":0,"sup50":0,"ext100":6},
         {"jobTitle":"SUPERVISOR VIAL","dayType":"NORMAL","shift":"D12","startTime":"06:00","endTime":"18:00","nightSurcharge":0,"sup50":0,"ext100":0},
@@ -221,7 +216,7 @@ const initialData = {
         {"jobTitle":"GUARDIA DE SEGURIDAD","dayType":"NORMAL","shift":"D12","startTime":"06:00","endTime":"18:00","nightSurcharge":0,"sup50":0,"ext100":0},
         {"jobTitle":"GUARDIA DE SEGURIDAD","dayType":"NORMAL","shift":"N12","startTime":"18:00","endTime":"06:00","nightSurcharge":7,"sup50":0,"ext100":0},
         {"jobTitle":"HORARIO OFICINA","dayType":"NORMAL","shift":"N9","startTime":"08:30","endTime":"17:30","nightSurcharge":0,"sup50":0,"ext100":0},
-        {"jobTitle":"HORARIO OFICINA","dayType":"FESTIVO","shift":"N9","startTime":"08:30","endTime":"17:30","nightSurcharge":0,"sup50":0,"ext100":9}
+        {"jobTitle":"HORARIO OFICINA","dayType":"FESTIVO","shift":"N9","startTime":"08:30","endTime":"17:30","nightSurcharge":0,"sup50":0,"ext100":0}
     ]
 };
 
