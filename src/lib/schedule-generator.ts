@@ -107,6 +107,7 @@ function calculateWeekendEquity(collaborators: Collaborator[], savedSchedules: S
 
     const equityScores = new Map<string, number>();
     weekendStats.forEach((stats, id) => {
+        // Un score más alto significa que ha trabajado más fines de semana (más "deuda" de descanso)
         const score = stats.total > 0 ? stats.worked / stats.total : 0.5;
         equityScores.set(id, score);
     });
@@ -137,7 +138,9 @@ export function generarHorariosEstaticos(
   const prevPeriodDate = subMonths(days[0], 1);
   const prevPeriodId = format(prevPeriodDate, 'yyyy-MM');
 
+  // 1. Obtener historial inmediato para CONTINUIDAD técnica
   const immediateHistoryMap = new Map<string, (string | null)[]>();
+  // 2. Obtener historial global para EQUIDAD de fines de semana
   const allSaved = Object.values(savedSchedules);
   const equityScores = calculateWeekendEquity(allCollaborators, allSaved);
 
@@ -163,24 +166,14 @@ export function generarHorariosEstaticos(
     days.forEach((day, dayIndex) => {
       const dayKey = format(day, 'yyyy-MM-dd');
 
-      // 1. Overrides manuales
+      // 1. Prioridad: Overrides manuales
       const manualOverride = manualOverrides.get(collaborator.id)?.get(dayKey);
       if (manualOverride !== undefined) {
           collaboratorSchedule.set(dayKey, manualOverride.shift);
           return;
       }
       
-      // 2. REGLA DE ORO: DESCANSO POST-NOCTURNO
-      const yesterdayShift = dayIndex > 0 
-        ? collaboratorSchedule.get(format(days[dayIndex - 1], 'yyyy-MM-dd'))
-        : (history.length > 0 ? history[history.length - 1] : null);
-
-      if (isNightShift(yesterdayShift)) {
-          collaboratorSchedule.set(dayKey, null);
-          return;
-      }
-
-      // 3. Ausencias legales
+      // 2. Prioridad: Ausencias legales
       const isOnVacation = vacations.some(v => v.requestType === 'vacaciones' && v.userId === collaborator.id && isWithinInterval(day, { start: new Date(v.startDate), end: new Date(v.endDate) }));
       if (isOnVacation) {
         collaboratorSchedule.set(dayKey, 'VAC');
@@ -195,7 +188,7 @@ export function generarHorariosEstaticos(
           return;
       }
       
-      // 4. Determinar detalles efectivos
+      // 3. Determinar detalles efectivos
       const { location: effectiveLocation, jobTitle: effectiveJobTitle } = getEffectiveDetails(collaborator, day, transfers, roleChanges);
       const activeRoleChange = roleChanges.find(rc => rc.collaboratorId === collaborator.id && isWithinInterval(day, { start: rc.startDate, end: rc.endDate }));
 
@@ -204,6 +197,7 @@ export function generarHorariosEstaticos(
         return;
       }
 
+      // 4. Lógica de Ciclo con Equidad Histórica
       const patternData = JOB_CYCLES.get(normalizeText(effectiveJobTitle));
       
       if (!patternData) {
@@ -222,16 +216,23 @@ export function generarHorariosEstaticos(
       let startPosition = findCyclePosition(cycle, history);
 
       if (startPosition === -1) {
+          // Si no hay historial inmediato para dar continuidad, usamos la EQUIDAD HISTÓRICA
+          // para elegir el mejor punto de inicio que favorezca sus descansos en fin de semana
           const personSeed = simpleHash(collaborator.id + periodIdentifier);
+          // Nudge basado en el score de equidad: si ha trabajado mucho (score > 0.6), 
+          // intentamos desplazar el ciclo para que sus "LIB" caigan en fin de semana.
           const equityNudge = equityScore > 0.6 ? 2 : (equityScore < 0.4 ? -2 : 0);
           startPosition = (personSeed + equityNudge) % cycle.length;
       }
 
+      // Añadimos un factor de "rebarajeo" basado en el periodo para romper grupos fijos
+      // pero que se mantiene constante para la persona durante todo el mes generado
       const groupShuffleFactor = simpleHash(periodIdentifier + effectiveLocation) % 3;
       const currentCycleIndex = (startPosition + dayIndex + groupShuffleFactor) % cycle.length;
       
       let shift = cycle[currentCycleIndex];
 
+      // 5. Protección de Lactancia
       const isOnLactationThisDay = lactations.some(l => l.collaboratorId === collaborator.id && isWithinInterval(day, { start: l.startDate, end: l.endDate }));
       if (isOnLactationThisDay && isNightShift(shift)) {
           shift = 'M8';
@@ -241,72 +242,7 @@ export function generarHorariosEstaticos(
     });
   });
 
-  // 6. Aplicar Cobertura Estricta 1:1 para cargos no cajeros
-  enforceSingleCoveragePerShiftForNonCashiers(schedule, allCollaborators, days, transfers, roleChanges, shiftPatterns);
-
   return schedule;
-}
-
-function enforceSingleCoveragePerShiftForNonCashiers(
-    schedule: Map<string, Map<string, string | null>>,
-    collaborators: Collaborator[],
-    days: Date[],
-    transfers: TemporaryTransfer[],
-    roleChanges: RoleChange[],
-    shiftPatterns: ShiftPattern[]
-) {
-    const shiftPatternsByJob = new Map(shiftPatterns.map(p => [normalizeText(p.jobTitle), p]));
-
-    days.forEach(day => {
-        const dayKey = format(day, 'yyyy-MM-dd');
-        const coverageMap = new Map<string, Map<string, Map<string, string[]>>>(); // Location -> Job -> Shift -> [UserIds]
-
-        collaborators.forEach(c => {
-            const { location, jobTitle } = getEffectiveDetails(c, day, transfers, roleChanges);
-            const normJob = normalizeText(jobTitle);
-            if (normJob === 'CAJERO DE RECAUDO' || !shiftPatternsByJob.has(normJob)) return;
-
-            if (!coverageMap.has(location)) coverageMap.set(location, new Map());
-            const jobMap = coverageMap.get(location)!;
-            if (!jobMap.has(normJob)) jobMap.set(normJob, new Map());
-            const shiftMap = jobMap.get(normJob)!;
-
-            const shift = schedule.get(c.id)?.get(dayKey);
-            if (shift && !['LIB', 'VAC', 'TRA', 'PM', 'LIC', 'SUS', 'RET', 'FI'].includes(shift)) {
-                if (!shiftMap.has(shift)) shiftMap.set(shift, []);
-                shiftMap.get(shift)!.push(c.id);
-            }
-        });
-
-        coverageMap.forEach((jobMap, location) => {
-            jobMap.forEach((shiftMap, jobTitle) => {
-                const pattern = shiftPatternsByJob.get(jobTitle);
-                if (!pattern) return;
-
-                const operationalShifts = [...new Set(pattern.cycle.filter(s => s && s !== 'LIB'))];
-
-                operationalShifts.forEach(reqShift => {
-                    const assigned = shiftMap.get(reqShift!) || [];
-                    
-                    // Limpiar duplicados
-                    if (assigned.length > 1) {
-                        assigned.slice(1).forEach(id => schedule.get(id)?.set(dayKey, null));
-                    }
-
-                    // Cubrir vacantes si nadie está asignado
-                    if (assigned.length === 0) {
-                        const candidate = collaborators.find(c => {
-                            const details = getEffectiveDetails(c, day, transfers, roleChanges);
-                            if (details.location !== location || normalizeText(details.jobTitle) !== jobTitle) return false;
-                            const current = schedule.get(c.id)?.get(dayKey);
-                            return !current || current === 'LIB';
-                        });
-                        if (candidate) schedule.get(candidate.id)?.set(dayKey, reqShift!);
-                    }
-                });
-            });
-        });
-    });
 }
 
 export function applyConditioningRebalance(
@@ -449,6 +385,7 @@ export function obtenerHorarioUnificado(
   const locationFilter = filters?.location;
   const cargoFilter = filters?.jobTitle;
 
+  // LÓGICA PARA ROLES QUE SOLO VEN LO APROBADO (Colaboradores, RRHH en reportes, etc.)
   if (role !== 'coordinator') {
       const resultSchedule = new Map<string, Map<string, string | null>>();
       const shiftPatternsByCargo = new Map(shiftPatterns.map(p => [normalizeText(p.jobTitle), p]));
@@ -457,6 +394,7 @@ export function obtenerHorarioUnificado(
           const userSchedule = new Map<string, string | null>();
           const normalizedJobTitle = normalizeText(c.originalJobTitle);
           
+          // Si NO tiene patrón asignado, es personal de oficina -> Mostrar horario estándar automáticamente
           if (!shiftPatternsByCargo.has(normalizedJobTitle)) {
               days.forEach(day => {
                   const dayKey = format(day, 'yyyy-MM-dd');
@@ -467,6 +405,7 @@ export function obtenerHorarioUnificado(
           resultSchedule.set(c.id, userSchedule);
       });
 
+      // Sobrescribir con los cronogramas aprobados (guardados) para el personal operativo
       Object.values(savedSchedules).forEach(saved => {
           Object.entries(saved.schedule).forEach(([collabId, dayMap]) => {
               if (resultSchedule.has(collabId)) {
@@ -480,6 +419,7 @@ export function obtenerHorarioUnificado(
       return resultSchedule;
   }
 
+  // LÓGICA PARA COORDINADOR (Generación de borrador)
   let schedule = generarHorariosEstaticos(
     allCollaborators,
     days,
@@ -547,9 +487,9 @@ export function calculateScheduleSummary(
 
             if (shift) {
                 const { jobTitle: effectiveJobTitle } = getEffectiveDetails(collaborator, day, allTransfers, allRoleChanges);
-                const normalizedJobTitle = normalizeText(effectiveJobTitle);
+                const normalizedJT = normalizeText(effectiveJobTitle);
                 const rule = allOvertimeRules.find(r => 
-                    normalizeText(r.jobTitle) === normalizedJobTitle && 
+                    normalizeText(r.jobTitle) === normalizedJT && 
                     r.shift === shift && 
                     r.dayType === jornada
                 );
