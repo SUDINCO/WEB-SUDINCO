@@ -164,7 +164,7 @@ export default function EquipmentControlPage() {
               {stats.total > 0 ? Math.round(((stats.total - stats.withIssues) / stats.total) * 100) : 0}%
             </CardTitle>
           </CardHeader>
-        </div>
+        </Card>
       </div>
 
       <Card>
@@ -360,7 +360,7 @@ export default function EquipmentControlPage() {
                           </TableHeader>
                           <TableBody>
                             {selectedHandover.items.map((item) => (
-                              <TableRow key={item.name} className={cn("h-14", item.status === 'issue' && "bg-red-50")}>
+                              <TableRow key={item.name} className={cn("h-24", item.status === 'issue' && "bg-red-50")}>
                                 <TableCell className="font-bold text-slate-700 text-xs">{item.name}</TableCell>
                                 <TableCell className="text-center">
                                   <Badge variant={item.status === 'good' ? 'outline' : 'destructive'} className="text-[9px] font-bold">
@@ -380,7 +380,7 @@ export default function EquipmentControlPage() {
                                 <TableCell className="text-center">
                                   {item.photoUrl && (
                                     <button onClick={() => setViewPhoto(item.photoUrl!)} className="hover:scale-110 transition-transform">
-                                      <Image src={item.photoUrl} alt="Foto" width={32} height={32} className="rounded border object-cover shadow-sm" unoptimized />
+                                      <Image src={item.photoUrl} alt="Foto" width={80} height={80} className="rounded border object-cover shadow-md mx-auto" unoptimized />
                                     </button>
                                   )}
                                 </TableCell>

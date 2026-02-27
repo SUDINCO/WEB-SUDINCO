@@ -345,7 +345,7 @@ export function HandoverDialog({ open, onOpenChange, location, currentUser, sugg
                     </TableHeader>
                     <TableBody>
                       {items.map((item, index) => (
-                        <TableRow key={item.name} className={cn("h-14", item.status === 'issue' && "bg-red-50", !item.present && "opacity-50 bg-slate-50")}>
+                        <TableRow key={item.name} className={cn("h-24", item.status === 'issue' && "bg-red-50", !item.present && "opacity-50 bg-slate-50")}>
                           <TableCell className="font-bold text-slate-700 text-xs">{item.name}</TableCell>
                           <TableCell className="text-center">
                             <Switch 
@@ -398,7 +398,7 @@ export function HandoverDialog({ open, onOpenChange, location, currentUser, sugg
                           <TableCell className="text-center">
                             {item.present && item.photoUrl && (
                               <div className="relative inline-block group">
-                                <Image src={item.photoUrl} alt="Evidencia" width={32} height={32} className="rounded border object-cover shadow-sm" unoptimized />
+                                <Image src={item.photoUrl} alt="Evidencia" width={80} height={80} className="rounded border object-cover shadow-md mx-auto" unoptimized />
                               </div>
                             )}
                             {!isApproving && item.present && item.status === 'issue' && !item.photoUrl && (
