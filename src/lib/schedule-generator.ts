@@ -46,6 +46,10 @@ function seededRandom(seed: number) {
   };
 }
 
+function getPositiveModulo(value: number, divisor: number): number {
+  return ((value % divisor) + divisor) % divisor;
+}
+
 const isNightShift = (shift: string | null): boolean => {
     if (!shift) return false;
     const s = shift.toUpperCase();
@@ -221,13 +225,13 @@ export function generarHorariosEstaticos(
           // Nudge basado en el score de equidad: si ha trabajado mucho (score > 0.6), 
           // intentamos desplazar el ciclo para que sus "LIB" caigan en fin de semana.
           const equityNudge = equityScore > 0.6 ? 2 : (equityScore < 0.4 ? -2 : 0);
-          startPosition = (personSeed + equityNudge) % cycle.length;
+          startPosition = getPositiveModulo(personSeed + equityNudge, cycle.length);
       }
 
       // Añadimos un factor de "rebarajeo" basado en el periodo para romper grupos fijos
       // pero que se mantiene constante para la persona durante todo el mes generado
       const groupShuffleFactor = simpleHash(periodIdentifier + effectiveLocation) % 3;
-      const currentCycleIndex = (startPosition + dayIndex + groupShuffleFactor) % cycle.length;
+      const currentCycleIndex = getPositiveModulo(startPosition + dayIndex + groupShuffleFactor, cycle.length);
       
       let shift = cycle[currentCycleIndex];
 
@@ -242,6 +246,100 @@ export function generarHorariosEstaticos(
   });
 
   return schedule;
+}
+
+
+const NON_REASSIGNABLE_SHIFTS = new Set(['VAC', 'TRA', 'PM', 'LIC', 'SUS', 'RET', 'FI', 'PER']);
+
+function getCoveredShiftsForPattern(pattern: ShiftPattern, day: Date): string[] {
+  if (pattern.scheduleType === 'MONDAY_TO_FRIDAY' && (isSaturday(day) || isSunday(day))) {
+    return [];
+  }
+
+  const shifts = pattern.cycle
+    .filter((shift): shift is string => Boolean(shift) && shift !== 'LIB')
+    .map(shift => shift.trim())
+    .filter(Boolean);
+
+  return Array.from(new Set(shifts));
+}
+
+function enforceSingleCoveragePerShiftForNonCashiers(
+  baseSchedule: Map<string, Map<string, string | null>>,
+  collaborators: Collaborator[],
+  days: Date[],
+  shiftPatterns: ShiftPattern[],
+  transfers: TemporaryTransfer[],
+  roleChanges: RoleChange[]
+): Map<string, Map<string, string | null>> {
+  const rebalancedSchedule = new Map(Array.from(baseSchedule.entries()).map(([k, v]) => [k, new Map(v)]));
+  const jobCycles = new Map<string, ShiftPattern>();
+  shiftPatterns.forEach(pattern => jobCycles.set(normalizeText(pattern.jobTitle), pattern));
+
+  days.forEach(day => {
+    const dayKey = format(day, 'yyyy-MM-dd');
+    const groupMembers = new Map<string, string[]>();
+
+    collaborators.forEach(collaborator => {
+      const { location, jobTitle } = getEffectiveDetails(collaborator, day, transfers, roleChanges);
+      if (normalizeText(jobTitle) === normalizeText('CAJERO DE RECAUDO')) return;
+
+      const groupKey = `${normalizeText(location)}|${normalizeText(jobTitle)}`;
+      if (!groupMembers.has(groupKey)) groupMembers.set(groupKey, []);
+      groupMembers.get(groupKey)!.push(collaborator.id);
+    });
+
+    groupMembers.forEach((memberIds, groupKey) => {
+      const [, normalizedJobTitle] = groupKey.split('|');
+      const pattern = jobCycles.get(normalizedJobTitle);
+      if (!pattern) return;
+
+      const requiredShifts = getCoveredShiftsForPattern(pattern, day);
+      if (requiredShifts.length === 0) return;
+
+      const assignedByShift = new Map<string, string[]>();
+      memberIds.forEach(collaboratorId => {
+        const shift = rebalancedSchedule.get(collaboratorId)?.get(dayKey);
+        if (!shift) return;
+        if (!assignedByShift.has(shift)) assignedByShift.set(shift, []);
+        assignedByShift.get(shift)!.push(collaboratorId);
+      });
+
+      const extraAssignments: string[] = [];
+      requiredShifts.forEach(shift => {
+        const assigned = assignedByShift.get(shift) || [];
+        if (assigned.length > 1) {
+          const keeperIndex = Math.floor(seededRandom(simpleHash(`${dayKey}-${groupKey}-${shift}`))() * assigned.length);
+          assigned.forEach((id, idx) => {
+            if (idx !== keeperIndex) extraAssignments.push(id);
+          });
+        }
+      });
+
+      const missingShifts = requiredShifts.filter(shift => (assignedByShift.get(shift) || []).length === 0);
+      const donorPool = [
+        ...extraAssignments,
+        ...memberIds.filter(id => {
+          const shift = rebalancedSchedule.get(id)?.get(dayKey);
+          if (shift === undefined) return false;
+          if (shift === null || shift === 'LIB') return true;
+          return !NON_REASSIGNABLE_SHIFTS.has(shift) && !requiredShifts.includes(shift);
+        })
+      ];
+
+      missingShifts.forEach(targetShift => {
+        const donorId = donorPool.shift();
+        if (!donorId) return;
+
+        const currentShift = rebalancedSchedule.get(donorId)?.get(dayKey);
+        if (currentShift && NON_REASSIGNABLE_SHIFTS.has(currentShift)) return;
+
+        rebalancedSchedule.get(donorId)?.set(dayKey, targetShift);
+      });
+    });
+  });
+
+  return rebalancedSchedule;
 }
 
 export function applyConditioningRebalance(
@@ -426,6 +524,15 @@ export function obtenerHorarioUnificado(
           days
       );
   }
+
+  schedule = enforceSingleCoveragePerShiftForNonCashiers(
+    schedule,
+    allCollaborators,
+    days,
+    shiftPatterns,
+    transfers,
+    roleChanges
+  );
   
   return schedule;
 }
