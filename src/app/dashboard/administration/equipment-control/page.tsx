@@ -39,11 +39,9 @@ import {
   Search, 
   AlertTriangle, 
   CheckCircle, 
-  FileText, 
   Download, 
   Eye,
   MapPin,
-  Camera,
   X,
   Clock,
   Trash2,
@@ -164,7 +162,8 @@ export default function EquipmentControlPage() {
               {stats.total > 0 ? Math.round(((stats.total - stats.withIssues) / stats.total) * 100) : 0}%
             </CardTitle>
           </CardHeader>
-        </div>
+        </Card>
+      </div>
 
       <Card>
         <CardHeader>
@@ -293,12 +292,9 @@ export default function EquipmentControlPage() {
         <DialogContent className="max-w-5xl max-h-[95vh] p-0 flex flex-col overflow-hidden bg-slate-100 border-none">
           {selectedHandover && (
             <>
-              {/* Document Scrollable Area */}
               <div className="flex-1 overflow-y-auto p-4 md:p-10">
                 <div className="bg-white shadow-2xl mx-auto max-w-4xl min-h-full border border-slate-200 relative flex flex-col">
-                  
-                  {/* Full Width Institucional Header Image */}
-                  <div className="w-full relative h-[140px] border-b">
+                  <div className="w-full relative h-[140px] border-b overflow-hidden bg-white">
                     <Image 
                       src={LOGO_URL} 
                       alt="Header Cadenvill Security" 
@@ -308,9 +304,7 @@ export default function EquipmentControlPage() {
                     />
                   </div>
 
-                  {/* Document Body */}
                   <div className="px-8 md:px-16 py-6 space-y-8 flex-1">
-                    
                     <div className="text-center space-y-1">
                       <h2 className="text-2xl font-black tracking-tighter text-slate-900 border-b-2 border-primary inline-block px-4 pb-1 uppercase italic">
                         Acta de Relevo Digital de Puesto
@@ -318,7 +312,6 @@ export default function EquipmentControlPage() {
                       <p className="text-[10px] font-bold text-slate-500 tracking-[0.2em] uppercase">Control de Auditoría #{selectedHandover.id.slice(-6).toUpperCase()}</p>
                     </div>
 
-                    {/* Meta Data Grid */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-6 p-6 bg-slate-50 border border-slate-200 rounded-lg">
                       <div className="space-y-1">
                         <p className="text-[9px] font-black text-slate-400 uppercase">Ubicación / Puesto</p>
@@ -340,7 +333,6 @@ export default function EquipmentControlPage() {
                       </div>
                     </div>
 
-                    {/* Relevo Info */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-y py-4">
                         <div className="space-y-1">
                             <p className="text-[10px] font-black text-emerald-700 uppercase">Personal Entrante (Recibe)</p>
@@ -352,7 +344,6 @@ export default function EquipmentControlPage() {
                         </div>
                     </div>
 
-                    {/* Inventory */}
                     <div className="space-y-4">
                       <h3 className="text-xs font-black text-slate-900 flex items-center gap-2 border-l-4 border-primary pl-3 bg-slate-100 py-2">
                         <ShieldCheck className="h-4 w-4" />
@@ -402,7 +393,6 @@ export default function EquipmentControlPage() {
                       </div>
                     </div>
 
-                    {/* Signatures Section */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-12 pt-10">
                       <div className="flex flex-col items-center space-y-4">
                         <p className="text-[10px] font-black text-blue-700 uppercase tracking-widest border-b pb-1 w-full text-center">Firma de Entrega (Saliente)</p>
@@ -447,7 +437,6 @@ export default function EquipmentControlPage() {
                       </div>
                     </div>
 
-                    {/* Terms Footer */}
                     <div className="pt-12 border-t border-slate-100 pb-4">
                       <p className="text-[8px] text-slate-400 leading-tight text-center italic">
                         Documento oficial emitido por la plataforma Performa para Cadenvill Security. 
@@ -458,7 +447,6 @@ export default function EquipmentControlPage() {
                 </div>
               </div>
 
-              {/* Action Bar */}
               <div className="bg-slate-900 p-4 flex justify-between items-center px-8 border-t border-slate-800">
                 <Button variant="ghost" onClick={() => setSelectedHandover(null)} className="text-white hover:bg-white/10">Cerrar Vista</Button>
                 <div className="flex gap-2">

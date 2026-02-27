@@ -13,7 +13,6 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
   Select,
@@ -24,7 +23,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Check, Eraser, LoaderCircle, Shield, User, Camera, X, CheckCircle, Lock, Unlock, Send, Printer, FileText } from 'lucide-react';
+import { Eraser, LoaderCircle, Camera, CheckCircle, Lock, Unlock, Send, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { useFirestore } from '@/firebase';
@@ -98,7 +97,6 @@ export function HandoverDialog({ open, onOpenChange, location, currentUser, sugg
           notes: '', 
           photoUrl: null 
         })));
-        // Actualizar hora cada minuto para el nuevo registro
         timer = setInterval(() => setCurrentTime(new Date()), 60000);
       }
       setIsLocked(false);
@@ -284,12 +282,9 @@ export function HandoverDialog({ open, onOpenChange, location, currentUser, sugg
       <DialogContent className="max-w-5xl max-h-[95vh] p-0 flex flex-col overflow-hidden bg-slate-100 border-none">
         <input type="file" ref={fileInputRef} accept="image/*" capture="environment" className="hidden" onChange={handlePhotoCapture} />
         
-        {/* Document Container */}
         <div className="flex-1 overflow-y-auto p-4 md:p-10">
           <div className="bg-white shadow-2xl mx-auto max-w-4xl min-h-full border border-slate-200 relative flex flex-col">
-            
-            {/* Full Width Institucional Header Image */}
-            <div className="w-full relative h-[140px] border-b">
+            <div className="w-full relative h-[140px] border-b bg-white overflow-hidden">
               <Image 
                 src={LOGO_URL} 
                 alt="Header Cadenvill Security" 
@@ -299,9 +294,7 @@ export function HandoverDialog({ open, onOpenChange, location, currentUser, sugg
               />
             </div>
 
-            {/* Document Body */}
             <div className="px-8 md:px-16 py-6 flex-1 space-y-8">
-              
               <div className="text-center space-y-1">
                 <h2 className="text-2xl font-black tracking-tighter text-slate-900 border-b-2 border-primary inline-block px-4 pb-1 uppercase italic">
                   {isApproving ? 'Validación de Entrega de Equipos' : 'Acta de Recepción de Puesto y Activos'}
@@ -309,7 +302,6 @@ export function HandoverDialog({ open, onOpenChange, location, currentUser, sugg
                 <p className="text-[10px] font-bold text-slate-500 tracking-[0.2em] uppercase">Documento de Control Operativo Interno</p>
               </div>
 
-              {/* Meta Data Grid */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6 p-6 bg-slate-50 border border-slate-200 rounded-lg">
                 <div className="space-y-1">
                   <p className="text-[9px] font-black text-slate-400 uppercase">Ubicación / Puesto</p>
@@ -333,7 +325,6 @@ export function HandoverDialog({ open, onOpenChange, location, currentUser, sugg
                 </div>
               </div>
 
-              {/* Checklist Table */}
               <div className="space-y-4">
                 <h3 className="text-xs font-black text-slate-900 flex items-center gap-2 border-l-4 border-primary pl-3 bg-slate-100 py-2">
                   <FileText className="h-4 w-4" />
@@ -420,7 +411,6 @@ export function HandoverDialog({ open, onOpenChange, location, currentUser, sugg
                 </div>
               </div>
 
-              {/* Signature Section */}
               <div className="space-y-4 pt-4">
                 <h3 className="text-xs font-black text-slate-900 flex items-center gap-2 border-l-4 border-primary pl-3 bg-slate-100 py-2">
                   <CheckCircle className="h-4 w-4" />
@@ -471,7 +461,6 @@ export function HandoverDialog({ open, onOpenChange, location, currentUser, sugg
                 </div>
               </div>
 
-              {/* Terms Footer */}
               <div className="pt-8 border-t border-slate-100">
                 <p className="text-[8px] text-slate-400 leading-tight text-center italic">
                   Este documento digital tiene validez legal de acuerdo con las normativas internas de Cadenvill Security. 
@@ -482,7 +471,6 @@ export function HandoverDialog({ open, onOpenChange, location, currentUser, sugg
           </div>
         </div>
 
-        {/* Action Footer */}
         <DialogFooter className="bg-slate-900 p-4 border-t border-slate-800">
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isSubmitting} className="text-white hover:bg-white/10">Cancelar</Button>
           <div className="flex gap-2">
