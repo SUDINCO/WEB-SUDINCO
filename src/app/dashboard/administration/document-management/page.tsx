@@ -160,20 +160,25 @@ export default function DocumentManagementPage() {
                 const periodDate = dateObj.getDate() < 21 ? dateObj : addMonths(dateObj, 1);
                 const periodId = format(periodDate, 'yyyy-MM');
                 
-                // Normalize to match how schedules are saved
-                const normUbicacion = normalizeText(worker.ubicacion);
-                const normCargo = normalizeText(worker.cargo);
-                const docId = `${periodId}_${normUbicacion}_${normCargo}`;
-                
-                const schedule = savedSchedules.find(s => s.id === docId);
-                if (schedule && schedule.schedule[worker.id]) {
-                    const shift = schedule.schedule[worker.id][eventDate];
-                    if (shift) {
-                        setEventShift(shift);
-                    } else {
-                        setEventShift("LIBRE");
+                // NEW IMPROVED LOGIC: Instead of relying on a docId format, search through all schedules of the period
+                // to find where this worker is listed.
+                const periodSchedules = savedSchedules.filter(s => s.id.startsWith(periodId));
+                let foundShift = "";
+                let foundInSchedules = false;
+
+                for (const scheduleDoc of periodSchedules) {
+                    if (scheduleDoc.schedule[worker.id]) {
+                        const shift = scheduleDoc.schedule[worker.id][eventDate];
+                        foundShift = shift || "LIBRE";
+                        foundInSchedules = true;
+                        break;
                     }
+                }
+
+                if (foundInSchedules) {
+                    setEventShift(foundShift);
                 } else {
+                    // If not found in ANY schedule for that period, clear it
                     setEventShift("");
                 }
             } catch (e) {
