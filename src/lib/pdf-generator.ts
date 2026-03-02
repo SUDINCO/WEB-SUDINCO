@@ -284,11 +284,15 @@ export const generateMemorandumPDF = async (memo: Memorandum) => {
     currentY = headerHeight + 5;
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(16);
+    doc.setFontSize(14); // Reduced slightly to handle long names
     doc.setTextColor(30, 41, 59);
-    const headerTitle = `MEMORANDO INSTITUCIONAL - ${memo.targetUserEmpresa || 'GENERAL'}`;
-    doc.text(headerTitle.toUpperCase(), pageWidth / 2, currentY, { align: 'center' });
-    currentY += 6;
+    const headerTitle = `MEMORANDO INSTITUCIONAL - ${memo.targetUserEmpresa || 'GENERAL'}`.toUpperCase();
+    
+    // Handle long title with wrap
+    const splitTitle = doc.splitTextToSize(headerTitle, pageWidth - (margin * 2));
+    doc.text(splitTitle, pageWidth / 2, currentY, { align: 'center' });
+    currentY += (splitTitle.length * 6) + 2;
+
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(100, 116, 139);
@@ -319,8 +323,10 @@ export const generateMemorandumPDF = async (memo: Memorandum) => {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
     doc.setTextColor(30, 41, 59);
-    doc.text(`ASUNTO: ${memo.type.toUpperCase()} - ${memo.reason.toUpperCase()}`, margin, currentY);
-    currentY += 8;
+    const subjectText = `ASUNTO: ${memo.type.toUpperCase()} - ${memo.reason.toUpperCase()}`;
+    const splitSubject = doc.splitTextToSize(subjectText, pageWidth - (margin * 2));
+    doc.text(splitSubject, margin, currentY);
+    currentY += (splitSubject.length * 5) + 3;
 
     // Contenido del Memorando
     doc.setFont('times', 'normal');
