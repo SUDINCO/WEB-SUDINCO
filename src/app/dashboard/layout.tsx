@@ -16,6 +16,9 @@ import {
   CheckCircle,
   Cake,
   Gift,
+  FileText,
+  CalendarCheck,
+  ShieldAlert,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -47,7 +50,7 @@ import { UserProfileProvider, useUserProfile } from '@/context/user-profile-cont
 import { allNavLinks } from '@/lib/nav-links';
 import { useRecentLinks } from '@/hooks/use-recent-links';
 import { PrivacyConsentModal } from "@/components/PrivacyConsentModal";
-import type { HiringApproval, PerformanceEvaluation, UserProfile } from "@/lib/types";
+import type { HiringApproval, PerformanceEvaluation, UserProfile, Memorandum, Vacation, EquipmentHandover } from "@/lib/types";
 import { format, parseISO, isSameDay } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -71,6 +74,9 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const { data: approvals } = useCollection<HiringApproval>(useMemo(() => firestore ? collection(firestore, 'hiringApprovals') : null, [firestore]));
   const { data: evaluations } = useCollection<PerformanceEvaluation>(useMemo(() => firestore ? collection(firestore, 'performanceEvaluations') : null, [firestore]));
   const { data: users } = useCollection<UserProfile>(useMemo(() => firestore ? collection(firestore, 'users') : null, [firestore]));
+  const { data: memorandums } = useCollection<Memorandum>(useMemo(() => firestore ? collection(firestore, 'memorandums') : null, [firestore]));
+  const { data: vacationRequests } = useCollection<Vacation>(useMemo(() => firestore ? collection(firestore, 'vacationRequests') : null, [firestore]));
+  const { data: equipmentHandovers } = useCollection<EquipmentHandover>(useMemo(() => firestore ? collection(firestore, 'equipmentHandovers') : null, [firestore]));
 
   const isLoading = userLoading || profileLoading;
 
@@ -192,12 +198,14 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     setBirthdayBadgeSeen(false);
   }, [todayBirthdays.length]);
 
-  // Notifications (Tasks) logic
+  // Notifications (Tasks) logic - UNIFIED FOR ALL MODULES
   const tasks = useMemo(() => {
     if (!userProfile || !userProfile.email) return [];
     
     const userEmailLower = userProfile.email.toLowerCase();
+    const userId = userProfile.id;
 
+    // 1. Hiring Approvals
     const approvalTasks = (approvals || [])
       .filter(app => {
           if (app.status === 'pending' && app.jefeInmediatoEmail?.toLowerCase() === userEmailLower) {
@@ -215,6 +223,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         href: '/dashboard/approvals'
       }));
 
+    // 2. Performance Evaluation Observations
     const observationTasks = (evaluations || [])
       .filter(ev => ev.observerStatus === 'pending' && ev.observerEmail?.toLowerCase() === userEmailLower)
       .map(ev => ({
@@ -224,8 +233,38 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         href: '/dashboard/observed-evaluations'
       }));
 
-    return [...approvalTasks, ...observationTasks];
-  }, [userProfile, approvals, evaluations]);
+    // 3. Unread/Unsigned Memorandums
+    const memoTasks = (memorandums || [])
+      .filter(m => m.targetUserId === userId && (m.status === 'issued' || m.status === 'read'))
+      .map(m => ({
+        id: `memo-${m.id}`,
+        icon: FileText,
+        title: `Tienes un memorando por firmar`,
+        href: '/dashboard/my-documents'
+      }));
+
+    // 4. Vacation Requests for Leaders
+    const vacationTasks = (vacationRequests || [])
+      .filter(v => v.leaderEmail?.toLowerCase() === userEmailLower && v.status === 'pending')
+      .map(v => ({
+        id: `vac-${v.id}`,
+        icon: CalendarCheck,
+        title: `Aprobar vacaciones: ${v.userName}`,
+        href: '/dashboard/schedule'
+      }));
+
+    // 5. Equipment Handovers for Outgoing Guard
+    const handoverTasks = (equipmentHandovers || [])
+      .filter(h => h.outgoingGuardId === userId && h.status === 'pending')
+      .map(h => ({
+        id: `handover-${h.id}`,
+        icon: ShieldAlert,
+        title: `Validar relevo en ${h.location}`,
+        href: '/dashboard/attendance'
+      }));
+
+    return [...approvalTasks, ...observationTasks, ...memoTasks, ...vacationTasks, ...handoverTasks];
+  }, [userProfile, approvals, evaluations, memorandums, vacationRequests, equipmentHandovers]);
   
   const activeModule = useMemo(() => navLinks.find(module =>
     (module.sublinks && module.sublinks.some(sublink => isActive(sublink.href))) ||

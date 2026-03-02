@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useMemo, useState, useEffect, useRef } from 'react';
@@ -27,7 +26,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext } from "@/components/ui/carousel";
+import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext } from "@/carousel";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 
 import {
@@ -62,7 +61,10 @@ import {
   Edit,
   Trash2,
   CaseSensitive,
-  ImageIcon
+  ImageIcon,
+  FileText,
+  CalendarCheck,
+  ShieldAlert,
 } from 'lucide-react';
 import { useUser, useCollection, useFirestore } from '@/firebase';
 import { collection, query, orderBy, limit, doc, updateDoc, arrayUnion, arrayRemove, where, addDoc, deleteDoc } from 'firebase/firestore';
@@ -111,75 +113,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useRecentLinks } from '@/hooks/use-recent-links';
-
-// Type definitions
-interface UserProfile {
-  id: string;
-  email: string;
-  nombres: string;
-  apellidos: string;
-  fechaIngreso: string;
-  fechaNacimiento: string;
-  isLeader?: boolean;
-  liderArea?: string;
-  cargo: string;
-  Status: 'active' | 'inactive';
-  photoUrl?: string;
-  birthDate?: Date | null;
-}
-
-interface Publication {
-    id: string;
-    authorId: string;
-    authorName: string;
-    authorAvatarUrl?: string;
-    text: string;
-    imageUrl?: string;
-    category: string;
-    eventDate?: string;
-    createdAt: {
-        seconds: number;
-        nanoseconds: number;
-    } | number;
-    reactions?: {
-        [key: string]: string[];
-    };
-    updatedAt?: number;
-    status: 'pending' | 'approved' | 'rejected';
-    rejectionReason?: string;
-}
-
-interface SimpleEvent {
-    id: string;
-    title: string;
-    eventDate: string;
-    eventTime?: string;
-    creatorId: string;
-    creatorName: string;
-}
-
-interface HiringApproval {
-    id: string;
-    jefeInmediatoEmail: string;
-    directorRHHEmail?: string;
-    status: 'pending' | 'approved-boss' | 'rejected' | 'approved-rh';
-    processInfo?: { cargo: string };
-}
-
-interface PerformanceEvaluation {
-    id: string;
-    workerId: string;
-    observerEmail?: string;
-    observerStatus?: 'pending' | 'approved' | 'review_requested';
-}
-
-interface VacationRequest {
-    id: string;
-    userId: string;
-    startDate: string;
-    endDate: string;
-    status: 'approved' | 'pending' | 'rejected';
-}
+import type { HiringApproval, PerformanceEvaluation, UserProfile, Memorandum, Vacation, EquipmentHandover } from "@/lib/types";
 
 const eventSchema = z.object({
   title: z.string().min(1, 'El título es obligatorio.'),
@@ -194,7 +128,7 @@ const getInitials = (name: string = '', lastName: string = '') => {
     return `${firstInitial}${lastInitial}`.toUpperCase();
 }
 
-const formatTimestamp = (timestamp: Publication['createdAt']) => {
+const formatTimestamp = (timestamp: any) => {
     if (!timestamp) return '';
     let date;
     if (typeof timestamp === 'number') {
@@ -332,19 +266,21 @@ export default function DashboardHomePage() {
   const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
   const [selectedEventDate, setSelectedEventDate] = useState<Date | null>(null);
   
-  const [postToDelete, setPostToDelete] = useState<Publication | null>(null);
+  const [postToDelete, setPostToDelete] = useState<any | null>(null);
 
   const firestore = useFirestore();
   const { data: users, isLoading: usersLoading } = useCollection<UserProfile>(useMemo(() => firestore ? collection(firestore, 'users') : null, [firestore]));
   const { data: approvals, isLoading: approvalsLoading } = useCollection<HiringApproval>(useMemo(() => firestore ? collection(firestore, 'hiringApprovals') : null, [firestore]));
   const { data: evaluations, isLoading: evaluationsLoading } = useCollection<PerformanceEvaluation>(useMemo(() => firestore ? collection(firestore, 'performanceEvaluations') : null, [firestore]));
-  const { data: vacations, isLoading: vacationsLoading } = useCollection<VacationRequest>(useMemo(() => firestore ? collection(firestore, 'vacationRequests') : null, [firestore]));
-  
+  const { data: vacationRequests, isLoading: vacationsLoading } = useCollection<Vacation>(useMemo(() => firestore ? collection(firestore, 'vacationRequests') : null, [firestore]));
+  const { data: memorandums } = useCollection<Memorandum>(useMemo(() => firestore ? collection(firestore, 'memorandums') : null, [firestore]));
+  const { data: equipmentHandovers } = useCollection<EquipmentHandover>(useMemo(() => firestore ? collection(firestore, 'equipmentHandovers') : null, [firestore]));
+
   const publicationsCollectionRef = useMemo(() => {
     if (!firestore) return null;
     return query(collection(firestore, 'publications'), orderBy('createdAt', 'desc'), limit(50));
   }, [firestore]);
-  const { data: publications, isLoading: publicationsLoading } = useCollection<Publication>(publicationsCollectionRef);
+  const { data: publications, isLoading: publicationsLoading } = useCollection<any>(publicationsCollectionRef);
 
   const eventsCollectionRef = useMemo(() => {
     if (!firestore) return null;
@@ -354,9 +290,9 @@ export default function DashboardHomePage() {
         orderBy('eventDate', 'asc')
     );
   }, [firestore]);
-  const { data: upcomingEvents, isLoading: eventsLoading } = useCollection<Publication>(eventsCollectionRef);
+  const { data: upcomingEvents, isLoading: eventsLoading } = useCollection<any>(eventsCollectionRef);
   
-  const { data: simpleEvents, isLoading: simpleEventsLoading } = useCollection<SimpleEvent>(useMemo(() => firestore ? collection(firestore, 'simpleEvents') : null, [firestore]));
+  const { data: simpleEvents, isLoading: simpleEventsLoading } = useCollection<any>(useMemo(() => firestore ? collection(firestore, 'simpleEvents') : null, [firestore]));
 
   const isLoading = authLoading || usersLoading || approvalsLoading || evaluationsLoading || vacationsLoading || publicationsLoading || eventsLoading || simpleEventsLoading;
 
@@ -434,15 +370,15 @@ export default function DashboardHomePage() {
     }
   };
 
-  const handleShowReactions = (post: Publication) => {
+  const handleShowReactions = (post: any) => {
     if (!users) return;
     const likers = (post.reactions?.like || [])
-      .map(id => users.find(u => u.id === id))
-      .filter((u): u is UserProfile => !!u);
+      .map((id: string) => users.find(u => u.id === id))
+      .filter((u: any): u is UserProfile => !!u);
 
     const lovers = (post.reactions?.love || [])
-      .map(id => users.find(u => u.id === id))
-      .filter((u): u is UserProfile => !!u);
+      .map((id: string) => users.find(u => u.id === id))
+      .filter((u: any): u is UserProfile => !!u);
     
     setReactionsToShow({
       postAuthor: post.authorName,
@@ -451,21 +387,18 @@ export default function DashboardHomePage() {
     });
   };
 
-  // --- Data processing for components ---
-
+  // --- Unified Task logic for all modules ---
   const tasks = useMemo(() => {
-    if (!currentUserProfile || !currentUserProfile.email || (!approvals && !evaluations)) return [];
+    if (!currentUserProfile || !currentUserProfile.email) return [];
     
     const userEmailLower = currentUserProfile.email.toLowerCase();
+    const userId = currentUserProfile.id;
 
+    // 1. Hiring Approvals (Leaders / HR Director)
     const approvalTasks = (approvals || [])
       .filter(app => {
-          if (app.status === 'pending' && app.jefeInmediatoEmail?.toLowerCase() === userEmailLower) {
-              return true;
-          }
-          if (app.status === 'approved-boss' && currentUserProfile.cargo === 'DIRECTOR DE RECURSOS HUMANOS') {
-              return true;
-          }
+          if (app.status === 'pending' && app.jefeInmediatoEmail?.toLowerCase() === userEmailLower) return true;
+          if (app.status === 'approved-boss' && currentUserProfile.cargo === 'DIRECTOR DE RECURSOS HUMANOS') return true;
           return false;
       })
       .map(app => ({
@@ -475,6 +408,7 @@ export default function DashboardHomePage() {
         href: '/dashboard/approvals'
       }));
 
+    // 2. Evaluation Observations (Observers)
     const observationTasks = (evaluations || [])
       .filter(ev => ev.observerStatus === 'pending' && ev.observerEmail?.toLowerCase() === userEmailLower)
       .map(ev => {
@@ -487,13 +421,43 @@ export default function DashboardHomePage() {
         }
       });
 
-    return [...approvalTasks, ...observationTasks];
-  }, [currentUserProfile, approvals, evaluations, users]);
+    // 3. Unread/Unsigned Memorandums (Target user)
+    const memoTasks = (memorandums || [])
+      .filter(m => m.targetUserId === userId && (m.status === 'issued' || m.status === 'read'))
+      .map(m => ({
+        id: `memo-${m.id}`,
+        icon: FileText,
+        title: `Tienes un memorando por firmar`,
+        href: '/dashboard/my-documents'
+      }));
+
+    // 4. Vacation Requests for Leaders
+    const vacationTasks = (vacationRequests || [])
+      .filter(v => v.leaderEmail?.toLowerCase() === userEmailLower && v.status === 'pending')
+      .map(v => ({
+        id: `vac-${v.id}`,
+        icon: CalendarCheck,
+        title: `Aprobar vacaciones: ${v.userName}`,
+        href: '/dashboard/schedule'
+      }));
+
+    // 5. Equipment Handovers for Outgoing Guard
+    const handoverTasks = (equipmentHandovers || [])
+      .filter(h => h.outgoingGuardId === userId && h.status === 'pending')
+      .map(h => ({
+        id: `handover-${h.id}`,
+        icon: ShieldAlert,
+        title: `Validar relevo en ${h.location}`,
+        href: '/dashboard/attendance'
+      }));
+
+    return [...approvalTasks, ...observationTasks, ...memoTasks, ...vacationTasks, ...handoverTasks];
+  }, [currentUserProfile, approvals, evaluations, users, memorandums, vacationRequests, equipmentHandovers]);
   
    const userApprovedVacations = useMemo(() => {
-      if (!currentUserProfile || !vacations) return [];
-      return (vacations || []).filter(v => v.userId === currentUserProfile.id && v.status === 'approved');
-   }, [currentUserProfile, vacations]);
+      if (!currentUserProfile || !vacationRequests) return [];
+      return (vacationRequests || []).filter(v => v.userId === currentUserProfile.id && v.status === 'approved');
+   }, [currentUserProfile, vacationRequests]);
 
    const vacationDaysModifier = {
         vacation: userApprovedVacations.flatMap(v => {
@@ -569,8 +533,6 @@ export default function DashboardHomePage() {
       </div>
     );
   }
-
-  // --- Sub-components for rendering ---
 
   const QuickAccess = () => {
     const { recentLinks } = useRecentLinks();
@@ -697,7 +659,7 @@ export default function DashboardHomePage() {
     );
   };
   
-  const TareasYEventos = ({ tasks, upcomingEvents, eventsLoading }: { tasks: any[], upcomingEvents: Publication[], eventsLoading: boolean }) => (
+  const TareasYEventos = ({ tasks, upcomingEvents, eventsLoading }: { tasks: any[], upcomingEvents: any[], eventsLoading: boolean }) => (
       <Card className="flex flex-col">
         <div className="flex flex-col">
           {(tasks.length > 0 || upcomingEvents.length > 0) ? (
