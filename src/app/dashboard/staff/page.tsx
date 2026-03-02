@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -421,33 +422,33 @@ export default function StaffPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
             <h1 className="text-2xl font-bold tracking-tight">Nómina</h1>
-            <p className="text-muted-foreground">Gestiona el personal de la empresa de forma automática.</p>
+            <p className="text-sm text-muted-foreground">Gestión centralizada del personal institucional.</p>
         </div>
-        <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => setGroupDialogOpen(true)}><Users className="mr-2 h-4 w-4" /> Grupos</Button>
-            <Button onClick={() => handleOpenForm(null)}><UserPlus className="mr-2 h-4 w-4" /> Nuevo Empleado</Button>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => setGroupDialogOpen(true)}><Users className="mr-2 h-4 w-4" /> Grupos</Button>
+            <Button className="flex-1 sm:flex-none" onClick={() => handleOpenForm(null)}><UserPlus className="mr-2 h-4 w-4" /> Nuevo</Button>
         </div>
       </div>
 
       <Dialog open={isGroupDialogOpen} onOpenChange={setGroupDialogOpen}>
-        <DialogContent className="max-w-4xl h-[80vh] flex flex-col">
+        <DialogContent className="max-w-4xl h-[90vh] sm:h-[80vh] flex flex-col w-[95vw]">
             <DialogHeader>
-                <DialogTitle>Gestión de Grupos de Consultores</DialogTitle>
-                <DialogDescription>Agrupa empleados para procesos de observación y consultoría.</DialogDescription>
+                <DialogTitle>Grupos de Consultores</DialogTitle>
+                <DialogDescription>Gestión de grupos para observación y auditoría.</DialogDescription>
             </DialogHeader>
             <div className="flex flex-col md:flex-row gap-6 flex-1 min-h-0 overflow-hidden">
-                <div className="md:w-1/3 border-r pr-4 space-y-4">
+                <div className="md:w-1/3 border-r pr-0 md:pr-4 space-y-4">
                     <div className="flex gap-2">
                         <Input placeholder="Nuevo grupo..." value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} />
                         <Button size="icon" onClick={handleCreateGroup} disabled={!newGroupName.trim()}><PlusCircle className="h-4 w-4" /></Button>
                     </div>
-                    <ScrollArea className="h-[50vh]">
+                    <ScrollArea className="h-[20vh] md:h-[50vh]">
                         <div className="space-y-1">
                             {consultantGroups?.map(g => (
-                                <Button key={g.id} variant={selectedGroupId === g.id ? "secondary" : "ghost"} className="w-full justify-start" onClick={() => setSelectedGroupId(g.id)}>{g.name}</Button>
+                                <Button key={g.id} variant={selectedGroupId === g.id ? "secondary" : "ghost"} className="w-full justify-start text-left truncate" onClick={() => setSelectedGroupId(g.id)}>{g.name}</Button>
                             ))}
                         </div>
                     </ScrollArea>
@@ -456,44 +457,44 @@ export default function StaffPage() {
                     {selectedGroup ? (
                         <>
                             <div className="flex justify-between items-center mb-4">
-                                <h3 className="font-bold">{selectedGroup.name} ({selectedGroup.members.length} miembros)</h3>
-                                <Button variant="ghost" size="icon" onClick={async () => { if(confirm('¿Eliminar grupo?')) { await deleteDoc(doc(firestore!, 'consultantGroups', selectedGroup.id)); setSelectedGroupId(null); } }}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                <h3 className="font-bold truncate pr-2">{selectedGroup.name} ({selectedGroup.members.length})</h3>
+                                <Button variant="ghost" size="icon" className="shrink-0" onClick={async () => { if(confirm('¿Eliminar grupo?')) { await deleteDoc(doc(firestore!, 'consultantGroups', selectedGroup.id)); setSelectedGroupId(null); } }}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                             </div>
                             <Tabs defaultValue="members" className="flex-1 flex flex-col min-h-0">
-                                <TabsList><TabsTrigger value="members">Miembros</TabsTrigger><TabsTrigger value="add">Añadir</TabsTrigger></TabsList>
+                                <TabsList className="w-full"><TabsTrigger value="members" className="flex-1">Miembros</TabsTrigger><TabsTrigger value="add" className="flex-1">Añadir</TabsTrigger></TabsList>
                                 <TabsContent value="members" className="flex-1 min-h-0"><ScrollArea className="h-full border rounded-md p-2">
                                     {groupMembers.map(m => (
-                                        <div key={m.id} className="flex items-center justify-between p-2 hover:bg-muted rounded-md">
-                                            <div className="text-sm"><p className="font-medium">{m.nombres} {m.apellidos}</p><p className="text-xs text-muted-foreground">{m.cargo}</p></div>
-                                            <Button variant="ghost" size="icon" onClick={() => handleToggleMember(m.id)}><X className="h-4 w-4" /></Button>
+                                        <div key={m.id} className="flex items-center justify-between p-2 hover:bg-muted rounded-md border-b last:border-0">
+                                            <div className="text-sm min-w-0 flex-1"><p className="font-medium truncate">{m.nombres} {m.apellidos}</p><p className="text-xs text-muted-foreground truncate">{m.cargo}</p></div>
+                                            <Button variant="ghost" size="icon" className="shrink-0" onClick={() => handleToggleMember(m.id)}><X className="h-4 w-4" /></Button>
                                         </div>
                                     ))}
                                 </ScrollArea></TabsContent>
                                 <TabsContent value="add" className="flex-1 min-h-0 space-y-4">
                                     <Input placeholder="Buscar por nombre..." value={memberSearch} onChange={(e) => setMemberSearch(e.target.value)} />
-                                    <ScrollArea className="flex-1 h-[40vh] border rounded-md p-2">
+                                    <ScrollArea className="flex-1 h-full md:h-[40vh] border rounded-md p-2">
                                         {availableForGroup.map(m => (
-                                            <div key={m.id} className="flex items-center justify-between p-2 hover:bg-muted rounded-md">
-                                                <div className="text-sm"><p className="font-medium">{m.nombres} {m.apellidos}</p><p className="text-xs text-muted-foreground">{m.cargo}</p></div>
-                                                <Button variant="ghost" size="icon" onClick={() => handleToggleMember(m.id)}><PlusCircle className="h-4 w-4" /></Button>
+                                            <div key={m.id} className="flex items-center justify-between p-2 hover:bg-muted rounded-md border-b last:border-0">
+                                                <div className="text-sm min-w-0 flex-1"><p className="font-medium truncate">{m.nombres} {m.apellidos}</p><p className="text-xs text-muted-foreground truncate">{m.cargo}</p></div>
+                                                <Button variant="ghost" size="icon" className="shrink-0" onClick={() => handleToggleMember(m.id)}><PlusCircle className="h-4 w-4" /></Button>
                                             </div>
                                         ))}
                                     </ScrollArea>
                                 </TabsContent>
                             </Tabs>
                         </>
-                    ) : <div className="flex-1 flex items-center justify-center text-muted-foreground">Seleccione un grupo para gestionar miembros.</div>}
+                    ) : <div className="flex-1 flex items-center justify-center text-muted-foreground text-center p-4">Seleccione un grupo para gestionar miembros.</div>}
                 </div>
             </div>
         </DialogContent>
       </Dialog>
 
       <Dialog open={isFormOpen} onOpenChange={setFormOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[95vh] overflow-y-auto w-[95vw]">
             <DialogHeader><DialogTitle>{editingUser ? 'Editar Perfil' : 'Nuevo Empleado'}</DialogTitle></DialogHeader>
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(handleOnSubmit)} className="space-y-6 pt-4">
-                    <div className="flex items-center gap-6 pb-4 border-b">
+                    <div className="flex flex-col sm:flex-row items-center gap-6 pb-4 border-b">
                         <div className="relative group">
                             <Avatar className="h-24 w-24 border-2">
                                 <AvatarImage src={imagePreview || undefined} />
@@ -502,9 +503,9 @@ export default function StaffPage() {
                             <Label htmlFor="photo-upload" className="absolute inset-0 flex items-center justify-center bg-black/40 text-white rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity"><Camera className="h-6 w-6" /></Label>
                             <Input id="photo-upload" type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
                         </div>
-                        <div className="space-y-1">
+                        <div className="space-y-1 text-center sm:text-left">
                             <h3 className="font-bold text-lg">Información Personal</h3>
-                            <p className="text-sm text-muted-foreground">Datos básicos y de contacto del trabajador.</p>
+                            <p className="text-sm text-muted-foreground">Datos básicos del trabajador.</p>
                         </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -531,11 +532,7 @@ export default function StaffPage() {
                             <FormItem>
                               <FormLabel>Tipo Contrato</FormLabel>
                               <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                </FormControl>
+                                <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                                 <SelectContent>
                                   <SelectItem value="INDEFINIDO">Indefinido</SelectItem>
                                   <SelectItem value="EMERGENTE">Emergente</SelectItem>
@@ -552,16 +549,10 @@ export default function StaffPage() {
                             <FormItem>
                               <FormLabel>Rol Sistema</FormLabel>
                               <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                </FormControl>
+                                <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                                 <SelectContent>
                                   {roles?.map((r: any) => (
-                                    <SelectItem key={r.id} value={r.id}>
-                                      {r.name}
-                                    </SelectItem>
+                                    <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
                                   ))}
                                 </SelectContent>
                               </Select>
@@ -574,40 +565,41 @@ export default function StaffPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <FormField control={form.control} name="liderArea" render={({ field }) => (<FormItem><FormLabel>Líder Asignado (Email)</FormLabel><FormControl><Input type="email" {...field} /></FormControl></FormItem>)} />
                         <FormField control={form.control} name="observerEmail" render={({ field }) => (<FormItem><FormLabel>Observador / Consultor (Email)</FormLabel><FormControl><Input type="email" {...field} /></FormControl></FormItem>)} />
-                        <FormField control={form.control} name="isLeader" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-3"><div className="space-y-0.5"><FormLabel>Es Líder de Área</FormLabel><FormDescription>Habilita la capacidad de evaluar otros.</FormDescription></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)} />
-                        <FormField control={form.control} name="Status" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-3"><div className="space-y-0.5"><FormLabel>Estado Activo</FormLabel></div><FormControl><Switch checked={field.value === 'active'} onCheckedChange={(v) => field.onChange(v ? 'active' : 'inactive')} /></FormControl></FormItem>)} />
+                        <FormField control={form.control} name="isLeader" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-3"><div className="space-y-0.5"><FormLabel className="text-sm">Es Líder de Área</FormLabel><FormDescription className="text-xs">Permite evaluar a otros.</FormDescription></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)} />
+                        <FormField control={form.control} name="Status" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-3"><div className="space-y-0.5"><FormLabel className="text-sm">Estado Activo</FormLabel></div><FormControl><Switch checked={field.value === 'active'} onCheckedChange={(v) => field.onChange(v ? 'active' : 'inactive')} /></FormControl></FormItem>)} />
                     </div>
-                    <DialogFooter><Button type="submit" disabled={isSubmitting}>{isSubmitting ? <LoaderCircle className="animate-spin mr-2" /> : <Check className="mr-2" />}{editingUser ? 'Guardar Cambios' : 'Crear Usuario'}</Button></DialogFooter>
+                    <DialogFooter className="flex-col sm:flex-row gap-2">
+                        <Button type="button" variant="ghost" onClick={() => setFormOpen(false)}>Cancelar</Button>
+                        <Button type="submit" disabled={isSubmitting}>{isSubmitting ? <LoaderCircle className="animate-spin mr-2 h-4 w-4" /> : <Check className="mr-2 h-4 w-4" />}{editingUser ? 'Guardar' : 'Crear'}</Button>
+                    </DialogFooter>
                 </form>
             </Form>
         </DialogContent>
       </Dialog>
 
       <Dialog open={!!userToReset} onOpenChange={(open) => { if(!open && !isResetting) setUserToReset(null); if(!open) { setResetStatus('idle'); setResetError(''); } }}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md w-[95vw]">
           <DialogHeader>
             <DialogTitle>{resetStatus === 'success' ? 'Reseteo Completo' : resetStatus === 'error' ? 'Error' : 'Resetear Contraseña'}</DialogTitle>
             {resetStatus === 'idle' && (
               <DialogDescription>
-                  Se establecerá automáticamente el número de cédula como contraseña temporal para <strong>{userToReset?.nombres} {userToReset?.apellidos}</strong>.
-                  <br/><br/>
-                  El trabajador deberá actualizar su clave al ingresar.
+                  Se establecerá la cédula como clave temporal para <strong>{userToReset?.nombres} {userToReset?.apellidos}</strong>.
               </DialogDescription>
             )}
           </DialogHeader>
           {resetStatus === 'idle' && (
               <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg flex gap-3 text-blue-800">
                 <CheckCircle className="h-5 w-5 shrink-0" />
-                <div className="text-xs space-y-1"><p className="font-bold">PROCESO AUTOMATIZADO:</p><p>El sistema cambiará la clave en Autenticación y marcará el perfil para cambio obligatorio.</p></div>
+                <div className="text-xs space-y-1"><p className="font-bold uppercase">Proceso Automatizado</p><p>Se marcará el perfil para cambio obligatorio de clave.</p></div>
               </div>
           )}
           {resetStatus === 'success' && (
-              <div className="py-4 text-center space-y-2"><CheckCircle className="h-16 w-16 text-green-500 mx-auto" /><p className="font-semibold">¡Éxito!</p><p className="text-xs text-muted-foreground">La clave ahora es: <strong>{userToReset?.cedula}</strong></p></div>
+              <div className="py-4 text-center space-y-2"><CheckCircle className="h-12 w-12 text-green-500 mx-auto" /><p className="font-semibold">¡Éxito!</p><p className="text-xs text-muted-foreground">La clave ahora es la cédula.</p></div>
           )}
           {resetStatus === 'error' && (
-              <div className="py-4 text-center space-y-2 text-destructive"><AlertTriangle className="h-16 w-16 mx-auto" /><p className="font-semibold">No se pudo automatizar</p><p className="text-xs">{resetError}</p></div>
+              <div className="py-4 text-center space-y-2 text-destructive"><AlertTriangle className="h-12 w-12 mx-auto" /><p className="font-semibold">Error al automatizar</p><p className="text-xs">{resetError}</p></div>
           )}
-          <DialogFooter>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
             {resetStatus === 'idle' ? (
                 <><Button variant="ghost" onClick={() => setUserToReset(null)} disabled={isResetting}>Cancelar</Button><Button onClick={handlePasswordReset} disabled={isResetting}>{isResetting ? <LoaderCircle className="animate-spin mr-2 h-4 w-4" /> : <KeyRound className="mr-2 h-4 w-4" />}Confirmar</Button></>
             ) : <Button onClick={() => setUserToReset(null)}>Cerrar</Button>}
@@ -615,62 +607,64 @@ export default function StaffPage() {
         </DialogContent>
       </Dialog>
 
-      <Card>
-        <CardHeader>
+      <Card className="shadow-sm">
+        <CardHeader className="p-4 sm:p-6">
             <div className="flex flex-col md:flex-row justify-between gap-4">
                 <div className='relative w-full max-w-sm'>
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input placeholder="Buscar por nombre, cédula, cargo..." value={filter} onChange={(e) => setFilter(e.target.value)} className="pl-10" />
+                    <Input placeholder="Buscar por nombre, cédula..." value={filter} onChange={(e) => setFilter(e.target.value)} className="pl-10" />
                 </div>
                 <div className="flex gap-2">
                     {selectedUsers.length > 0 && <Button variant="destructive" size="sm" onClick={() => setIsDeleteDialogOpen(true)}><Trash2 className="mr-2 h-4 w-4" /> Eliminar ({selectedUsers.length})</Button>}
                 </div>
             </div>
         </CardHeader>
-        <CardContent>
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead className="w-12"><Checkbox checked={filteredUsers.length > 0 && selectedUsers.length === filteredUsers.length} onCheckedChange={(checked) => setSelectedUsers(checked ? filteredUsers.map(u => u.id) : [])} /></TableHead>
-                        <TableHead>Empleado</TableHead>
-                        <TableHead>Cargo / Empresa</TableHead>
-                        <TableHead>Estado</TableHead>
-                        <TableHead>Líder</TableHead>
-                        <TableHead className="text-right">Acciones</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {isLoadingData ? Array.from({ length: 5 }).map((_, i) => (<TableRow key={i}><TableCell colSpan={6}><div className="h-10 bg-muted animate-pulse rounded" /></TableCell></TableRow>)) :
-                    filteredUsers.map(u => (
-                        <TableRow key={u.id}>
-                            <TableCell><Checkbox checked={selectedUsers.includes(u.id)} onCheckedChange={() => setSelectedUsers(prev => prev.includes(u.id) ? prev.filter(id => id !== u.id) : [...prev, u.id])} /></TableCell>
-                            <TableCell><div className="flex items-center gap-3"><Avatar className="h-8 w-8"><AvatarImage src={u.photoUrl} /><AvatarFallback>{u.nombres[0]}</AvatarFallback></Avatar><div><p className="font-medium">{u.nombres} {u.apellidos}</p><p className="text-xs text-muted-foreground">{u.email}</p></div></div></TableCell>
-                            <TableCell><p className="text-sm">{u.cargo}</p><p className="text-xs text-muted-foreground">{u.empresa}</p></TableCell>
-                            <TableCell><Switch checked={u.Status === 'active'} onCheckedChange={(v) => handleStatusChange(u, v)} /></TableCell>
-                            <TableCell><Switch checked={!!u.isLeader} onCheckedChange={(v) => handleIsLeaderChange(u, v)} /></TableCell>
-                            <TableCell className="text-right">
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onClick={() => handleOpenForm(u)}><Edit className="mr-2 h-4 w-4" /> Editar</DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => setUserToReset(u)} className="text-primary"><KeyRound className="mr-2 h-4 w-4" /> Resetear Contraseña</DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </TableCell>
+        <CardContent className="p-0 border-t">
+            <div className="overflow-x-auto">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead className="w-12 px-4"><Checkbox checked={filteredUsers.length > 0 && selectedUsers.length === filteredUsers.length} onCheckedChange={(checked) => setSelectedUsers(checked ? filteredUsers.map(u => u.id) : [])} /></TableHead>
+                            <TableHead className="whitespace-nowrap">Empleado</TableHead>
+                            <TableHead className="whitespace-nowrap">Cargo / Empresa</TableHead>
+                            <TableHead className="whitespace-nowrap text-center">Estado</TableHead>
+                            <TableHead className="whitespace-nowrap text-center">Líder</TableHead>
+                            <TableHead className="text-right px-4">Acciones</TableHead>
                         </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
+                    </TableHeader>
+                    <TableBody>
+                        {isLoadingData ? Array.from({ length: 5 }).map((_, i) => (<TableRow key={i}><TableCell colSpan={6}><div className="h-10 bg-muted animate-pulse rounded" /></TableCell></TableRow>)) :
+                        filteredUsers.map(u => (
+                            <TableRow key={u.id} className="hover:bg-muted/30">
+                                <TableCell className="px-4"><Checkbox checked={selectedUsers.includes(u.id)} onCheckedChange={() => setSelectedUsers(prev => prev.includes(u.id) ? prev.filter(id => id !== u.id) : [...prev, u.id])} /></TableCell>
+                                <TableCell className="whitespace-nowrap"><div className="flex items-center gap-3"><Avatar className="h-8 w-8"><AvatarImage src={u.photoUrl} /><AvatarFallback>{u.nombres[0]}</AvatarFallback></Avatar><div><p className="font-medium text-sm leading-none">{u.nombres} {u.apellidos}</p><p className="text-[10px] text-muted-foreground mt-1">{u.email}</p></div></div></TableCell>
+                                <TableCell className="whitespace-nowrap"><p className="text-xs font-medium">{u.cargo}</p><p className="text-[10px] text-muted-foreground">{u.empresa}</p></TableCell>
+                                <TableCell className="text-center"><Switch checked={u.Status === 'active'} onCheckedChange={(v) => handleStatusChange(u, v)} className="scale-75" /></TableCell>
+                                <TableCell className="text-center"><Switch checked={!!u.isLeader} onCheckedChange={(v) => handleIsLeaderChange(u, v)} className="scale-75" /></TableCell>
+                                <TableCell className="text-right px-4">
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem onClick={() => handleOpenForm(u)}><Edit className="mr-2 h-4 w-4" /> Editar</DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => setUserToReset(u)} className="text-primary"><KeyRound className="mr-2 h-4 w-4" /> Resetear Clave</DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </div>
         </CardContent>
       </Card>
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="w-[95vw]">
           <AlertDialogHeader>
             <AlertDialogTitle>¿Confirmar eliminación?</AlertDialogTitle>
             <AlertDialogDescription>Se borrarán {selectedUsers.length} perfiles permanentemente.</AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction className="bg-destructive" onClick={handleDeleteSelectedUsers}>Eliminar</AlertDialogAction>
           </AlertDialogFooter>

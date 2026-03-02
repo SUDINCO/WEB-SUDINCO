@@ -80,9 +80,9 @@ import { cn } from '@/lib/utils';
 const LOGO_URL = 'https://i.postimg.cc/B6HGbmCz/LOGO-CADENVILL.png';
 
 const memorandumTypes: { value: MemorandumType; label: string }[] = [
-    { value: "Memorando Informativo", label: "🔵 Memorando Informativo" },
-    { value: "Memorando de Llamado de Atención", label: "🟡 Memorando de Llamado de Atención" },
-    { value: "Memorando de Reconocimiento", label: "🟢 Memorando de Reconocimiento" },
+    { value: "Memorando Informativo", label: "🔵 Informativo" },
+    { value: "Memorando de Llamado de Atención", label: "🟡 Llamado Atención" },
+    { value: "Memorando de Reconocimiento", label: "🟢 Reconocimiento" },
 ];
 
 const reasonsByType: Record<MemorandumType, string[]> = {
@@ -101,7 +101,7 @@ const reasonsByType: Record<MemorandumType, string[]> = {
         "Otro (requiere detalle adicional)"
     ],
     "Memorando Informativo": [
-        "Recordatorio de procedureimiento",
+        "Recordatorio de procedimiento",
         "Nueva disposición interna",
         "Convocatoria a capacitación"
     ],
@@ -114,9 +114,9 @@ const reasonsByType: Record<MemorandumType, string[]> = {
 };
 
 const DEFAULT_TEMPLATES: Record<string, string> = {
-    "Recordatorio de procedureimiento": "Por medio del presente se comunica al colaborador que debe cumplir estrictamente el procedureimiento operativo de control de accesos y registro en bitácora conforme lo establece la normativa interna vigente.\n\nLa presente comunicación tiene carácter informativo y preventivo.",
+    "Recordatorio de procedimiento": "Por medio del presente se comunica al colaborador que debe cumplir estrictamente el procedimiento operativo de control de accesos y registro en bitácora conforme lo establece la normativa interna vigente.\n\nLa presente comunicación tiene carácter informativo y preventivo.",
     "Nueva disposición interna": "Se informa la implementación de una nueva disposición interna relacionada con los protocolos de seguridad y registros obligatorios. El cumplimiento de esta disposición es de carácter inmediato y obligatorio para todo el personal asignado.",
-    "Convocatoria a capacitación": "Se convoca al colaborador a la sesión de capacitación obligatoria sobre protocolos de seguridad y actualización de procedureimientos. La asistencia es fundamental para garantizar los estándares de calidad del servicio.",
+    "Convocatoria a capacitación": "Se convoca al colaborador a la sesión de capacitación obligatoria sobre protocolos de seguridad y actualización de procedimientos. La asistencia es fundamental para garantizar los estándares de calidad del servicio.",
     "Atraso injustificado": "Se deja constancia que el colaborador registró un atraso injustificado el día {FECHA_EVENTO} durante el turno {TURNO}.\n\nEsta conducta constituye un incumplimiento a las obligaciones laborales establecidas en el Reglamento Interno de la empresa.\n\nSe emite el presente llamado de atención con la finalidad de prevenir futuras reincidencias y exhortar al cumplimiento estricto del horario asignado.",
     "Inasistencia injustificada": "Se deja constancia que el colaborador no asistió a su jornada laboral sin presentar la debida justificación previa, afectando la continuidad operativa del servicio.",
     "Abandono de puesto": "Se evidenció que el colaborador abandonó su puesto de servicio durante el turno asignado sin la debida autorización del supervisor, lo cual constituye una falta grave a la seguridad del cliente.",
@@ -125,7 +125,7 @@ const DEFAULT_TEMPLATES: Record<string, string> = {
     "Uso indebido de celular": "Se observó el uso indebido de teléfono celular para fines personales durante el turno operativo, distrayendo la atención de las responsabilidades de vigilancia asignadas.",
     "Falta de respeto": "Se registró una conducta inadecuada relacionada con falta de respeto hacia compañeros, superiores o usuarios, afectando el entorno laboral y la imagen institucional.",
     "Desobediencia a instrucciones": "Se constató el incumplimiento de instrucciones directas e impartidas por el supervisor o jefe de área en relación a las operaciones de seguridad.",
-    "Incumplimiento de procedureimiento operativo": "Se evidenció el no cumplimiento del procedureimiento establecido para rondas, registros en bitácora y comunicación de novedades.",
+    "Incumplimiento de procedimiento operativo": "Se evidenció el no cumplimiento del procedimiento establecido para rondas, registros en bitácora y comunicación de novedades.",
     "Entrega tardía de reporte": "Se verificó la entrega tardía del reporte diario o reporte de novedades correspondiente al turno asignado, dificultando la gestión administrativa del puesto.",
     "Conducta inadecuada": "Se deja constancia de una conducta inapropiada que contraviene los principios institucionales y los valores de la empresa de seguridad.",
     "Otro (requiere detalle adicional)": "Se deja constancia de una novedad disciplinaria u operativa detectada en el ejercicio de sus funciones, la cual se detalla a continuación.",
@@ -454,28 +454,28 @@ export default function DocumentManagementPage() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight text-slate-900">Gestión Documental</h1>
-                    <p className="text-muted-foreground">Emisión y control de memorandos institucionales certificados.</p>
+                    <p className="text-sm text-muted-foreground">Emisión y control de memorandos certificados.</p>
                 </div>
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="grid w-full grid-cols-2 max-w-sm">
-                    <TabsTrigger value="create">Crear Memorando</TabsTrigger>
+                    <TabsTrigger value="create">Emitir</TabsTrigger>
                     <TabsTrigger value="history">Historial</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="create" className="mt-6">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <Card className="lg:col-span-1 shadow-md">
-                            <CardHeader>
+                        <Card className="lg:col-span-1 shadow-md order-2 lg:order-1">
+                            <CardHeader className="p-4">
                                 <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                                     <Filter className="h-4 w-4" /> Configuración de Envío
                                 </CardTitle>
                             </CardHeader>
-                            <CardContent className="space-y-4">
+                            <CardContent className="space-y-4 p-4">
                                 <div className="space-y-2">
                                     <Label>Tipo de Memorando</Label>
                                     <Select value={selectedType} onValueChange={(v) => { setSelectedType(v as MemorandumType); setSelectedReason(""); setIsGeneralSelection(false); }}>
@@ -516,7 +516,7 @@ export default function DocumentManagementPage() {
                                                 }}
                                             >
                                                 {isGeneralSelection ? <UserMinus className="h-3 w-3" /> : <Users className="h-3 w-3" />}
-                                                {isGeneralSelection ? "Individual" : "Todo el Personal"}
+                                                {isGeneralSelection ? "Individual" : "Masivo"}
                                             </Button>
                                         )}
                                     </div>
@@ -527,7 +527,7 @@ export default function DocumentManagementPage() {
                                         </div>
                                     ) : (
                                         <Combobox 
-                                            options={workers?.filter(w => w.Status === 'active').map(w => ({ label: `${w.apellidos} ${w.nombres} (${w.ubicacion || 'Sin puesto'})`, value: w.id })) || []}
+                                            options={workers?.filter(w => w.Status === 'active').map(w => ({ label: `${w.apellidos} ${w.nombres}`, value: w.id, description: w.ubicacion })) || []}
                                             value={selectedUserId}
                                             onChange={setSelectedUserId}
                                             placeholder="Seleccionar trabajador..."
@@ -537,7 +537,7 @@ export default function DocumentManagementPage() {
                                     )}
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-2">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label>Fecha Evento</Label>
                                         <Input type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} />
@@ -572,7 +572,7 @@ export default function DocumentManagementPage() {
                                             disabled={isUploading}
                                         >
                                             {isUploading ? <LoaderCircle className="animate-spin mr-2 h-3 w-3" /> : <FileUp className="mr-2 h-3 w-3" />}
-                                            {attachmentUrl ? "Cambiar Adjunto" : "Subir Foto / PDF"}
+                                            {attachmentUrl ? "Cambiar" : "Foto / PDF"}
                                         </Button>
                                         <input 
                                             type="file" 
@@ -582,18 +582,11 @@ export default function DocumentManagementPage() {
                                             onChange={handleFileChange}
                                         />
                                         {attachmentUrl && (
-                                            <Button variant="ghost" size="icon" className="h-9 w-9 text-destructive" onClick={() => { setAttachmentUrl(null); setAttachmentType(null); }}>
+                                            <Button variant="ghost" size="icon" className="h-9 w-9 text-destructive shrink-0" onClick={() => { setAttachmentUrl(null); setAttachmentType(null); }}>
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>
                                         )}
                                     </div>
-                                    {attachmentUrl && (
-                                        <div className="p-2 border rounded-md bg-slate-50 flex items-center gap-2">
-                                            {attachmentType === 'image' ? <Camera className="h-4 w-4 text-primary" /> : <FileText className="h-4 w-4 text-red-500" />}
-                                            <span className="text-[10px] font-bold uppercase truncate flex-1">Archivo cargado exitosamente</span>
-                                            <CheckCircle className="h-3 w-3 text-green-600" />
-                                        </div>
-                                    )}
                                 </div>
 
                                 <Separator />
@@ -635,16 +628,16 @@ export default function DocumentManagementPage() {
                                         onClick={() => setIsLocked(!isLocked)}
                                     >
                                         {isLocked ? <Unlock className="h-3 w-3 mr-1" /> : <Lock className="h-3 w-3 mr-1" />}
-                                        {isLocked ? "Modificar Firma" : "Bloquear y Certificar Firma"}
+                                        {isLocked ? "Modificar" : "Bloquear y Certificar"}
                                     </Button>
                                 </div>
                             </CardContent>
                         </Card>
 
-                        <Card className="lg:col-span-2 shadow-2xl overflow-hidden bg-slate-100 border-none flex flex-col">
-                            <div className="flex-1 overflow-y-auto p-4 md:p-8">
+                        <Card className="lg:col-span-2 shadow-2xl overflow-hidden bg-slate-100 border-none flex flex-col order-1 lg:order-2">
+                            <div className="flex-1 overflow-y-auto p-2 sm:p-4 md:p-8">
                                 <div className="bg-white shadow-lg mx-auto max-w-2xl min-h-full border border-slate-200 relative flex flex-col">
-                                    <div className="w-full relative h-[120px] border-b overflow-hidden bg-white">
+                                    <div className="w-full relative h-[80px] sm:h-[120px] border-b overflow-hidden bg-white">
                                         <Image 
                                             src={LOGO_URL} 
                                             alt="Header Cadenvill Security" 
@@ -654,54 +647,50 @@ export default function DocumentManagementPage() {
                                         />
                                     </div>
 
-                                    <div className="px-10 py-8 space-y-8 flex-1 font-serif text-slate-800">
+                                    <div className="px-4 sm:px-10 py-6 sm:py-8 space-y-6 sm:space-y-8 flex-1 font-serif text-slate-800">
                                         <div className="text-center space-y-1">
-                                            <h2 className="text-xl font-black tracking-tight text-slate-900 border-b-2 border-primary inline-block px-4 pb-1 uppercase italic">
+                                            <h2 className="text-base sm:text-xl font-black tracking-tight text-slate-900 border-b-2 border-primary inline-block px-4 pb-1 uppercase italic">
                                                 Memorando Institucional - {isGeneralSelection ? 'GENERAL' : (selectedWorkerData?.empresa || '__________')}
                                             </h2>
-                                            <p className="text-[9px] font-bold text-slate-500 tracking-[0.2em] uppercase">Control de Gestión Documental Interna</p>
+                                            <p className="text-[8px] sm:text-[9px] font-bold text-slate-500 tracking-[0.2em] uppercase">Control Documental</p>
                                         </div>
 
-                                        <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 p-3 sm:p-4 bg-slate-50 border border-slate-200 rounded-lg text-xs">
                                             <div className="space-y-1">
-                                                <p className="text-[9px] font-black text-slate-400 uppercase">Código del Documento</p>
-                                                <p className="font-bold text-slate-800">MEM-{isGeneralSelection ? 'GEN' : (selectedWorkerData?.empresa?.slice(0,3).toUpperCase() || 'XXX')}-{new Date().getFullYear()}-XXXX</p>
+                                                <p className="text-[8px] font-black text-slate-400 uppercase">Código</p>
+                                                <p className="font-bold text-slate-800 truncate">MEM-{isGeneralSelection ? 'GEN' : (selectedWorkerData?.empresa?.slice(0,3).toUpperCase() || 'XXX')}-{new Date().getFullYear()}-XXXX</p>
                                             </div>
                                             <div className="space-y-1">
-                                                <p className="text-[9px] font-black text-slate-400 uppercase">Fecha de Emisión</p>
-                                                <p className="font-bold text-slate-800">{format(new Date(), "d 'de' MMMM 'de' yyyy", { locale: es })}</p>
+                                                <p className="text-[8px] font-black text-slate-400 uppercase">Emisión</p>
+                                                <p className="font-bold text-slate-800">{format(new Date(), "d 'de' MMMM, yyyy", { locale: es })}</p>
                                             </div>
                                             <div className="space-y-1">
-                                                <p className="text-[9px] font-black text-slate-400 uppercase">Destinatario (PARA)</p>
-                                                <p className="font-bold text-slate-800">{isGeneralSelection ? 'TODO EL PERSONAL' : (selectedWorkerData ? `${selectedWorkerData.apellidos} ${selectedWorkerData.nombres}` : '____________________')}</p>
+                                                <p className="text-[8px] font-black text-slate-400 uppercase">PARA</p>
+                                                <p className="font-bold text-slate-800 truncate">{isGeneralSelection ? 'TODO EL PERSONAL' : (selectedWorkerData ? `${selectedWorkerData.apellidos} ${selectedWorkerData.nombres}` : '____________________')}</p>
                                             </div>
                                             <div className="space-y-1">
-                                                <p className="text-[9px] font-black text-slate-400 uppercase">Cargo / Función</p>
-                                                <p className="font-bold text-slate-800">{isGeneralSelection ? 'OPERATIVO / ADMINISTRATIVO' : (selectedWorkerData ? selectedWorkerData.cargo : '____________________')}</p>
+                                                <p className="text-[8px] font-black text-slate-400 uppercase">Cargo</p>
+                                                <p className="font-bold text-slate-800 truncate">{isGeneralSelection ? 'OPERATIVO / ADM.' : (selectedWorkerData ? selectedWorkerData.cargo : '____________________')}</p>
                                             </div>
                                             <div className="space-y-1">
-                                                <p className="text-[9px] font-black text-slate-400 uppercase">Ubicación / Puesto</p>
-                                                <p className="font-bold text-slate-800">{isGeneralSelection ? 'MULTIPLE' : (selectedWorkerData ? selectedWorkerData.ubicacion : '____________________')}</p>
-                                            </div>
-                                            <div className="space-y-1">
-                                                <p className="text-[9px] font-black text-slate-400 uppercase">Fecha del Evento</p>
-                                                <p className="font-bold text-slate-800">{format(parseISO(eventDate), "d 'de' MMMM 'de' yyyy", { locale: es })}</p>
+                                                <p className="text-[8px] font-black text-slate-400 uppercase">Fecha Evento</p>
+                                                <p className="font-bold text-slate-800">{format(parseISO(eventDate), "d 'de' MMMM, yyyy", { locale: es })}</p>
                                             </div>
                                             {showTurnoLine && (
                                                 <div className="space-y-1">
-                                                    <p className="text-[9px] font-black text-slate-400 uppercase">Turno del Evento</p>
-                                                    <p className="font-bold text-emerald-700">{eventShift || '____________________'}</p>
+                                                    <p className="text-[8px] font-black text-slate-400 uppercase">Turno</p>
+                                                    <p className="font-bold text-emerald-700">{eventShift || '__________'}</p>
                                                 </div>
                                             )}
                                         </div>
 
-                                        <div className="border-y py-3 flex justify-between items-center">
-                                            <p className="font-black text-sm uppercase tracking-tight">ASUNTO: {selectedType ? `${selectedType} – ${selectedReason || '__________'}` : '____________________'}</p>
+                                        <div className="border-y py-3 flex justify-between items-center gap-2">
+                                            <p className="font-black text-[10px] sm:text-xs uppercase tracking-tight truncate flex-1">ASUNTO: {selectedType ? `${selectedType} – ${selectedReason || '__________'}` : '____________________'}</p>
                                             {selectedReason && (
                                                 <Button 
                                                     variant="ghost" 
                                                     size="sm" 
-                                                    className="h-7 text-[10px] font-black uppercase tracking-widest text-primary"
+                                                    className="h-7 text-[9px] font-black uppercase tracking-widest text-primary shrink-0"
                                                     onClick={() => setIsEditing(!isEditing)}
                                                 >
                                                     {isEditing ? <CheckCircle className="mr-1 h-3 w-3" /> : <Edit3 className="mr-1 h-3 w-3" />}
@@ -710,18 +699,18 @@ export default function DocumentManagementPage() {
                                             )}
                                         </div>
 
-                                        <div className="text-sm leading-relaxed whitespace-pre-wrap min-h-[200px] px-2">
+                                        <div className="text-sm leading-relaxed whitespace-pre-wrap min-h-[150px] sm:min-h-[200px] px-1">
                                             {selectedReason ? (
                                                 isEditing ? (
                                                     <div className="space-y-4">
                                                         <Textarea 
                                                             value={editableContent}
                                                             onChange={(e) => setEditableContent(e.target.value)}
-                                                            className="min-h-[250px] font-serif text-sm leading-relaxed border-primary/20"
+                                                            className="min-h-[200px] font-serif text-sm leading-relaxed border-primary/20"
                                                         />
                                                         <Button 
                                                             size="sm" 
-                                                            className="bg-primary text-[10px] font-black uppercase tracking-widest" 
+                                                            className="bg-primary text-[9px] font-black uppercase tracking-widest w-full sm:w-auto" 
                                                             onClick={handleSaveTemplate}
                                                             disabled={isSavingTemplate}
                                                         >
@@ -733,74 +722,44 @@ export default function DocumentManagementPage() {
                                                     editableContent
                                                 )
                                             ) : (
-                                                <div className="h-full flex flex-col items-center justify-center text-muted-foreground italic py-20 opacity-40">
-                                                    <FileText className="h-12 w-12 mb-2" />
-                                                    <p>Seleccione configuración para redactar el documento.</p>
+                                                <div className="h-full flex flex-col items-center justify-center text-muted-foreground italic py-10 sm:py-20 opacity-40">
+                                                    <FileText className="h-10 w-10 mb-2" />
+                                                    <p className="text-center text-xs">Configure el envío para redactar el documento.</p>
                                                 </div>
                                             )}
                                         </div>
 
-                                        {attachmentUrl && (
-                                            <div className="mt-8 border-t pt-6 space-y-4">
-                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b pb-1">Anexo / Evidencia Adjunta</p>
-                                                {attachmentType === 'image' ? (
-                                                    <div className="relative w-full aspect-video rounded-lg overflow-hidden border shadow-sm group">
-                                                        <Image src={attachmentUrl} alt="Evidencia" fill className="object-contain" unoptimized />
-                                                    </div>
-                                                ) : (
-                                                    <div className="p-4 bg-slate-50 border rounded-lg flex items-center justify-between">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="p-2 bg-red-100 rounded text-red-600"><FileText className="h-6 w-6" /></div>
-                                                            <div>
-                                                                <p className="text-xs font-bold text-slate-700">Documento PDF Adjunto</p>
-                                                                <p className="text-[10px] text-slate-500 uppercase">Este archivo se incluirá en el expediente</p>
-                                                            </div>
-                                                        </div>
-                                                        <Badge variant="outline" className="text-[8px] font-black uppercase">Cargado</Badge>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-
-                                        <div className="pt-12 grid grid-cols-2 gap-16">
-                                            <div className="flex flex-col items-center space-y-3">
-                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b pb-1 w-full text-center">Firma del Emisor</p>
-                                                <div className="w-full h-24 flex flex-col items-center justify-center relative">
+                                        <div className="pt-8 sm:pt-12 grid grid-cols-2 gap-8 sm:gap-16">
+                                            <div className="flex flex-col items-center space-y-2">
+                                                <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] border-b pb-1 w-full text-center">Firma Emisor</p>
+                                                <div className="w-full h-16 sm:h-24 flex flex-col items-center justify-center relative">
                                                     {isLocked ? (
-                                                        <div className="text-center mb-2">
-                                                            <img src={canvasRef.current?.toDataURL()} alt="Firma Emisor" className="h-12 object-contain opacity-90 mx-auto" />
-                                                            <p className="font-black text-[11px] text-slate-900 leading-tight uppercase">{currentUserProfile?.nombres} {currentUserProfile?.apellidos}</p>
-                                                            <p className="text-[9px] text-primary font-bold uppercase leading-tight">{currentUserProfile?.cargo}</p>
+                                                        <div className="text-center">
+                                                            <img src={canvasRef.current?.toDataURL()} alt="Firma Emisor" className="h-8 sm:h-12 object-contain opacity-90 mx-auto" />
+                                                            <p className="font-black text-[9px] sm:text-[11px] text-slate-900 leading-tight uppercase truncate max-w-full">{currentUserProfile?.nombres} {currentUserProfile?.apellidos}</p>
                                                         </div>
                                                     ) : (
-                                                        <p className="text-[10px] text-muted-foreground italic">Pendiente de certificación</p>
+                                                        <p className="text-[8px] text-muted-foreground italic">Pendiente</p>
                                                     )}
                                                 </div>
                                             </div>
-                                            <div className="flex flex-col items-center space-y-3">
-                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b pb-1 w-full text-center">Firma del Colaborador</p>
-                                                <div className="w-full h-24 flex items-center justify-center">
+                                            <div className="flex flex-col items-center space-y-2">
+                                                <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] border-b pb-1 w-full text-center">Firma Colaborador</p>
+                                                <div className="w-full h-16 sm:h-24 flex items-center justify-center">
                                                     {selectedType === "Memorando de Llamado de Atención" ? (
-                                                        <p className="text-[10px] text-muted-foreground italic uppercase font-bold opacity-50">Espacio para Firma</p>
+                                                        <p className="text-[8px] text-muted-foreground italic uppercase font-bold opacity-50">Espacio p/ firma</p>
                                                     ) : (
-                                                        <Badge variant="outline" className="text-[8px] font-black uppercase opacity-40">No requiere firma</Badge>
+                                                        <Badge variant="outline" className="text-[7px] sm:text-[8px] font-black uppercase opacity-40">No requiere</Badge>
                                                     )}
                                                 </div>
                                             </div>
-                                        </div>
-
-                                        <div className="pt-12 border-t border-slate-100 pb-4">
-                                            <p className="text-[8px] text-slate-400 leading-tight text-center italic">
-                                                Documento oficial generado por la plataforma Performa para Cadenvill Security. 
-                                                Este registro electrónico constituye prueba auditable de comunicación institucional.
-                                            </p>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                             <div className="bg-slate-900 p-4 border-t border-slate-800 flex justify-end">
                                 <Button 
-                                    className="min-w-[250px] font-black uppercase tracking-widest text-xs h-11" 
+                                    className="w-full sm:min-w-[250px] font-black uppercase tracking-widest text-xs h-11" 
                                     onClick={handleIssueMemorandums}
                                     disabled={isSaving || isEditing || !selectedType || !selectedReason || (!selectedUserId && !isGeneralSelection) || !isLocked}
                                 >
@@ -814,11 +773,11 @@ export default function DocumentManagementPage() {
 
                 <TabsContent value="history" className="mt-6">
                     <Card className="shadow-md">
-                        <CardHeader>
+                        <CardHeader className="p-4">
                             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                                 <div>
-                                    <CardTitle>Archivo de Documentos</CardTitle>
-                                    <CardDescription>Expediente histórico de memorandos emitidos y su estado legal.</CardDescription>
+                                    <CardTitle className="text-lg">Archivo Histórico</CardTitle>
+                                    <CardDescription className="text-xs">Control de memorandos emitidos y su estado legal.</CardDescription>
                                 </div>
                                 <div className="relative w-full md:max-w-sm">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -831,79 +790,71 @@ export default function DocumentManagementPage() {
                                 </div>
                             </div>
                         </CardHeader>
-                        <CardContent>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow className="bg-slate-50">
-                                        <TableHead className="font-black uppercase text-[10px]">Código</TableHead>
-                                        <TableHead className="font-black uppercase text-[10px]">Fecha</TableHead>
-                                        <TableHead className="font-black uppercase text-[10px]">Tipo</TableHead>
-                                        <TableHead className="font-black uppercase text-[10px]">Colaborador</TableHead>
-                                        <TableHead className="font-black uppercase text-[10px]">Motivo</TableHead>
-                                        <TableHead className="font-black uppercase text-[10px]">Estado</TableHead>
-                                        <TableHead className="text-right font-black uppercase text-[10px]">Acción</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {memosLoading ? (
-                                        <TableRow><TableCell colSpan={7} className="h-24 text-center"><LoaderCircle className="animate-spin inline-block mr-2" /> Cargando historial...</TableCell></TableRow>
-                                    ) : filteredMemos.length > 0 ? (
-                                        filteredMemos.map(memo => (
-                                            <TableRow key={memo.id} className="hover:bg-slate-50 transition-colors">
-                                                <TableCell className="font-mono text-xs font-bold text-primary">{memo.code}</TableCell>
-                                                <TableCell className="text-xs">{format(memo.createdAt, 'dd/MM/yyyy')}</TableCell>
-                                                <TableCell>
-                                                    <Badge variant="outline" className="text-[9px] uppercase font-bold">
-                                                        {memo.type?.split(' ').pop()}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="flex flex-col">
-                                                        <span className="font-bold text-xs uppercase">{memo.targetUserName}</span>
-                                                        <span className="text-[9px] text-muted-foreground uppercase">{memo.targetUserCargo}</span>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="max-w-[150px] truncate text-xs italic">"{memo.reason}"</TableCell>
-                                                <TableCell>
-                                                    {memo.status === 'signed' ? (
-                                                        <Badge className="bg-emerald-600 text-[9px] font-black uppercase gap-1"><CheckCircle className="h-3 w-3" /> Firmado</Badge>
-                                                    ) : memo.status === 'rejected' ? (
-                                                        <Badge variant="destructive" className="text-[9px] font-black uppercase gap-1"><XCircle className="h-3 w-3" /> Rechazado</Badge>
-                                                    ) : memo.status === 'read' ? (
-                                                        <Badge variant="secondary" className="bg-blue-100 text-blue-700 text-[9px] font-black uppercase">Leído</Badge>
-                                                    ) : (
-                                                        <Badge variant="outline" className="text-[9px] font-black uppercase animate-pulse">Emitido</Badge>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    <div className="flex justify-end gap-1">
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary hover:text-white" onClick={() => setSelectedMemoForView(memo)}>
-                                                            <Eye className="h-4 w-4" />
-                                                        </Button>
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-destructive/10 text-destructive" onClick={() => setMemorandumToDelete(memo)}>
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    </div>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))
-                                    ) : (
-                                        <TableRow><TableCell colSpan={7} className="h-24 text-center text-muted-foreground italic">No se han emitido documentos aún.</TableCell></TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
+                        <CardContent className="p-0 border-t">
+                            <div className="overflow-x-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow className="bg-slate-50">
+                                            <TableHead className="font-black uppercase text-[9px] px-4 whitespace-nowrap">Código</TableHead>
+                                            <TableHead className="font-black uppercase text-[9px] px-4 whitespace-nowrap">Colaborador</TableHead>
+                                            <TableHead className="font-black uppercase text-[9px] px-4 whitespace-nowrap text-center">Estado</TableHead>
+                                            <TableHead className="text-right font-black uppercase text-[9px] px-4">Acción</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {memosLoading ? (
+                                            <TableRow><TableCell colSpan={4} className="h-24 text-center"><LoaderCircle className="animate-spin inline-block mr-2" /> Cargando...</TableCell></TableRow>
+                                        ) : filteredMemos.length > 0 ? (
+                                            filteredMemos.map(memo => (
+                                                <TableRow key={memo.id} className="hover:bg-slate-50 cursor-pointer" onClick={() => setSelectedMemoForView(memo)}>
+                                                    <TableCell className="font-mono text-[10px] font-bold text-primary px-4 whitespace-nowrap">{memo.code}</TableCell>
+                                                    <TableCell className="px-4">
+                                                        <div className="flex flex-col min-w-0">
+                                                            <span className="font-bold text-[10px] uppercase truncate">{memo.targetUserName}</span>
+                                                            <span className="text-[8px] text-muted-foreground uppercase truncate">{memo.targetUserCargo}</span>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-center px-4">
+                                                        {memo.status === 'signed' ? (
+                                                            <Badge className="bg-emerald-600 text-[8px] font-black uppercase">Firmado</Badge>
+                                                        ) : memo.status === 'rejected' ? (
+                                                            <Badge variant="destructive" className="text-[8px] font-black uppercase">Rechazado</Badge>
+                                                        ) : memo.status === 'read' ? (
+                                                            <Badge variant="secondary" className="bg-blue-100 text-blue-700 text-[8px] font-black uppercase">Leído</Badge>
+                                                        ) : (
+                                                            <Badge variant="outline" className="text-[8px] font-black uppercase animate-pulse">Emitido</Badge>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="text-right px-4">
+                                                        <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSelectedMemoForView(memo)}>
+                                                                <Eye className="h-3 w-3" />
+                                                            </Button>
+                                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setMemorandumToDelete(memo)}>
+                                                                <Trash2 className="h-3 w-3" />
+                                                            </Button>
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))
+                                        ) : (
+                                            <TableRow><TableCell colSpan={4} className="h-24 text-center text-muted-foreground italic text-xs">Sin documentos.</TableCell></TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </div>
                         </CardContent>
                     </Card>
                 </TabsContent>
             </Tabs>
 
             <Dialog open={!!selectedMemoForView} onOpenChange={(open) => !open && setSelectedMemoForView(null)}>
-                <DialogContent className="max-w-5xl max-h-[95vh] p-0 flex flex-col overflow-hidden bg-slate-100 border-none">
+                <DialogContent className="max-w-5xl max-h-[95vh] p-0 flex flex-col overflow-hidden bg-slate-100 border-none w-[95vw]">
                     {selectedMemoForView && (
                         <>
-                            <div className="flex-1 overflow-y-auto p-4 md:p-10">
+                            <div className="flex-1 overflow-y-auto p-2 sm:p-10">
                                 <div className="bg-white shadow-2xl mx-auto max-w-2xl min-h-full border border-slate-200 relative flex flex-col">
-                                    <div className="w-full relative h-[140px] border-b overflow-hidden bg-white">
+                                    <div className="w-full relative h-[80px] sm:h-[140px] border-b overflow-hidden bg-white">
                                         <Image 
                                             src={LOGO_URL} 
                                             alt="Header Cadenvill Security" 
@@ -913,136 +864,102 @@ export default function DocumentManagementPage() {
                                         />
                                     </div>
 
-                                    <div className="px-10 py-8 space-y-8 flex-1 font-serif text-slate-800">
+                                    <div className="px-4 sm:px-10 py-6 sm:py-8 space-y-6 sm:space-y-8 flex-1 font-serif text-slate-800">
                                         <div className="text-center space-y-1">
-                                            <h2 className="text-xl font-black tracking-tight text-slate-900 border-b-2 border-primary inline-block px-4 pb-1 uppercase italic">
+                                            <h2 className="text-base sm:text-xl font-black tracking-tight text-slate-900 border-b-2 border-primary inline-block px-4 pb-1 uppercase italic">
                                                 Memorando Institucional - {selectedMemoForView.targetUserEmpresa || 'GENERAL'}
                                             </h2>
-                                            <p className="text-[9px] font-bold text-slate-500 tracking-[0.2em] uppercase">Control de Auditoría #{selectedMemoForView.id.slice(-8).toUpperCase()}</p>
+                                            <p className="text-[8px] sm:text-[9px] font-bold text-slate-500 tracking-[0.2em] uppercase">Control de Auditoría</p>
                                         </div>
 
-                                        <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 p-3 sm:p-4 bg-slate-50 border border-slate-200 rounded-lg text-xs">
                                             <div className="space-y-1">
-                                                <p className="text-[9px] font-black text-slate-400 uppercase">Código</p>
-                                                <p className="font-bold text-slate-800">{selectedMemoForView.code}</p>
+                                                <p className="text-[8px] font-black text-slate-400 uppercase">Código</p>
+                                                <p className="font-bold text-slate-800 truncate">{selectedMemoForView.code}</p>
                                             </div>
                                             <div className="space-y-1">
-                                                <p className="text-[9px] font-black text-slate-400 uppercase">Fecha Emisión</p>
-                                                <p className="font-bold text-slate-800">{format(selectedMemoForView.createdAt, "d 'de' MMMM 'de' yyyy", { locale: es })}</p>
+                                                <p className="text-[8px] font-black text-slate-400 uppercase">Emisión</p>
+                                                <p className="font-bold text-slate-800">{format(selectedMemoForView.createdAt, "d 'de' MMMM, yyyy", { locale: es })}</p>
                                             </div>
                                             <div className="space-y-1">
-                                                <p className="text-[9px] font-black text-slate-400 uppercase">PARA:</p>
-                                                <p className="font-bold text-slate-800 uppercase">{selectedMemoForView.targetUserName}</p>
+                                                <p className="text-[8px] font-black text-slate-400 uppercase">PARA</p>
+                                                <p className="font-bold text-slate-800 uppercase truncate">{selectedMemoForView.targetUserName}</p>
                                             </div>
                                             <div className="space-y-1">
-                                                <p className="text-[9px] font-black text-slate-400 uppercase">CARGO:</p>
-                                                <p className="font-bold text-slate-800 uppercase">{selectedMemoForView.targetUserCargo}</p>
+                                                <p className="text-[8px] font-black text-slate-400 uppercase">Cargo</p>
+                                                <p className="font-bold text-slate-800 uppercase truncate">{selectedMemoForView.targetUserCargo}</p>
                                             </div>
                                             <div className="space-y-1">
-                                                <p className="text-[9px] font-black text-slate-400 uppercase">Fecha del Evento</p>
-                                                <p className="font-bold text-slate-800">{selectedMemoForView.eventDate ? format(parseISO(selectedMemoForView.eventDate), "d 'de' MMMM 'de' yyyy", { locale: es }) : 'N/A'}</p>
+                                                <p className="text-[8px] font-black text-slate-400 uppercase">Fecha Evento</p>
+                                                <p className="font-bold text-slate-800">{selectedMemoForView.eventDate ? format(parseISO(selectedMemoForView.eventDate), "d 'de' MMMM, yyyy", { locale: es }) : 'N/A'}</p>
                                             </div>
                                             {selectedMemoForView.eventShift && (
                                                 <div className="space-y-1">
-                                                    <p className="text-[9px] font-black text-slate-400 uppercase">Turno</p>
+                                                    <p className="text-[8px] font-black text-slate-400 uppercase">Turno</p>
                                                     <p className="font-bold text-emerald-700">{selectedMemoForView.eventShift}</p>
                                                 </div>
                                             )}
                                         </div>
 
                                         <div className="border-y py-3">
-                                            <p className="font-black text-sm uppercase tracking-tight">ASUNTO: {selectedMemoForView.type} – {selectedMemoForView.reason}</p>
+                                            <p className="font-black text-[10px] sm:text-sm uppercase tracking-tight">ASUNTO: {selectedMemoForView.type} – {selectedMemoForView.reason}</p>
                                         </div>
 
-                                        <div className="text-sm leading-relaxed whitespace-pre-wrap min-h-[200px] px-2 text-slate-700">
+                                        <div className="text-sm leading-relaxed whitespace-pre-wrap min-h-[150px] px-1 text-slate-700">
                                             {selectedMemoForView.content}
                                         </div>
 
-                                        {selectedMemoForView.attachmentUrl && (
-                                            <div className="mt-8 border-t pt-6 space-y-4">
-                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b pb-1">Anexo Adjunto</p>
-                                                {selectedMemoForView.attachmentType === 'image' ? (
-                                                    <div className="relative w-full aspect-video rounded-lg overflow-hidden border shadow-sm">
-                                                        <Image src={selectedMemoForView.attachmentUrl} alt="Anexo" fill className="object-contain" unoptimized />
-                                                    </div>
-                                                ) : (
-                                                    <div className="p-4 bg-slate-50 border rounded-lg flex items-center justify-between">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="p-2 bg-red-100 rounded text-red-600"><FileText className="h-6 w-6" /></div>
-                                                            <div>
-                                                                <p className="text-xs font-bold text-slate-700">Documento PDF Adjunto</p>
-                                                                <p className="text-[10px] text-slate-500 uppercase">Disponible en la carpeta digital del trabajador</p>
-                                                            </div>
-                                                        </div>
-                                                        <Button variant="outline" size="sm" className="h-8 text-[9px] font-black uppercase" onClick={() => window.open(selectedMemoForView.attachmentUrl!, '_blank')}>Abrir PDF</Button>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-
                                         {selectedMemoForView.status === 'rejected' && selectedMemoForView.defense && (
-                                            <div className="mt-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-r-md">
+                                            <div className="mt-6 p-3 sm:p-4 bg-red-50 border-l-4 border-red-500 rounded-r-md">
                                                 <div className="flex items-center gap-2 text-red-700 font-bold mb-1">
-                                                    <MessageSquare className="h-4 w-4" />
-                                                    <span className="text-[10px] uppercase tracking-widest font-black">Respuesta / Descargo del Colaborador:</span>
+                                                    <MessageSquare className="h-3 w-3 sm:h-4 sm:w-4" />
+                                                    <span className="text-[8px] sm:text-[10px] uppercase tracking-widest font-black">Descargo del Colaborador:</span>
                                                 </div>
-                                                <p className="text-sm italic text-red-900 leading-relaxed font-serif">
+                                                <p className="text-xs sm:text-sm italic text-red-900 leading-relaxed font-serif">
                                                     "{selectedMemoForView.defense}"
                                                 </p>
                                             </div>
                                         )}
 
-                                        <div className="pt-12 grid grid-cols-2 gap-16">
-                                            <div className="flex flex-col items-center space-y-3">
-                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b pb-1 w-full text-center">Firma del Emisor</p>
-                                                <div className="w-full h-24 flex flex-col items-center justify-center text-center">
+                                        <div className="pt-8 sm:pt-12 grid grid-cols-2 gap-8 sm:gap-16">
+                                            <div className="flex flex-col items-center space-y-2">
+                                                <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] border-b pb-1 w-full text-center">Firma Emisor</p>
+                                                <div className="w-full h-16 sm:h-24 flex flex-col items-center justify-center text-center">
                                                     {selectedMemoForView.issuerSignature && (
                                                         <div className="mb-2">
-                                                            <img src={selectedMemoForView.issuerSignature} alt="Firma Emisor" className="h-12 object-contain opacity-90 mx-auto" />
-                                                            <p className="font-black text-[11px] text-slate-900 leading-tight uppercase">{selectedMemoForView.issuerName}</p>
-                                                            <p className="text-[9px] text-primary font-bold uppercase leading-tight">{selectedMemoForView.issuerCargo}</p>
+                                                            <img src={selectedMemoForView.issuerSignature} alt="Firma Emisor" className="h-8 sm:h-12 object-contain opacity-90 mx-auto" />
+                                                            <p className="font-black text-[9px] sm:text-[11px] text-slate-900 leading-tight uppercase truncate max-w-full">{selectedMemoForView.issuerName}</p>
                                                         </div>
                                                     )}
                                                 </div>
                                             </div>
-                                            <div className="flex flex-col items-center space-y-3">
-                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b pb-1 w-full text-center">Firma del Colaborador</p>
-                                                <div className="w-full h-24 flex flex-center items-center justify-center text-center">
+                                            <div className="flex flex-col items-center space-y-2">
+                                                <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] border-b pb-1 w-full text-center">Firma Colaborador</p>
+                                                <div className="w-full h-16 sm:h-24 flex flex-col items-center justify-center text-center">
                                                     {selectedMemoForView.signature ? (
                                                         <div className="mb-2">
-                                                            <img src={selectedMemoForView.signature} alt="Firma Colaborador" className="h-12 object-contain opacity-90 mx-auto" />
-                                                            <p className="font-black text-[11px] text-slate-900 leading-tight uppercase">{selectedMemoForView.targetUserName}</p>
-                                                            <p className="text-[9px] text-emerald-700 font-bold uppercase leading-tight">{selectedMemoForView.targetUserCargo}</p>
+                                                            <img src={selectedMemoForView.signature} alt="Firma Colaborador" className="h-8 sm:h-12 object-contain opacity-90 mx-auto" />
+                                                            <p className="font-black text-[9px] sm:text-[11px] text-slate-900 leading-tight uppercase truncate max-w-full">{selectedMemoForView.targetUserName}</p>
                                                         </div>
                                                     ) : (
                                                         selectedMemoForView.status === 'rejected' ? (
-                                                            <div className="flex flex-col items-center gap-1 border-2 border-red-500 p-2 rounded rotate-[-5deg]">
-                                                                <span className="text-[12px] font-black text-red-600">RECHAZADO</span>
-                                                                <span className="text-[8px] font-bold text-red-400">{format(selectedMemoForView.createdAt, 'dd/MM/yyyy')}</span>
+                                                            <div className="flex flex-col items-center gap-1 border border-red-500 p-1 sm:p-2 rounded rotate-[-5deg]">
+                                                                <span className="text-[10px] sm:text-[12px] font-black text-red-600">RECHAZADO</span>
                                                             </div>
-                                                        ) : selectedMemoForView.type === "Memorando de Llamado de Atención" ? (
-                                                            <p className="text-[10px] text-muted-foreground italic font-medium">Pendiente de firma</p>
                                                         ) : (
-                                                            <Badge variant="outline" className="text-[8px] font-black uppercase opacity-40">No requiere firma</Badge>
+                                                            <p className="text-[8px] text-muted-foreground italic uppercase opacity-50">Pendiente</p>
                                                         )
                                                     )}
                                                 </div>
                                             </div>
                                         </div>
-
-                                        <div className="pt-12 border-t border-slate-100 pb-4">
-                                            <p className="text-[8px] text-slate-400 leading-tight text-center italic">
-                                                Copia digital auténtica para el expediente laboral. 
-                                                Este documento tiene validez probatoria institucional.
-                                            </p>
-                                        </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="bg-slate-900 p-4 flex justify-between items-center px-10 border-t border-slate-800">
-                                <Button variant="ghost" onClick={() => setSelectedMemoForView(null)} className="text-white hover:bg-white/10 font-bold uppercase text-[10px]">Cerrar Vista</Button>
-                                <Button className="gap-2 bg-blue-600 hover:bg-blue-700 font-black uppercase text-[10px] tracking-widest px-8" onClick={() => handleDownloadPdf(selectedMemoForView)} disabled={isGeneratingPdf}>
+                            <div className="bg-slate-900 p-4 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 px-4 sm:px-10 border-t border-slate-800">
+                                <Button variant="ghost" onClick={() => setSelectedMemoForView(null)} className="text-white hover:bg-white/10 font-bold uppercase text-[10px]">Cerrar</Button>
+                                <Button className="gap-2 bg-blue-600 hover:bg-blue-700 font-black uppercase text-[10px] tracking-widest px-8 h-11" onClick={() => handleDownloadPdf(selectedMemoForView)} disabled={isGeneratingPdf}>
                                     {isGeneratingPdf ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />} Descargar PDF Oficial
                                 </Button>
                             </div>
@@ -1052,12 +969,12 @@ export default function DocumentManagementPage() {
             </Dialog>
 
             <AlertDialog open={!!memoToDelete} onOpenChange={() => setMemorandumToDelete(null)}>
-                <AlertDialogContent>
+                <AlertDialogContent className="w-[95vw]">
                     <AlertDialogHeader>
-                        <AlertDialogTitle>¿Eliminar documento oficial?</AlertDialogTitle>
-                        <AlertDialogDescription>Esta acción es irreversible y removerá el memorando de los registros históricos del trabajador.</AlertDialogDescription>
+                        <AlertDialogTitle>¿Eliminar documento?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-xs">Esta acción removerá el memorando de los registros históricos del trabajador permanentemente.</AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter>
+                    <AlertDialogFooter className="flex-col sm:flex-row gap-2">
                         <AlertDialogCancel>Cancelar</AlertDialogCancel>
                         <AlertDialogAction onClick={handleDeleteMemorandum} className="bg-destructive text-destructive-foreground font-bold">Eliminar permanentemente</AlertDialogAction>
                     </AlertDialogFooter>
