@@ -48,10 +48,13 @@ import {
     LoaderCircle, 
     CheckCircle, 
     Filter,
+    FileText,
+    CalendarIcon,
+    Clock
 } from 'lucide-react';
 import { MultiSelectCombobox } from '@/components/ui/multi-select-combobox';
 import type { UserProfile, Memorandum, MemorandumType } from '@/lib/types';
-import { cn } from '@/lib/utils';
+import { cn, normalizeText } from '@/lib/utils';
 
 const memorandumTypes: { value: MemorandumType; label: string }[] = [
     { value: "Memorando Informativo", label: "🔵 Memorando Informativo" },
@@ -66,7 +69,7 @@ const reasonsByType: Record<MemorandumType, string[]> = {
         "Abandono de puesto",
         "Incumplimiento de funciones",
         "No uso de uniforme o EPP",
-        "Uso indebido de celular en turno",
+        "Uso indebido de celular",
         "Falta de respeto",
         "Desobediencia a instrucciones",
         "Incumplimiento de procedimiento operativo",
@@ -89,10 +92,33 @@ const reasonsByType: Record<MemorandumType, string[]> = {
     ]
 };
 
-const templates: Record<MemorandumType, string> = {
-    "Memorando Informativo": "Por medio del presente se comunica al colaborador {NOMBRE}, quien desempeña el cargo de {CARGO}, que se recuerda el cumplimiento obligatorio de la disposición relacionada con {MOTIVO}, conforme lo establecen los lineamientos internos de la empresa.\n\nEsta comunicación tiene carácter informativo y preventivo, con la finalidad de garantizar la correcta prestación del servicio y el flujo de comunicación institucional.",
-    "Memorando de Llamado de Atención": "Se deja constancia que se ha evidenciado la siguiente novedad: {MOTIVO}.\n\nEsta conducta constituye un incumplimiento a los protocolos operativos vigentes, por lo que se emite el presente llamado de atención, exhortándole a corregir inmediatamente dicha situación y evitar reincidencias.\n\nSe advierte que la repetición de este tipo de conducta podrá derivar en medidas administrativas mayores conforme la normativa interna vigente.",
-    "Memorando de Reconocimiento": "La empresa reconoce y felicita al colaborador {NOMBRE}, quien ha demostrado un desempeño sobresaliente en {MOTIVO}.\n\nEste reconocimiento forma parte del sistema de gestión de talento humano y será registrado con orgullo en su expediente digital como muestra de su compromiso con la excelencia operativa."
+const templates: Record<string, string> = {
+    // Informativos
+    "Recordatorio de procedimiento": "Por medio del presente se comunica al colaborador que debe cumplir estrictamente el procedimiento operativo de control de accesos y registro en bitácora conforme lo establece la normativa interna vigente.\n\nLa presente comunicación tiene carácter informativo y preventivo.",
+    "Cambio de turno": "Se informa al colaborador que, a partir de la fecha indicada en el presente, su turno asignado será modificado conforme a la planificación operativa del puesto de servicio, con la finalidad de optimizar la cobertura de seguridad.",
+    "Cambio de puesto": "Se comunica que el colaborador será reasignado a un nuevo puesto de servicio, manteniendo sus funciones habituales y responsabilidades operativas, conforme a las necesidades institucionales de rotación de personal.",
+    "Nueva disposición interna": "Se informa la implementación de una nueva disposición interna relacionada con los protocolos de seguridad y registros obligatorios. El cumplimiento de esta disposición es de carácter inmediato y obligatorio para todo el personal asignado.",
+    "Convocatoria a capacitación": "Se convoca al colaborador a la sesión de capacitación obligatoria sobre protocolos de seguridad y actualización de procedimientos. La asistencia es fundamental para garantizar los estándares de calidad del servicio.",
+    
+    // Llamados de atención
+    "Atraso injustificado": "Se deja constancia que el colaborador registró un atraso injustificado en el turno asignado. Se exhorta al cumplimiento estricto del horario laboral conforme lo establece el Reglamento Interno.",
+    "Inasistencia injustificada": "Se deja constancia que el colaborador no asistió a su jornada laboral sin presentar la debida justificación previa, afectando la continuidad operativa del servicio.",
+    "Abandono de puesto": "Se evidenció que el colaborador abandonó su puesto de servicio durante el turno asignado sin la debida autorización del supervisor, lo cual constituye una falta grave a la seguridad del cliente.",
+    "Incumplimiento de funciones": "Se verificó el incumplimiento de las funciones asignadas relacionadas con la vigilancia, control de accesos y protección de activos, según lo estipulado en su manual de funciones.",
+    "No uso de uniforme o EPP": "Se constató que el colaborador no portaba correctamente el uniforme institucional o el equipo de protección personal durante su jornada laboral, incumpliendo los estándares de imagen y seguridad.",
+    "Uso indebido de celular": "Se observó el uso indebido de teléfono celular para fines personales durante el turno operativo, distrayendo la atención de las responsabilidades de vigilancia asignadas.",
+    "Falta de respeto": "Se registró una conducta inadecuada relacionada con falta de respeto hacia compañeros, superiores o usuarios, afectando el entorno laboral y la imagen institucional.",
+    "Desobediencia a instrucciones": "Se constató el incumplimiento de instrucciones directas e impartidas por el supervisor o jefe de área en relación a las operaciones de seguridad.",
+    "Incumplimiento de procedimiento operativo": "Se evidenció el no cumplimiento del procedimiento establecido para rondas, registros en bitácora y comunicación de novedades.",
+    "Entrega tardía de reporte": "Se verificó la entrega tardía del reporte diario o reporte de novedades correspondiente al turno asignado, dificultando la gestión administrativa del puesto.",
+    "Conducta inadecuada": "Se deja constancia de una conducta inapropiada que contraviene los principios institucionales y los valores de la empresa de seguridad.",
+    "Otro (requiere detalle adicional)": "Se deja constancia de una novedad disciplinaria u operativa detectada en el ejercicio de sus funciones, la cual se detalla a continuación.",
+
+    // Reconocimientos
+    "Cumplimiento destacado": "La empresa reconoce el desempeño destacado del colaborador en el cumplimiento de sus funciones, demostrando compromiso y excelencia en sus responsabilidades asignadas.",
+    "Buen desempeño operativo": "Se reconoce el compromiso y responsabilidad demostrados en el puesto asignado, destacando su profesionalismo en la ejecución de los protocolos de seguridad.",
+    "Actuación en emergencia": "Se reconoce la actuación oportuna, valiente y responsable del colaborador ante un evento de emergencia, garantizando la integridad de las personas y activos bajo su custodia.",
+    "Excelente trato al usuario": "Se reconoce la actitud profesional y el excelente trato brindado a los usuarios del servicio, reflejando positivamente los valores de servicio de nuestra institución."
 };
 
 export default function DocumentManagementPage() {
@@ -103,7 +129,9 @@ export default function DocumentManagementPage() {
     const [selectedType, setSelectedType] = useState<MemorandumType | "">("");
     const [selectedReason, setSelectedReason] = useState("");
     const [selectedUserIds, setSelectedWorkers] = useState<string[]>([]);
-    const [content, setContent] = useState("");
+    const [eventDate, setEventDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+    const [eventShift, setEventShift] = useState("");
+    const [additionalDetail, setAdditionalDetail] = useState("");
     const [isSaving, setIsSaving] = useState(false);
     
     // State for Lists/Filtering
@@ -120,28 +148,17 @@ export default function DocumentManagementPage() {
         return workers.find(w => w.email?.toLowerCase() === authUser.email?.toLowerCase());
     }, [authUser, workers]);
 
-    // Handle template update
-    useEffect(() => {
-        if (selectedType && selectedReason) {
-            let text = templates[selectedType as MemorandumType];
-            const workerNames = selectedUserIds.length === 1 
-                ? `${workers?.find(w => w.id === selectedUserIds[0])?.nombres} ${workers?.find(w => w.id === selectedUserIds[0])?.apellidos}`
-                : "los colaboradores seleccionados";
-            
-            const workerCargo = selectedUserIds.length === 1 
-                ? workers?.find(w => w.id === selectedUserIds[0])?.cargo
-                : "personal operativo";
-
-            text = text.replace(/{NOMBRE}/g, workerNames || "");
-            text = text.replace(/{CARGO}/g, workerCargo || "");
-            text = text.replace(/{MOTIVO}/g, selectedReason);
-            
-            setContent(text);
+    const generatedPreview = useMemo(() => {
+        if (!selectedReason) return "";
+        let text = templates[selectedReason] || "";
+        if (additionalDetail.trim()) {
+            text += `\n\nDetalles adicionales: ${additionalDetail}`;
         }
-    }, [selectedType, selectedReason, selectedUserIds, workers]);
+        return text;
+    }, [selectedReason, additionalDetail]);
 
     const handleIssueMemorandums = async () => {
-        if (!firestore || !currentUserProfile || !selectedType || !selectedReason || selectedUserIds.length === 0 || !content.trim()) {
+        if (!firestore || !currentUserProfile || !selectedType || !selectedReason || selectedUserIds.length === 0) {
             toast({ variant: 'destructive', title: 'Faltan datos', description: 'Por favor complete todos los campos requeridos.' });
             return;
         }
@@ -158,7 +175,8 @@ export default function DocumentManagementPage() {
             const worker = workers?.find(w => w.id === workerId);
             if (!worker) return;
 
-            const code = `MEM-${worker.empresa?.slice(0,3).toUpperCase() || 'SEG'}-${year}-${String(nextId + index).padStart(4, '0')}`;
+            const empresaAbbr = worker.empresa?.slice(0,3).toUpperCase() || 'SEG';
+            const code = `MEM-${empresaAbbr}-${year}-${String(nextId + index).padStart(4, '0')}`;
             const newDoc = doc(memoRef);
             
             const memoData: Omit<Memorandum, 'id'> = {
@@ -171,7 +189,7 @@ export default function DocumentManagementPage() {
                 issuerId: currentUserProfile.id,
                 issuerName: `${currentUserProfile.nombres} ${currentUserProfile.apellidos}`,
                 issuerCargo: currentUserProfile.cargo,
-                content: content,
+                content: generatedPreview,
                 status: "issued",
                 createdAt: now,
             };
@@ -180,11 +198,11 @@ export default function DocumentManagementPage() {
 
         try {
             await batch.commit();
-            toast({ title: 'Memorandos Emitidos', description: `Se han generado y notificado ${selectedUserIds.length} documentos.` });
+            toast({ title: 'Documentos Emitidos', description: `Se han generado ${selectedUserIds.length} memorandos oficialmente.` });
             setSelectedType("");
             setSelectedReason("");
             setSelectedWorkers([]);
-            setContent("");
+            setAdditionalDetail("");
             setActiveTab("history");
         } catch (error) {
             console.error(error);
@@ -222,14 +240,14 @@ export default function DocumentManagementPage() {
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight">Gestión Documental</h1>
-                    <p className="text-muted-foreground">Emisión y control de memorandos y comunicaciones oficiales.</p>
+                    <p className="text-muted-foreground">Emisión y control de memorandos institucionales.</p>
                 </div>
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="grid w-full grid-cols-2 max-w-sm">
                     <TabsTrigger value="create">Crear Memorando</TabsTrigger>
-                    <TabsTrigger value="history">Historial de Emisiones</TabsTrigger>
+                    <TabsTrigger value="history">Historial</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="create" className="mt-6">
@@ -270,51 +288,84 @@ export default function DocumentManagementPage() {
                                 <div className="space-y-2">
                                     <Label>Destinatario(s)</Label>
                                     <MultiSelectCombobox 
-                                        options={workers?.filter(w => w.Status === 'active').map(w => ({ label: `${w.apellidos} ${w.nombres} (${w.ubicacion})`, value: w.id })) || []}
+                                        options={workers?.filter(w => w.Status === 'active').map(w => ({ label: `${w.apellidos} ${w.nombres} (${w.ubicacion || 'Sin puesto'})`, value: w.id })) || []}
                                         selected={selectedUserIds}
                                         onChange={setSelectedWorkers}
                                         placeholder="Seleccionar personal..."
                                     />
-                                    <p className="text-[10px] text-muted-foreground italic">Puedes seleccionar varios para comunicados masivos.</p>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="space-y-2">
+                                        <Label>Fecha Evento</Label>
+                                        <Input type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Turno</Label>
+                                        <Input placeholder="Ej: D12" value={eventShift} onChange={(e) => setEventShift(e.target.value.toUpperCase())} />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label>Detalle Adicional (Opcional)</Label>
+                                    <Textarea 
+                                        placeholder="Contexto adicional que se agregará al texto base..."
+                                        value={additionalDetail}
+                                        onChange={(e) => setAdditionalDetail(e.target.value)}
+                                        className="h-24"
+                                    />
                                 </div>
                             </CardContent>
                         </Card>
 
                         <Card className="lg:col-span-2">
                             <CardHeader className="bg-slate-50 border-b">
-                                <div className="flex justify-between items-center">
-                                    <CardTitle className="text-lg">Redacción del Documento</CardTitle>
-                                    <Badge variant="outline">MEM-2025-XXXX</Badge>
+                                <div className="text-center space-y-1">
+                                    <h3 className="font-black text-slate-900 uppercase">
+                                        EMPRESA DE SEGURIDAD {selectedUserIds.length > 0 ? (workers?.find(w => w.id === selectedUserIds[0])?.empresa || 'XXXXX') : 'XXXXX'}
+                                    </h3>
+                                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Sistema de Gestión Documental – Performa</p>
                                 </div>
                             </CardHeader>
                             <CardContent className="pt-6">
-                                <div className="space-y-4">
-                                    <div className="flex flex-col gap-1">
-                                        <Label className="font-bold">Asunto:</Label>
-                                        <Input 
-                                            value={selectedType ? `${selectedType}: ${selectedReason}` : ''} 
-                                            readOnly 
-                                            className="bg-muted font-semibold"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label className="font-bold">Cuerpo del Documento:</Label>
-                                        <Textarea 
-                                            value={content}
-                                            onChange={(e) => setContent(e.target.value)}
-                                            placeholder="El contenido se generará automáticamente al seleccionar el tipo y motivo, pero puedes editarlo aquí..."
-                                            className="min-h-[300px] text-base leading-relaxed"
-                                        />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-8 pt-6 border-t italic text-sm text-muted-foreground">
-                                        <div>
-                                            <p className="font-bold border-b pb-1 mb-2">Emisor:</p>
-                                            <p>{currentUserProfile?.nombres} {currentUserProfile?.apellidos}</p>
-                                            <p>{currentUserProfile?.cargo}</p>
+                                <div className="space-y-6 max-w-2xl mx-auto font-serif text-slate-800">
+                                    <div className="flex justify-between text-sm">
+                                        <div className="space-y-1">
+                                            <p><span className="font-bold">Código:</span> MEM-2025-XXXX</p>
+                                            <p><span className="font-bold">Fecha:</span> {format(new Date(), "d 'de' MMMM 'de' yyyy", { locale: es })}</p>
                                         </div>
-                                        <div className="text-right">
-                                            <p className="font-bold border-b pb-1 mb-2">Receptor:</p>
-                                            <p>{selectedUserIds.length === 1 ? workers?.find(w => w.id === selectedUserIds[0])?.nombres + ' ' + workers?.find(w => w.id === selectedUserIds[0])?.apellidos : 'Selección Múltiple'}</p>
+                                    </div>
+
+                                    <div className="space-y-1 text-sm">
+                                        <p><span className="font-bold">PARA:</span> {selectedUserIds.length === 1 ? `${workers?.find(w => w.id === selectedUserIds[0])?.nombres} ${workers?.find(w => w.id === selectedUserIds[0])?.apellidos}` : (selectedUserIds.length > 1 ? 'PERSONAL SELECCIONADO' : '____________________')}</p>
+                                        <p><span className="font-bold">CARGO:</span> {selectedUserIds.length === 1 ? workers?.find(w => w.id === selectedUserIds[0])?.cargo : (selectedUserIds.length > 1 ? 'PERSONAL OPERATIVO' : '____________________')}</p>
+                                        <p><span className="font-bold">PUESTO:</span> {selectedUserIds.length === 1 ? workers?.find(w => w.id === selectedUserIds[0])?.ubicacion : '____________________'}</p>
+                                        <p><span className="font-bold">TURNO:</span> {eventShift || '____________________'}</p>
+                                    </div>
+
+                                    <div className="border-y py-2">
+                                        <p className="font-bold text-sm">ASUNTO: {selectedType ? `${selectedType} – ${selectedReason || '__________'}` : '____________________'}</p>
+                                    </div>
+
+                                    <div className="text-sm leading-relaxed whitespace-pre-wrap min-h-[200px]">
+                                        {selectedReason ? (
+                                            generatedPreview
+                                        ) : (
+                                            <div className="h-full flex items-center justify-center text-muted-foreground italic">
+                                                Seleccione un tipo y motivo para generar el contenido del documento.
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="pt-10 grid grid-cols-2 gap-12">
+                                        <div className="text-center border-t pt-2">
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase">Firma del Emisor</p>
+                                            <p className="font-bold text-xs mt-4">{currentUserProfile?.nombres} {currentUserProfile?.apellidos}</p>
+                                            <p className="text-[10px] text-muted-foreground">{currentUserProfile?.cargo}</p>
+                                        </div>
+                                        <div className="text-center border-t pt-2">
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase">Firma del Colaborador</p>
+                                            <p className="text-[10px] text-muted-foreground italic mt-4">Pendiente de firma</p>
                                         </div>
                                     </div>
                                 </div>
@@ -339,7 +390,7 @@ export default function DocumentManagementPage() {
                             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                                 <div>
                                     <CardTitle>Historial de Documentos</CardTitle>
-                                    <CardDescription>Visualiza y gestiona todos los memorandos emitidos por la administración.</CardDescription>
+                                    <CardDescription>Visualiza y gestiona todos los memorandos emitidos.</CardDescription>
                                 </div>
                                 <div className="relative w-full md:max-w-sm">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -367,17 +418,14 @@ export default function DocumentManagementPage() {
                                 </TableHeader>
                                 <TableBody>
                                     {memosLoading ? (
-                                        <TableRow><TableCell colSpan={7} className="h-24 text-center"><LoaderCircle className="animate-spin inline-block mr-2" /> Cargando historial...</TableCell></TableRow>
+                                        <TableRow><TableCell colSpan={7} className="h-24 text-center"><LoaderCircle className="animate-spin inline-block mr-2" /> Cargando...</TableCell></TableRow>
                                     ) : filteredMemos.length > 0 ? (
                                         filteredMemos.map(memo => (
                                             <TableRow key={memo.id}>
                                                 <TableCell className="font-bold">{memo.code}</TableCell>
                                                 <TableCell>{format(memo.createdAt, 'dd/MM/yyyy')}</TableCell>
                                                 <TableCell>
-                                                    <Badge variant="outline" className={cn(
-                                                        memo.type === 'Memorando de Llamado de Atención' ? 'border-amber-500 text-amber-700' :
-                                                        memo.type === 'Memorando de Reconocimiento' ? 'border-green-500 text-green-700' : ''
-                                                    )}>
+                                                    <Badge variant="outline">
                                                         {memo.type?.split(' ').pop()}
                                                     </Badge>
                                                 </TableCell>
@@ -398,11 +446,9 @@ export default function DocumentManagementPage() {
                                                     )}
                                                 </TableCell>
                                                 <TableCell className="text-right">
-                                                    <div className="flex justify-end gap-2">
-                                                        <Button variant="ghost" size="icon" onClick={() => setMemorandumToDelete(memo)}>
-                                                            <Trash2 className="h-4 w-4 text-destructive" />
-                                                        </Button>
-                                                    </div>
+                                                    <Button variant="ghost" size="icon" onClick={() => setMemorandumToDelete(memo)}>
+                                                        <Trash2 className="h-4 w-4 text-destructive" />
+                                                    </Button>
                                                 </TableCell>
                                             </TableRow>
                                         ))
@@ -419,12 +465,12 @@ export default function DocumentManagementPage() {
             <AlertDialog open={!!memoToDelete} onOpenChange={() => setMemorandumToDelete(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>¿Está seguro de eliminar este memorando?</AlertDialogTitle>
-                        <AlertDialogDescription>Esta acción es permanente y eliminará el documento del historial oficial y del expediente del trabajador.</AlertDialogDescription>
+                        <AlertDialogTitle>¿Eliminar este memorando?</AlertDialogTitle>
+                        <AlertDialogDescription>Esta acción es permanente y eliminará el documento oficial del historial.</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDeleteMemorandum} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Eliminar Definitivamente</AlertDialogAction>
+                        <AlertDialogAction onClick={handleDeleteMemorandum} className="bg-destructive text-destructive-foreground">Eliminar</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

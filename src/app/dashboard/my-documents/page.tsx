@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useCollection, useFirestore, useUser } from '@/firebase';
 import { collection, doc, updateDoc, query, where, orderBy } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
@@ -143,7 +143,7 @@ export default function MyDocumentsPage() {
                 signature: signature,
                 defense: defense.trim() || null
             });
-            toast({ title: 'Documento Firmado', description: 'El documento ha sido legalizado y archivado en tu expediente.' });
+            toast({ title: 'Documento Firmado', description: 'El documento ha sido legalizado y archivado.' });
             setIsSignModalOpen(false);
             setSelectedMemo(null);
             setDefense("");
@@ -160,7 +160,7 @@ export default function MyDocumentsPage() {
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight">Mis Documentos</h1>
-                    <p className="text-muted-foreground">Gestión de comunicaciones oficiales, memorandos y actas recibidas.</p>
+                    <p className="text-muted-foreground">Memorandos y comunicaciones oficiales recibidas.</p>
                 </div>
             </div>
 
@@ -201,7 +201,7 @@ export default function MyDocumentsPage() {
                 ) : (
                     <div className="col-span-full py-20 text-center space-y-4">
                         <FileText className="h-12 w-12 mx-auto text-muted-foreground opacity-20" />
-                        <p className="text-muted-foreground">No tienes documentos pendientes ni archivados.</p>
+                        <p className="text-muted-foreground">No tienes documentos pendientes.</p>
                     </div>
                 )}
             </div>
@@ -212,63 +212,53 @@ export default function MyDocumentsPage() {
                     {selectedMemo && (
                         <>
                             <DialogHeader>
-                                <div className="flex justify-between items-center pr-8">
-                                    <DialogTitle className="text-xl font-black uppercase italic tracking-tighter">
-                                        Documento Oficial: {selectedMemo.code}
-                                    </DialogTitle>
-                                    <Badge variant={selectedMemo.status === 'signed' ? 'default' : 'secondary'}>
-                                        {selectedMemo.status === 'signed' ? 'ARCHIVADO' : 'PENDIENTE DE FIRMA'}
-                                    </Badge>
+                                <div className="text-center space-y-1">
+                                    <h2 className="text-lg font-black text-slate-900 uppercase">
+                                        EMPRESA DE SEGURIDAD {currentUserProfile?.empresa || 'XXXXX'}
+                                    </h2>
+                                    <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest">Sistema de Gestión Documental – Performa</p>
                                 </div>
-                                <DialogDescription>
-                                    Emitido el {format(selectedMemo.createdAt, 'PPPP', { locale: es })}
-                                </DialogDescription>
                             </DialogHeader>
 
-                            <div className="py-6 space-y-8 bg-white p-8 border rounded-lg shadow-inner">
-                                <div className="grid grid-cols-2 gap-8 text-sm">
+                            <div className="py-6 space-y-6 bg-white p-8 border rounded-lg shadow-inner font-serif text-slate-800">
+                                <div className="flex justify-between text-sm">
                                     <div className="space-y-1">
-                                        <p className="text-xs font-bold text-slate-400 uppercase">Emisor</p>
-                                        <p className="font-bold text-primary">{selectedMemo.issuerName}</p>
-                                        <p className="text-muted-foreground text-xs">{selectedMemo.issuerCargo}</p>
-                                    </div>
-                                    <div className="text-right space-y-1">
-                                        <p className="text-xs font-bold text-slate-400 uppercase">Destinatario</p>
-                                        <p className="font-bold">{selectedMemo.targetUserName}</p>
-                                        <p className="text-muted-foreground text-xs">{selectedMemo.targetUserCargo}</p>
+                                        <p><span className="font-bold">Código:</span> {selectedMemo.code}</p>
+                                        <p><span className="font-bold">Fecha:</span> {format(selectedMemo.createdAt, "d 'de' MMMM 'de' yyyy", { locale: es })}</p>
                                     </div>
                                 </div>
 
-                                <Separator />
-
-                                <div className="space-y-4">
-                                    <p className="font-bold underline uppercase tracking-widest text-xs">Asunto: {selectedMemo.type} - {selectedMemo.reason}</p>
-                                    <div className="text-base leading-relaxed text-slate-800 whitespace-pre-wrap font-serif">
-                                        {selectedMemo.content}
-                                    </div>
+                                <div className="space-y-1 text-sm">
+                                    <p><span className="font-bold">PARA:</span> {selectedMemo.targetUserName}</p>
+                                    <p><span className="font-bold">CARGO:</span> {selectedMemo.targetUserCargo}</p>
+                                    <p><span className="font-bold">PUESTO:</span> {currentUserProfile?.ubicacion || 'N/A'}</p>
                                 </div>
 
-                                {selectedMemo.signedAt && (
-                                    <div className="pt-10 border-t space-y-6">
-                                        <div className="grid grid-cols-2 gap-12 items-end">
-                                            <div className="text-center space-y-2">
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase">Firma del Colaborador</p>
-                                                {selectedMemo.signature && (
-                                                    <div className="bg-slate-50 border rounded p-2 h-24 flex items-center justify-center">
-                                                        <img src={selectedMemo.signature} alt="Firma" className="max-h-full object-contain" />
-                                                    </div>
-                                                )}
-                                                <p className="text-[10px] font-medium">{format(selectedMemo.signedAt, 'dd/MM/yyyy HH:mm')}</p>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase">Descargo / Comentario</p>
-                                                <div className="bg-slate-50 border rounded p-3 min-h-[96px] text-xs italic">
-                                                    {selectedMemo.defense || "Sin comentarios adicionales registrados."}
-                                                </div>
-                                            </div>
-                                        </div>
+                                <div className="border-y py-2">
+                                    <p className="font-bold text-sm">ASUNTO: {selectedMemo.type} – {selectedMemo.reason}</p>
+                                </div>
+
+                                <div className="text-sm leading-relaxed whitespace-pre-wrap min-h-[200px]">
+                                    {selectedMemo.content}
+                                </div>
+
+                                <div className="pt-10 grid grid-cols-2 gap-12">
+                                    <div className="text-center border-t pt-2">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase">Firma del Emisor</p>
+                                        <p className="font-bold text-xs mt-4">{selectedMemo.issuerName}</p>
+                                        <p className="text-[10px] text-muted-foreground">{selectedMemo.issuerCargo}</p>
                                     </div>
-                                )}
+                                    <div className="text-center border-t pt-2">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase">Firma del Colaborador</p>
+                                        {selectedMemo.signature ? (
+                                            <div className="h-12 flex items-center justify-center mt-2">
+                                                <img src={selectedMemo.signature} alt="Firma" className="max-h-full" />
+                                            </div>
+                                        ) : (
+                                            <p className="text-[10px] text-muted-foreground italic mt-4">Pendiente de firma</p>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
 
                             <DialogFooter className="pt-6 border-t mt-6">
@@ -290,7 +280,7 @@ export default function MyDocumentsPage() {
                     <DialogHeader>
                         <DialogTitle>Certificación Digital de Firma</DialogTitle>
                         <DialogDescription>
-                            Al firmar, usted confirma que ha leído y comprendido el contenido del documento. Puede incluir un descargo escrito si lo considera necesario.
+                            Al firmar, usted confirma que ha leído y comprendido el contenido del documento oficial.
                         </DialogDescription>
                     </DialogHeader>
                     
@@ -298,7 +288,7 @@ export default function MyDocumentsPage() {
                         <div className="space-y-2">
                             <Label>Descargo / Comentarios (Opcional)</Label>
                             <Textarea 
-                                placeholder="Escriba aquí su respuesta o aclaración respecto al memorando..."
+                                placeholder="Escriba aquí su respuesta o aclaración si lo desea..."
                                 value={defense}
                                 onChange={(e) => setDefense(e.target.value)}
                                 className="min-h-[100px]"
