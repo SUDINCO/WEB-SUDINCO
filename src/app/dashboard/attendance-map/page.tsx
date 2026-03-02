@@ -13,6 +13,7 @@ import { format, startOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Calendar as CalendarIcon, LoaderCircle, Search, MapPin } from 'lucide-react';
 import type { WorkLocation, AttendanceRecord, LocationReport, UserProfile } from '@/lib/types';
+import type { RecordWithUser } from '@/components/map/attendance-map';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
@@ -68,7 +69,7 @@ export default function AttendanceMapPage() {
     return { cargoOptions: cargos, colaboradorOptions: colaboradores };
   }, [allUsers, cargoFilter]);
 
-  const filteredData = useMemo(() => {
+  const filteredData = useMemo((): RecordWithUser[] => {
     const selectedDateStr = format(date, 'yyyy-MM-dd');
     if (!allUsers) return [];
 
@@ -83,7 +84,7 @@ export default function AttendanceMapPage() {
             return {
                 ...rec,
                 userCargo: user?.cargo || 'N/A',
-                userName: user ? `${user.nombres} ${user.apellidos}` : ('userName' in rec ? rec.userName : 'Desconocido'),
+                userName: user ? `${user.nombres} ${user.apellidos}` : 'Desconocido',
                 userPhotoUrl: user?.photoUrl,
                 initials: user ? `${user.nombres?.[0] || ''}${user.apellidos?.[0] || ''}` : 'U'
             };
@@ -91,7 +92,7 @@ export default function AttendanceMapPage() {
             const cargoMatch = cargoFilter === 'todos' || rec.userCargo === cargoFilter;
             const colaboradorMatch = colaboradorFilter === 'todos' || rec.collaboratorId === colaboradorFilter;
             return cargoMatch && colaboradorMatch;
-        });
+        }) as RecordWithUser[];
 
     } else { // 'reports'
         const reportsForDay = allReports?.filter(report => {
@@ -112,7 +113,7 @@ export default function AttendanceMapPage() {
             const cargoMatch = cargoFilter === 'todos' || rec.userCargo === cargoFilter;
             const colaboradorMatch = colaboradorFilter === 'todos' || rec.userId === colaboradorFilter;
             return cargoMatch && colaboradorMatch;
-        });
+        }) as RecordWithUser[];
     }
 }, [date, viewType, allAttendance, allReports, allUsers, cargoFilter, colaboradorFilter]);
 

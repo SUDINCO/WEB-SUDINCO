@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -46,7 +47,7 @@ function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
     return R * c;
 }
 
-type RecordWithUser = (AttendanceRecord | LocationReport) & {
+export type RecordWithUser = (AttendanceRecord | LocationReport) & {
     userName?: string;
     userCargo?: string;
     userPhotoUrl?: string;
