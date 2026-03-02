@@ -8,7 +8,6 @@ import {
   Menu,
   ChevronDown,
   LoaderCircle,
-  MessageSquare,
   Bell,
   User,
   Shield,
@@ -33,7 +32,7 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@/components/ui/accordion";
+} from "@/components/accordion";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth, useUser, useCollection, useFirestore } from "@/firebase";
@@ -163,11 +162,12 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     }).filter(module => (module.sublinks && module.sublinks.length > 0) || (module.groups && module.groups.length > 0));
   }, [userProfile, userRole]);
 
-  // Birthday notifications logic
-  const monthBirthdays = useMemo(() => {
+  // Birthday notifications logic - ONLY TODAY
+  const todayBirthdays = useMemo(() => {
     if (!users) return [];
     const today = new Date();
     const currentMonth = today.getMonth();
+    const currentDay = today.getDate();
 
     return users
       .filter(u => u.Status === 'active' && u.fechaNacimiento)
@@ -180,9 +180,10 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         }
       })
       .filter((u): u is UserProfile & { birthDate: Date } => 
-        u.birthDate !== null && u.birthDate.getMonth() === currentMonth
-      )
-      .sort((a, b) => a.birthDate.getDate() - b.birthDate.getDate());
+        u.birthDate !== null && 
+        u.birthDate.getMonth() === currentMonth &&
+        u.birthDate.getDate() === currentDay
+      );
   }, [users]);
 
   // Notifications (Tasks) logic
@@ -343,40 +344,37 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" className="header-icon-btn">
                         <Cake />
-                        {monthBirthdays.length > 0 && <span className="badge bg-accent text-accent-foreground">{monthBirthdays.length}</span>}
+                        {todayBirthdays.length > 0 && <span className="badge bg-accent text-accent-foreground">{todayBirthdays.length}</span>}
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-72">
                       <DropdownMenuLabel className="flex items-center gap-2">
                         <Gift className="h-4 w-4 text-accent" />
-                        Celebraciones del Mes
+                        Cumpleaños de Hoy
                       </DropdownMenuLabel>
                       <DropdownMenuSeparator />
-                      {monthBirthdays.length > 0 ? (
+                      {todayBirthdays.length > 0 ? (
                         <div className="max-h-80 overflow-y-auto">
-                          {monthBirthdays.map((bday) => {
-                            const isTodayBday = isSameDay(bday.birthDate, new Date());
-                            return (
-                              <DropdownMenuItem key={bday.id} className="flex items-center gap-3 py-3">
-                                <Avatar className={cn("h-9 w-9 border-2", isTodayBday ? "border-accent" : "border-transparent")}>
-                                  <AvatarImage src={bday.photoUrl} />
-                                  <AvatarFallback>{bday.nombres[0]}</AvatarFallback>
-                                </Avatar>
-                                <div className="flex flex-col min-w-0">
-                                  <span className={cn("text-xs font-bold truncate", isTodayBday && "text-accent")}>
-                                    {isTodayBday && "🎂 "}{bday.nombres} {bday.apellidos}
-                                  </span>
-                                  <span className="text-[10px] text-muted-foreground">
-                                    {isTodayBday ? "¡Hoy es su cumpleaños!" : format(bday.birthDate, "d 'de' MMMM", { locale: es })}
-                                  </span>
-                                </div>
-                              </DropdownMenuItem>
-                            );
-                          })}
+                          {todayBirthdays.map((bday) => (
+                            <DropdownMenuItem key={bday.id} className="flex items-center gap-3 py-3">
+                              <Avatar className="h-9 w-9 border-2 border-accent">
+                                <AvatarImage src={bday.photoUrl} />
+                                <AvatarFallback>{bday.nombres[0]}</AvatarFallback>
+                              </Avatar>
+                              <div className="flex flex-col min-w-0">
+                                <span className="text-xs font-bold truncate text-accent">
+                                  🎂 {bday.nombres} {bday.apellidos}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground">
+                                  ¡Hoy está de cumpleaños!
+                                </span>
+                              </div>
+                            </DropdownMenuItem>
+                          ))}
                         </div>
                       ) : (
                         <div className="py-6 text-center text-xs text-muted-foreground">
-                          No hay cumpleaños registrados este mes.
+                          No hay cumpleaños el día de hoy.
                         </div>
                       )}
                     </DropdownMenuContent>
