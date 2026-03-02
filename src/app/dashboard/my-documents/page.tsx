@@ -255,20 +255,24 @@ export default function MyDocumentsPage() {
 
                                 <div className="pt-10 grid grid-cols-2 gap-12">
                                     <div className="text-center border-t pt-2">
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase">Firma del Emisor</p>
-                                        <div className="h-16 flex flex-col items-center justify-center mt-2">
-                                            <p className="font-bold text-[11px] text-primary">{selectedMemo.issuerName}</p>
-                                            <p className="text-[9px] text-muted-foreground uppercase">{selectedMemo.issuerCargo}</p>
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Firma del Emisor</p>
+                                        <div className="h-24 flex flex-col items-center justify-center mt-1">
                                             {selectedMemo.issuerSignature && (
-                                                <img src={selectedMemo.issuerSignature} alt="Firma Emisor" className="h-10 mt-1 opacity-80" />
+                                                <img src={selectedMemo.issuerSignature} alt="Firma Emisor" className="h-12 mb-1 opacity-90" />
                                             )}
+                                            <p className="font-bold text-[11px] text-primary leading-tight">{selectedMemo.issuerName}</p>
+                                            <p className="text-[9px] text-muted-foreground uppercase leading-tight">{selectedMemo.issuerCargo}</p>
                                         </div>
                                     </div>
                                     <div className="text-center border-t pt-2">
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase">Firma del Colaborador</p>
-                                        <div className="h-16 flex items-center justify-center mt-2">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Firma del Colaborador</p>
+                                        <div className="h-24 flex flex-col items-center justify-center mt-1">
                                             {selectedMemo.signature ? (
-                                                <img src={selectedMemo.signature} alt="Firma Colaborador" className="max-h-full" />
+                                                <>
+                                                    <img src={selectedMemo.signature} alt="Firma Colaborador" className="h-12 mb-1 opacity-90" />
+                                                    <p className="font-bold text-[11px] text-primary leading-tight">{selectedMemo.targetUserName}</p>
+                                                    <p className="text-[9px] text-muted-foreground uppercase leading-tight">{selectedMemo.targetUserCargo}</p>
+                                                </>
                                             ) : (
                                                 selectedMemo.type === "Memorando de Llamado de Atención" ? (
                                                     <p className="text-[10px] text-muted-foreground italic mt-4">Pendiente de firma</p>

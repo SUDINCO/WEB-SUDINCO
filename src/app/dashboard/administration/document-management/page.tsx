@@ -598,13 +598,13 @@ export default function DocumentManagementPage() {
 
                                     <div className="pt-10 grid grid-cols-2 gap-12">
                                         <div className="text-center border-t pt-2">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase">Firma del Emisor</p>
-                                            <div className="h-16 flex flex-col items-center justify-center">
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Firma del Emisor</p>
+                                            <div className="h-24 flex flex-col items-center justify-center">
                                                 {isLocked ? (
                                                     <>
-                                                        <p className="font-bold text-[11px] text-primary">{currentUserProfile?.nombres} {currentUserProfile?.apellidos}</p>
-                                                        <p className="text-[9px] text-muted-foreground uppercase">{currentUserProfile?.cargo}</p>
-                                                        <img src={canvasRef.current?.toDataURL()} alt="Firma Emisor" className="h-10 mt-1 opacity-80" />
+                                                        <img src={canvasRef.current?.toDataURL()} alt="Firma Emisor" className="h-12 mb-1 opacity-90" />
+                                                        <p className="font-bold text-[11px] text-primary leading-tight">{currentUserProfile?.nombres} {currentUserProfile?.apellidos}</p>
+                                                        <p className="text-[9px] text-muted-foreground uppercase leading-tight">{currentUserProfile?.cargo}</p>
                                                     </>
                                                 ) : (
                                                     <p className="text-[10px] text-muted-foreground italic">Pendiente de certificación</p>
@@ -612,8 +612,8 @@ export default function DocumentManagementPage() {
                                             </div>
                                         </div>
                                         <div className="text-center border-t pt-2">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase">Firma del Colaborador</p>
-                                            <div className="h-16 flex items-center justify-center">
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Firma del Colaborador</p>
+                                            <div className="h-24 flex items-center justify-center">
                                                 {selectedType === "Memorando de Llamado de Atención" ? (
                                                     <p className="text-[10px] text-muted-foreground italic">Pendiente de firma</p>
                                                 ) : (
