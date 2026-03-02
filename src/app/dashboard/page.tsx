@@ -101,6 +101,7 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
+  AlertDialogDescription,
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogFooter,
@@ -201,7 +202,7 @@ const formatTimestamp = (timestamp: Publication['createdAt']) => {
     } else if (timestamp && typeof timestamp.seconds === 'number') {
         date = new Date(timestamp.seconds * 1000);
     } else {
-        return '';
+        return false;
     }
     return formatDistanceToNow(date, { addSuffix: true, locale: es });
 }
