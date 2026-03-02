@@ -13,6 +13,9 @@ import {
   Bell,
   User,
   Shield,
+  FileSignature,
+  Eye,
+  CheckCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,7 +35,8 @@ import {
 } from "@/components/ui/accordion";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
-import { useAuth, useUser } from "@/firebase";
+import { useAuth, useUser, useCollection, useFirestore } from "@/firebase";
+import { collection } from "firebase/firestore";
 import { signOut } from "firebase/auth";
 import { toast } from "@/hooks/use-toast";
 import { BottomNav } from "@/components/dashboard/bottom-nav";
@@ -43,6 +47,7 @@ import { UserProfileProvider, useUserProfile } from '@/context/user-profile-cont
 import { allNavLinks } from '@/lib/nav-links';
 import { useRecentLinks } from '@/hooks/use-recent-links';
 import { PrivacyConsentModal } from "@/components/PrivacyConsentModal";
+import type { HiringApproval, PerformanceEvaluation } from "@/lib/types";
 
 const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes
 
@@ -56,7 +61,12 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const { user, loading: userLoading } = useUser();
   const { userProfile, userRole, isLoading: profileLoading } = useUserProfile();
   const auth = useAuth();
+  const firestore = useFirestore();
   const inactivityTimer = useRef<NodeJS.Timeout>();
+
+  // Fetch collections for notifications (Tasks)
+  const { data: approvals } = useCollection<HiringApproval>(useMemo(() => firestore ? collection(firestore, 'hiringApprovals') : null, [firestore]));
+  const { data: evaluations } = useCollection<PerformanceEvaluation>(useMemo(() => firestore ? collection(firestore, 'performanceEvaluations') : null, [firestore]));
 
   const isLoading = userLoading || profileLoading;
 
@@ -148,6 +158,41 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
       return { ...module, sublinks: accessibleSublinks };
     }).filter(module => (module.sublinks && module.sublinks.length > 0) || (module.groups && module.groups.length > 0));
   }, [userProfile, userRole]);
+
+  // Notifications (Tasks) logic
+  const tasks = useMemo(() => {
+    if (!userProfile || !userProfile.email) return [];
+    
+    const userEmailLower = userProfile.email.toLowerCase();
+
+    const approvalTasks = (approvals || [])
+      .filter(app => {
+          if (app.status === 'pending' && app.jefeInmediatoEmail?.toLowerCase() === userEmailLower) {
+              return true;
+          }
+          if (app.status === 'approved-boss' && userProfile.cargo === 'DIRECTOR DE RECURSOS HUMANOS') {
+              return true;
+          }
+          return false;
+      })
+      .map(app => ({
+        id: `approval-${app.id}`,
+        icon: FileSignature,
+        title: `Aprobar contratación: ${app.processInfo?.cargo || 'Puesto'}`,
+        href: '/dashboard/approvals'
+      }));
+
+    const observationTasks = (evaluations || [])
+      .filter(ev => ev.observerStatus === 'pending' && ev.observerEmail?.toLowerCase() === userEmailLower)
+      .map(ev => ({
+        id: `eval-${ev.id}`,
+        icon: Eye,
+        title: `Revisar evaluación de colaborador`,
+        href: '/dashboard/observed-evaluations'
+      }));
+
+    return [...approvalTasks, ...observationTasks];
+  }, [userProfile, approvals, evaluations]);
   
   const activeModule = useMemo(() => navLinks.find(module =>
     (module.sublinks && module.sublinks.some(sublink => isActive(sublink.href))) ||
@@ -270,9 +315,38 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                   <Button variant="ghost" className="header-icon-btn">
                     <MessageSquare />
                   </Button>
-                  <Button variant="ghost" className="header-icon-btn">
-                    <Bell />
-                  </Button>
+                  
+                  {/* Notifications Mobile */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" className="header-icon-btn">
+                        <Bell />
+                        {tasks.length > 0 && <span className="badge">{tasks.length}</span>}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-72">
+                      <DropdownMenuLabel>Notificaciones</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      {tasks.length > 0 ? (
+                        <div className="max-h-80 overflow-y-auto">
+                          {tasks.map((task) => (
+                            <DropdownMenuItem key={task.id} asChild>
+                              <Link href={task.href} className="flex items-start gap-3 py-3 cursor-pointer">
+                                <task.icon className="h-5 w-5 mt-0.5 text-primary shrink-0" />
+                                <span className="text-xs leading-tight font-medium">{task.title}</span>
+                              </Link>
+                            </DropdownMenuItem>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="py-6 text-center text-xs text-muted-foreground flex flex-col items-center gap-2">
+                          <CheckCircle className="h-8 w-8 text-green-500/50" />
+                          No tienes tareas pendientes.
+                        </div>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" className="header-icon-btn p-0 h-9 w-9">
@@ -341,6 +415,39 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
             </div>
 
             <div className="flex items-center gap-4">
+              {/* Notifications Desktop */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-10 w-10 rounded-full text-white hover:bg-white/10">
+                    <Bell className="h-5 w-5" />
+                    {tasks.length > 0 && (
+                      <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-primary" />
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-80">
+                  <DropdownMenuLabel>Tareas Pendientes</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {tasks.length > 0 ? (
+                    <div className="max-h-96 overflow-y-auto">
+                      {tasks.map((task) => (
+                        <DropdownMenuItem key={task.id} asChild>
+                          <Link href={task.href} className="flex items-start gap-3 py-3 cursor-pointer">
+                            <task.icon className="h-5 w-5 mt-0.5 text-primary shrink-0" />
+                            <span className="text-sm font-medium leading-tight">{task.title}</span>
+                          </Link>
+                        </DropdownMenuItem>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="py-8 text-center text-sm text-muted-foreground flex flex-col items-center gap-2">
+                      <CheckCircle className="h-10 w-10 text-green-500/50" />
+                      No tienes tareas pendientes.
+                    </div>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="flex items-center gap-2 text-white hover:bg-primary-foreground/10 hover:text-white px-3 py-2 h-auto text-base rounded-md">
