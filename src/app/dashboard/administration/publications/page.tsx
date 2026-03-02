@@ -74,15 +74,15 @@ type Publication = {
 };
 
 const publicationCategories = [
-    { value: 'Anuncio / Comunicado', label: '📣 Anuncio / Comunicado', icon: Megaphone },
-    { value: 'Galería', label: '📸 Galería', icon: Camera },
-    { value: 'Información', label: '💡 Información', icon: Info },
-    { value: 'Celebración', label: '🎉 Celebración', icon: Gift },
-    { value: 'Logro / Reconocimiento', label: '🏆 Logro / Reconocimiento', icon: Award },
-    { value: 'Aviso Importante', label: '📢 Aviso Importante', icon: AlertTriangle },
-    { value: 'Agenda', label: '📅 Agenda', icon: CalendarIcon },
-    { value: 'Resultados / Indicadores', label: '📈 Resultados / Indicadores', icon: BarChart },
-    { value: 'Marketplace', label: '🛍️ Marketplace', icon: Rss },
+    { value: 'Anuncio / Comunicado', label: 'Anuncio / Comunicado', icon: Megaphone },
+    { value: 'Galería', label: 'Galería', icon: Camera },
+    { value: 'Información', label: 'Información', icon: Info },
+    { value: 'Celebración', label: 'Celebración', icon: Gift },
+    { value: 'Logro / Reconocimiento', label: 'Logro / Reconocimiento', icon: Award },
+    { value: 'Aviso Importante', label: 'Aviso Importante', icon: AlertTriangle },
+    { value: 'Agenda', label: 'Agenda', icon: CalendarIcon },
+    { value: 'Resultados / Indicadores', label: 'Resultados / Indicadores', icon: BarChart },
+    { value: 'Marketplace', label: 'Marketplace', icon: Rss },
 ];
 
 const formatTimestamp = (timestamp: Publication['createdAt']) => {
