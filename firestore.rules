@@ -19,17 +19,20 @@ service cloud.firestore {
     }
 
     function isMaster() {
-      return isSignedIn() && (request.auth.token.email == 'master@sudinco.com' || request.auth.token.email == 'jaespinoza@sudinco.com');
+      return isSignedIn() && (
+        request.auth.token.email == 'master@sudinco.com' || 
+        request.auth.token.email == 'jaespinoza@sudinco.com'
+      );
     }
 
     function isMasterOrAdmin() {
       if (isMaster()) return true;
       if (!isSignedIn()) return false;
       
-      // Validación especial para administrador principal
+      // Validación especial para administradores principales
       if (request.auth.token.email == 'jaespinoza@sudinco.com') return true;
       
-      // Verificación de rol en el documento del usuario
+      // Verificación de rol en el documento del usuario (si existe)
       if (!exists(/databases/$(database)/documents/users/$(request.auth.uid))) return false;
       let userData = getUserData();
       return userData.rol == 'MASTER' || userData.rol == 'ADMINISTRADOR';
@@ -64,7 +67,12 @@ service cloud.firestore {
     // PERFORMANCE EVALUATIONS: 
     match /performanceEvaluations/{evaluationId} {
       allow create: if isSignedIn();
-      allow read: if isSignedIn() && (resource.data.workerId == request.auth.uid || resource.data.evaluatorId == request.auth.uid || resource.data.observerEmail == request.auth.token.email || isMasterOrAdmin());
+      allow read: if isSignedIn() && (
+        resource.data.workerId == request.auth.uid || 
+        resource.data.evaluatorId == request.auth.uid || 
+        resource.data.observerEmail == request.auth.token.email || 
+        isMasterOrAdmin()
+      );
       allow update: if isMasterOrAdmin() || (isSignedIn() && (
         request.auth.token.email == resource.data.observerEmail ||
         (request.auth.uid == resource.data.evaluatorId && resource.data.observerStatus == 'review_requested')
@@ -76,14 +84,18 @@ service cloud.firestore {
     match /vacationRequests/{requestId} {
         allow create: if isMasterOrAdmin() || (isSignedIn() && request.resource.data.userId == request.auth.uid);
         allow get: if isMasterOrAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
-        allow list: if isSignedIn();
+        allow list: if isSignedIn() && (isMasterOrAdmin() || resource.data.userId == request.auth.uid);
         allow update: if isMasterOrAdmin() || (isOwner(resource.data.userId) && resource.data.status == 'pending');
         allow delete: if isMasterOrAdmin() || isOwner(resource.data.userId);
     }
 
-    // MEMORANDUMS: Gestión documental con permisos jerárquicos.
+    // MEMORANDUMS: Gestión documental con permisos estrictos por UID.
     match /memorandums/{memoId} {
-      allow read: if isSignedIn() && (resource.data.targetUserId == request.auth.uid || resource.data.issuerId == request.auth.uid || isMasterOrAdmin());
+      allow read: if isSignedIn() && (
+        resource.data.targetUserId == request.auth.uid || 
+        resource.data.issuerId == request.auth.uid || 
+        isMasterOrAdmin()
+      );
       allow create: if isMasterOrAdmin();
       allow update: if isSignedIn() && (
         (isMasterOrAdmin()) || 
