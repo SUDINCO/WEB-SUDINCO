@@ -50,7 +50,9 @@ import {
     Filter,
     Save,
     Edit3,
-    Sparkles
+    Sparkles,
+    Users,
+    UserMinus
 } from 'lucide-react';
 import { Combobox } from '@/components/ui/combobox';
 import type { UserProfile, Memorandum, MemorandumType, SavedSchedule } from '@/lib/types';
@@ -97,7 +99,7 @@ const DEFAULT_TEMPLATES: Record<string, string> = {
     "Convocatoria a capacitación": "Se convoca al colaborador a la sesión de capacitación obligatoria sobre protocolos de seguridad y actualización de procedimientos. La asistencia es fundamental para garantizar los estándares de calidad del servicio.",
     
     // Llamados de atención
-    "Atraso injustificado": "Se deja constancia que el colaborador registró un atraso injustificado en el turno asignado. Se exhorta al cumplimiento estricto del horario laboral conforme lo establece el Reglamento Interno.",
+    "Atraso injustificado": "Se deja constancia que el colaborador registró un atraso injustificado el día {FECHA_EVENTO} durante el turno {TURNO}.\n\nEsta conducta constituye un incumplimiento a las obligaciones laborales establecidas en el Reglamento Interno de la empresa.\n\nSe emite el presente llamado de atención con la finalidad de prevenir futuras reincidencias y exhortar al cumplimiento estricto del horario asignado.",
     "Inasistencia injustificada": "Se deja constancia que el colaborador no asistió a su jornada laboral sin presentar la debida justificación previa, afectando la continuidad operativa del servicio.",
     "Abandono de puesto": "Se evidenció que el colaborador abandonó su puesto de servicio durante el turno asignado sin la debida autorización del supervisor, lo cual constituye una falta grave a la seguridad del cliente.",
     "Incumplimiento de funciones": "Se verificó el incumplimiento de las funciones asignadas relacionadas con la vigilancia, control de accesos y protección de activos, según lo estipulado en su manual de funciones.",
@@ -125,6 +127,7 @@ export default function DocumentManagementPage() {
     const [selectedType, setSelectedType] = useState<MemorandumType | "">("");
     const [selectedReason, setSelectedReason] = useState("");
     const [selectedUserId, setSelectedUserId] = useState<string>("");
+    const [isGeneralSelection, setIsGeneralSelection] = useState(false);
     const [eventDate, setEventDate] = useState(format(new Date(), 'yyyy-MM-dd'));
     const [eventShift, setEventShift] = useState("");
     const [editableContent, setEditableContent] = useState("");
@@ -216,8 +219,13 @@ export default function DocumentManagementPage() {
     };
 
     const handleIssueMemorandums = async () => {
-        if (!firestore || !currentUserProfile || !selectedType || !selectedReason || !selectedUserId) {
+        if (!firestore || !currentUserProfile || !selectedType || !selectedReason) {
             toast({ variant: 'destructive', title: 'Faltan datos', description: 'Por favor complete todos los campos requeridos.' });
+            return;
+        }
+
+        if (!isGeneralSelection && !selectedUserId) {
+            toast({ variant: 'destructive', title: 'Falta destinatario', description: 'Por favor seleccione un trabajador.' });
             return;
         }
 
@@ -227,40 +235,48 @@ export default function DocumentManagementPage() {
         const now = Date.now();
         const currentYear = new Date().getFullYear();
         
-        const nextId = (memorandums?.length || 0) + 1;
+        let targetWorkers = [];
+        if (isGeneralSelection) {
+            targetWorkers = workers?.filter(w => w.Status === 'active') || [];
+        } else {
+            const singleWorker = workers?.find(w => w.id === selectedUserId);
+            if (singleWorker) targetWorkers = [singleWorker];
+        }
 
-        const worker = workers?.find(w => w.id === selectedUserId);
-        if (!worker) {
+        if (targetWorkers.length === 0) {
             setIsSaving(false);
             return;
         }
 
-        const empresaAbbr = worker.empresa?.slice(0,3).toUpperCase() || 'SEG';
-        const code = `MEM-${empresaAbbr}-${currentYear}-${String(nextId).padStart(4, '0')}`;
-        const newDoc = doc(memoRef);
-        
-        const memoData: Omit<Memorandum, 'id'> = {
-            code,
-            type: selectedType as MemorandumType,
-            reason: selectedReason,
-            targetUserId: worker.id,
-            targetUserName: `${worker.nombres} ${worker.apellidos}`,
-            targetUserCargo: worker.cargo,
-            issuerId: currentUserProfile.id,
-            issuerName: `${currentUserProfile.nombres} ${currentUserProfile.apellidos}`,
-            issuerCargo: currentUserProfile.cargo,
-            content: editableContent,
-            status: "issued",
-            createdAt: now,
-        };
-        batch.set(newDoc, memoData);
+        targetWorkers.forEach((worker, index) => {
+            const empresaAbbr = worker.empresa?.slice(0,3).toUpperCase() || 'SEG';
+            const code = `MEM-${empresaAbbr}-${currentYear}-${String((memorandums?.length || 0) + index + 1).padStart(4, '0')}`;
+            const newDoc = doc(memoRef);
+            
+            const memoData: Omit<Memorandum, 'id'> = {
+                code,
+                type: selectedType as MemorandumType,
+                reason: selectedReason,
+                targetUserId: worker.id,
+                targetUserName: `${worker.nombres} ${worker.apellidos}`,
+                targetUserCargo: worker.cargo,
+                issuerId: currentUserProfile.id,
+                issuerName: `${currentUserProfile.nombres} ${currentUserProfile.apellidos}`,
+                issuerCargo: currentUserProfile.cargo,
+                content: editableContent,
+                status: "issued",
+                createdAt: now,
+            };
+            batch.set(newDoc, memoData);
+        });
 
         try {
             await batch.commit();
-            toast({ title: 'Documento Emitido', description: `Se ha generado el memorando ${code} oficialmente.` });
+            toast({ title: 'Documentos Emitidos', description: `Se han generado ${targetWorkers.length} documentos oficialmente.` });
             setSelectedType("");
             setSelectedReason("");
             setSelectedUserId("");
+            setIsGeneralSelection(false);
             setEventShift("");
             setEditableContent("");
             setActiveTab("history");
@@ -325,7 +341,7 @@ export default function DocumentManagementPage() {
                             <CardContent className="space-y-4">
                                 <div className="space-y-2">
                                     <Label>Tipo de Memorando</Label>
-                                    <Select value={selectedType} onValueChange={(v) => { setSelectedType(v as MemorandumType); setSelectedReason(""); }}>
+                                    <Select value={selectedType} onValueChange={(v) => { setSelectedType(v as MemorandumType); setSelectedReason(""); setIsGeneralSelection(false); }}>
                                         <SelectTrigger>
                                             <SelectValue placeholder="Seleccione el tipo..." />
                                         </SelectTrigger>
@@ -350,14 +366,38 @@ export default function DocumentManagementPage() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label>Destinatario</Label>
-                                    <Combobox 
-                                        options={workers?.filter(w => w.Status === 'active').map(w => ({ label: `${w.apellidos} ${w.nombres} (${w.ubicacion || 'Sin puesto'})`, value: w.id })) || []}
-                                        value={selectedUserId}
-                                        onChange={setSelectedUserId}
-                                        placeholder="Seleccionar trabajador..."
-                                        searchPlaceholder="Buscar por nombre..."
-                                    />
+                                    <div className="flex items-center justify-between">
+                                        <Label>Destinatario</Label>
+                                        {selectedType === "Memorando Informativo" && (
+                                            <Button 
+                                                variant="ghost" 
+                                                size="sm" 
+                                                className={cn("h-6 text-[10px] gap-1", isGeneralSelection ? "text-destructive" : "text-primary")}
+                                                onClick={() => {
+                                                    setIsGeneralSelection(!isGeneralSelection);
+                                                    if (!isGeneralSelection) setSelectedUserId("");
+                                                }}
+                                            >
+                                                {isGeneralSelection ? <UserMinus className="h-3 w-3" /> : <Users className="h-3 w-3" />}
+                                                {isGeneralSelection ? "Individual" : "Seleccionar Todos"}
+                                            </Button>
+                                        )}
+                                    </div>
+                                    {isGeneralSelection ? (
+                                        <div className="p-3 bg-primary/5 border border-primary/20 rounded-md text-sm font-medium text-primary flex items-center gap-2">
+                                            <CheckCircle className="h-4 w-4" />
+                                            Todo el personal activo ({workers?.filter(w => w.Status === 'active').length})
+                                        </div>
+                                    ) : (
+                                        <Combobox 
+                                            options={workers?.filter(w => w.Status === 'active').map(w => ({ label: `${w.apellidos} ${w.nombres} (${w.ubicacion || 'Sin puesto'})`, value: w.id })) || []}
+                                            value={selectedUserId}
+                                            onChange={setSelectedUserId}
+                                            placeholder="Seleccionar trabajador..."
+                                            searchPlaceholder="Buscar por nombre..."
+                                            className="w-full"
+                                        />
+                                    )}
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-2">
@@ -389,7 +429,7 @@ export default function DocumentManagementPage() {
                             <CardHeader className="bg-slate-50 border-b">
                                 <div className="text-center space-y-1">
                                     <h3 className="font-black text-slate-900 uppercase">
-                                        {selectedWorkerData?.empresa || 'XXXXX'}
+                                        {isGeneralSelection ? 'VARIAS EMPRESAS' : (selectedWorkerData?.empresa || 'XXXXX')}
                                     </h3>
                                     <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Sistema de Gestión Documental – Performa</p>
                                 </div>
@@ -398,15 +438,15 @@ export default function DocumentManagementPage() {
                                 <div className="space-y-6 max-w-2xl mx-auto font-serif text-slate-800">
                                     <div className="flex justify-between text-sm">
                                         <div className="space-y-1">
-                                            <p><span className="font-bold">Código:</span> MEM-{selectedWorkerData?.empresa?.slice(0,3).toUpperCase() || 'XXX'}-{new Date().getFullYear()}-XXXX</p>
+                                            <p><span className="font-bold">Código:</span> MEM-{isGeneralSelection ? 'GEN' : (selectedWorkerData?.empresa?.slice(0,3).toUpperCase() || 'XXX')}-{new Date().getFullYear()}-XXXX</p>
                                             <p><span className="font-bold">Fecha:</span> {format(new Date(), "d 'de' MMMM 'de' yyyy", { locale: es })}</p>
                                         </div>
                                     </div>
 
                                     <div className="space-y-1 text-sm">
-                                        <p><span className="font-bold">PARA:</span> {selectedWorkerData ? `${selectedWorkerData.nombres} ${selectedWorkerData.apellidos}` : '____________________'}</p>
-                                        <p><span className="font-bold">CARGO:</span> {selectedWorkerData ? selectedWorkerData.cargo : '____________________'}</p>
-                                        <p><span className="font-bold">PUESTO:</span> {selectedWorkerData ? selectedWorkerData.ubicacion : '____________________'}</p>
+                                        <p><span className="font-bold">PARA:</span> {isGeneralSelection ? 'PERSONAL DE LA EMPRESA' : (selectedWorkerData ? `${selectedWorkerData.nombres} ${selectedWorkerData.apellidos}` : '____________________')}</p>
+                                        <p><span className="font-bold">CARGO:</span> {isGeneralSelection ? 'PERSONAL OPERATIVO' : (selectedWorkerData ? selectedWorkerData.cargo : '____________________')}</p>
+                                        <p><span className="font-bold">PUESTO:</span> {isGeneralSelection ? 'MULTIPLE' : (selectedWorkerData ? selectedWorkerData.ubicacion : '____________________')}</p>
                                         {showTurnoLine && <p><span className="font-bold">TURNO:</span> {eventShift || '____________________'}</p>}
                                     </div>
 
@@ -471,10 +511,10 @@ export default function DocumentManagementPage() {
                                 <Button 
                                     className="ml-auto min-w-[200px]" 
                                     onClick={handleIssueMemorandums}
-                                    disabled={isSaving || isEditing || !selectedType || !selectedReason || !selectedUserId}
+                                    disabled={isSaving || isEditing || !selectedType || !selectedReason || (!selectedUserId && !isGeneralSelection)}
                                 >
                                     {isSaving ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                                    Emitir y Notificar
+                                    {isGeneralSelection ? `Emitir a todo el personal (${workers?.filter(w => w.Status === 'active').length})` : 'Emitir y Notificar'}
                                 </Button>
                             </CardFooter>
                         </Card>

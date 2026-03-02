@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -90,21 +91,21 @@ const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className={cn("w-full justify-between h-auto", !value && "text-muted-foreground", className)}
+            className={cn("w-full justify-between h-auto min-w-0 overflow-hidden", !value && "text-muted-foreground", className)}
             ref={ref}
             disabled={disabled}
             {...props}
           >
-            <div className="flex flex-col items-start text-left">
+            <div className="flex flex-col items-start text-left min-w-0 flex-1">
               {selectedOption ? (
                 <>
-                  <span className="truncate font-medium">{selectedOption.label}</span>
-                  {selectedOption.description && <span className="truncate text-xs text-muted-foreground">{selectedOption.description}</span>}
+                  <span className="truncate font-medium w-full">{selectedOption.label}</span>
+                  {selectedOption.description && <span className="truncate text-xs text-muted-foreground w-full">{selectedOption.description}</span>}
                 </>
               ) : value ? (
-                 <span className="truncate font-medium">{value}</span>
+                 <span className="truncate font-medium w-full">{value}</span>
               ) : (
-                <span className="font-normal">{placeholder}</span>
+                <span className="font-normal truncate w-full">{placeholder}</span>
               )}
             </div>
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -152,19 +153,19 @@ const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
                     onSelect={() => handleSelect(option.value)}
                     className="flex justify-between items-start cursor-pointer"
                   >
-                    <div className="flex items-start">
+                    <div className="flex items-start min-w-0 flex-1">
                       <Check
                         className={cn(
-                          "mr-2 h-4 w-4 mt-0.5",
+                          "mr-2 h-4 w-4 mt-0.5 shrink-0",
                           value?.toLowerCase() === option.value.toLowerCase() ? "opacity-100" : "opacity-0"
                         )}
                       />
-                      <div className="flex flex-col">
-                        <span>{option.label}</span>
-                        {option.description && <span className="text-xs text-muted-foreground">{option.description}</span>}
+                      <div className="flex flex-col min-w-0 flex-1">
+                        <span className="truncate">{option.label}</span>
+                        {option.description && <span className="text-xs text-muted-foreground truncate">{option.description}</span>}
                       </div>
                     </div>
-                    {option.isSaved && <CheckCircle2 className="h-4 w-4 text-green-500" />}
+                    {option.isSaved && <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0 ml-2" />}
                   </CommandItem>
                 ))}
               </CommandGroup>
