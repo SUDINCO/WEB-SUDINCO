@@ -5,7 +5,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useCollection, useFirestore, useUser } from '@/firebase';
 import { collection, doc, writeBatch, query, orderBy, limit, deleteDoc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
-import { format } from 'date-fns';
+import { format, parseISO, addMonths } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 import {
@@ -50,10 +50,11 @@ import {
     Filter,
     FileText,
     CalendarIcon,
-    Clock
+    Clock,
+    Sparkles
 } from 'lucide-react';
 import { MultiSelectCombobox } from '@/components/ui/multi-select-combobox';
-import type { UserProfile, Memorandum, MemorandumType } from '@/lib/types';
+import type { UserProfile, Memorandum, MemorandumType, SavedSchedule } from '@/lib/types';
 import { cn, normalizeText } from '@/lib/utils';
 
 const memorandumTypes: { value: MemorandumType; label: string }[] = [
@@ -79,8 +80,6 @@ const reasonsByType: Record<MemorandumType, string[]> = {
     ],
     "Memorando Informativo": [
         "Recordatorio de procedimiento",
-        "Cambio de turno",
-        "Cambio de puesto",
         "Nueva disposición interna",
         "Convocatoria a capacitación"
     ],
@@ -95,8 +94,6 @@ const reasonsByType: Record<MemorandumType, string[]> = {
 const templates: Record<string, string> = {
     // Informativos
     "Recordatorio de procedimiento": "Por medio del presente se comunica al colaborador que debe cumplir estrictamente el procedimiento operativo de control de accesos y registro en bitácora conforme lo establece la normativa interna vigente.\n\nLa presente comunicación tiene carácter informativo y preventivo.",
-    "Cambio de turno": "Se informa al colaborador que, a partir de la fecha indicada en el presente, su turno asignado será modificado conforme a la planificación operativa del puesto de servicio, con la finalidad de optimizar la cobertura de seguridad.",
-    "Cambio de puesto": "Se comunica que el colaborador será reasignado a un nuevo puesto de servicio, manteniendo sus funciones habituales y responsabilidades operativas, conforme a las necesidades institucionales de rotación de personal.",
     "Nueva disposición interna": "Se informa la implementación de una nueva disposición interna relacionada con los protocolos de seguridad y registros obligatorios. El cumplimiento de esta disposición es de carácter inmediato y obligatorio para todo el personal asignado.",
     "Convocatoria a capacitación": "Se convoca al colaborador a la sesión de capacitación obligatoria sobre protocolos de seguridad y actualización de procedimientos. La asistencia es fundamental para garantizar los estándares de calidad del servicio.",
     
@@ -142,11 +139,41 @@ export default function DocumentManagementPage() {
     // Data Hooks
     const { data: workers, isLoading: workersLoading } = useCollection<UserProfile>(useMemo(() => firestore ? collection(firestore, 'users') : null, [firestore]));
     const { data: memorandums, isLoading: memosLoading } = useCollection<Memorandum>(useMemo(() => firestore ? query(collection(firestore, 'memorandums'), orderBy('createdAt', 'desc'), limit(100)) : null, [firestore]));
+    const { data: savedSchedules } = useCollection<SavedSchedule>(useMemo(() => firestore ? collection(firestore, 'savedSchedules') : null, [firestore]));
 
     const currentUserProfile = useMemo(() => {
         if (!authUser || !workers) return null;
         return workers.find(w => w.email?.toLowerCase() === authUser.email?.toLowerCase());
     }, [authUser, workers]);
+
+    const showTurnoLine = selectedType === "Memorando de Llamado de Atención";
+
+    // Intelligent Shift Lookup
+    useEffect(() => {
+        if (selectedType === "Memorando de Llamado de Atención" && selectedUserIds.length === 1 && eventDate && savedSchedules && workers) {
+            const worker = workers.find(w => w.id === selectedUserIds[0]);
+            if (!worker) return;
+
+            const dateObj = parseISO(eventDate);
+            const periodDate = dateObj.getDate() < 21 ? dateObj : addMonths(dateObj, 1);
+            const periodId = format(periodDate, 'yyyy-MM');
+            const docId = `${periodId}_${worker.ubicacion}_${worker.cargo}`;
+            
+            const schedule = savedSchedules.find(s => s.id === docId);
+            if (schedule && schedule.schedule[worker.id]) {
+                const shift = schedule.schedule[worker.id][eventDate];
+                if (shift) {
+                    setEventShift(shift);
+                } else {
+                    setEventShift("");
+                }
+            } else {
+                setEventShift("");
+            }
+        } else if (selectedType !== "Memorando de Llamado de Atención") {
+            setEventShift("");
+        }
+    }, [selectedType, selectedUserIds, eventDate, savedSchedules, workers]);
 
     const generatedPreview = useMemo(() => {
         if (!selectedReason) return "";
@@ -203,6 +230,7 @@ export default function DocumentManagementPage() {
             setSelectedReason("");
             setSelectedWorkers([]);
             setAdditionalDetail("");
+            setEventShift("");
             setActiveTab("history");
         } catch (error) {
             console.error(error);
@@ -300,9 +328,21 @@ export default function DocumentManagementPage() {
                                         <Label>Fecha Evento</Label>
                                         <Input type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} />
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label>Turno</Label>
-                                        <Input placeholder="Ej: D12" value={eventShift} onChange={(e) => setEventShift(e.target.value.toUpperCase())} />
+                                    <div className={cn("space-y-2 transition-all", !showTurnoLine && "opacity-30 pointer-events-none")}>
+                                        <Label className="flex items-center gap-1.5">
+                                            Turno
+                                            {showTurnoLine && selectedUserIds.length === 1 && eventShift && (
+                                                <Badge variant="secondary" className="h-4 px-1 text-[9px] bg-blue-100 text-blue-700 border-none animate-in fade-in zoom-in duration-300">
+                                                    <Sparkles className="h-2 w-2 mr-0.5" /> Auto-detectado
+                                                </Badge>
+                                            )}
+                                        </Label>
+                                        <Input 
+                                            placeholder={showTurnoLine ? "Ej: D12" : "No aplica"} 
+                                            value={eventShift} 
+                                            onChange={(e) => setEventShift(e.target.value.toUpperCase())} 
+                                            disabled={!showTurnoLine}
+                                        />
                                     </div>
                                 </div>
 
@@ -340,7 +380,7 @@ export default function DocumentManagementPage() {
                                         <p><span className="font-bold">PARA:</span> {selectedUserIds.length === 1 ? `${workers?.find(w => w.id === selectedUserIds[0])?.nombres} ${workers?.find(w => w.id === selectedUserIds[0])?.apellidos}` : (selectedUserIds.length > 1 ? 'PERSONAL SELECCIONADO' : '____________________')}</p>
                                         <p><span className="font-bold">CARGO:</span> {selectedUserIds.length === 1 ? workers?.find(w => w.id === selectedUserIds[0])?.cargo : (selectedUserIds.length > 1 ? 'PERSONAL OPERATIVO' : '____________________')}</p>
                                         <p><span className="font-bold">PUESTO:</span> {selectedUserIds.length === 1 ? workers?.find(w => w.id === selectedUserIds[0])?.ubicacion : '____________________'}</p>
-                                        <p><span className="font-bold">TURNO:</span> {eventShift || '____________________'}</p>
+                                        {showTurnoLine && <p><span className="font-bold">TURNO:</span> {eventShift || '____________________'}</p>}
                                     </div>
 
                                     <div className="border-y py-2">
