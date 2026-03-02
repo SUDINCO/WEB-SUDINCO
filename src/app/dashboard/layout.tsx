@@ -55,7 +55,7 @@ import type { HiringApproval, PerformanceEvaluation, UserProfile, Memorandum, Va
 import { format, parseISO, isSameDay } from "date-fns";
 import { es } from "date-fns/locale";
 
-const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes
+const INACTIVITY_TIMEOUT = 30 * 60 * 1000;
 
 function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -164,7 +164,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     const memoTasks = (memorandums || []).filter(m => m.targetUserId === userId && (m.status === 'issued' || m.status === 'read')).map(m => ({ id: `memo-${m.id}`, icon: FileText, title: `Tienes un memorando por firmar`, href: '/dashboard/my-documents' }));
     const vacationTasks = (vacationRequests || []).filter(v => v.leaderEmail?.toLowerCase() === userEmailLower && v.status === 'pending').map(v => ({ id: `vac-${v.id}`, icon: CalendarCheck, title: `Aprobar vacaciones: ${v.userName}`, href: '/dashboard/schedule' }));
     const handoverTasks = (equipmentHandovers || []).filter(h => h.outgoingGuardId === userId && h.status === 'pending').map(h => ({ id: `handover-${h.id}`, icon: ShieldAlert, title: `Validar relevo en ${h.location}`, href: '/dashboard/attendance' }));
-    return [...approvalTasks, ...observationTasks, ...memoTasks, ...vacationTasks, ...handoverTasks];
+    return [...approvalTasks, ...observationTasks, ...memoTasks, ... vacationTasks, ...handoverTasks];
   }, [userProfile, approvals, evaluations, memorandums, vacationRequests, equipmentHandovers]);
   
   const activeModule = useMemo(() => navLinks.find(module => (module.sublinks && module.sublinks.some(sublink => isActive(sublink.href))) || (module.groups && module.groups.some(group => group.sublinks.some(sublink => isActive(sublink.href)))) )?.module, [navLinks, pathname]);
