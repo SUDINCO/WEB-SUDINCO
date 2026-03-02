@@ -6,6 +6,8 @@ import { collection, doc, updateDoc, query, where } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 import {
   Card,
@@ -76,6 +78,7 @@ export default function MyDocumentsPage() {
 
     const memosQuery = useMemo(() => {
         if (!firestore || !authUser?.uid) return null;
+        // Simplified query to avoid index requirement issues if not created yet
         return query(
             collection(firestore, 'memorandums'), 
             where('targetUserId', '==', authUser.uid)
@@ -97,9 +100,17 @@ export default function MyDocumentsPage() {
         
         // Mark as read if it's the first time
         if (memo.status === 'issued' && firestore) {
-            await updateDoc(doc(firestore, 'memorandums', memo.id), {
+            const memoRef = doc(firestore, 'memorandums', memo.id);
+            const updateData = {
                 status: 'read',
                 readAt: Date.now()
+            };
+            updateDoc(memoRef, updateData).catch(async (error) => {
+                errorEmitter.emit('permission-error', new FirestorePermissionError({
+                    path: memoRef.path,
+                    operation: 'update',
+                    requestResourceData: updateData
+                }));
             });
         }
     };
@@ -155,21 +166,29 @@ export default function MyDocumentsPage() {
 
         setIsSaving(true);
         const signature = canvasRef.current!.toDataURL('image/png');
+        const memoRef = doc(firestore, 'memorandums', selectedMemo.id);
+        const updateData = {
+            status: 'signed',
+            signedAt: Date.now(),
+            signature: signature,
+            defense: defense.trim() || null
+        };
 
-        try {
-            await updateDoc(doc(firestore, 'memorandums', selectedMemo.id), {
-                status: 'signed',
-                signedAt: Date.now(),
-                signature: signature,
-                defense: defense.trim() || null
+        updateDoc(memoRef, updateData)
+            .then(() => {
+                toast({ title: 'Documento Firmado', description: 'El documento ha sido legalizado y archivado.' });
+                setSelectedMemo(null);
+            })
+            .catch(async (error) => {
+                errorEmitter.emit('permission-error', new FirestorePermissionError({
+                    path: memoRef.path,
+                    operation: 'update',
+                    requestResourceData: updateData
+                }));
+            })
+            .finally(() => {
+                setIsSaving(false);
             });
-            toast({ title: 'Documento Firmado', description: 'El documento ha sido legalizado y archivado.' });
-            setSelectedMemo(null);
-        } catch (e) {
-            toast({ variant: 'destructive', title: 'Error', description: 'No se pudo firmar el documento.' });
-        } finally {
-            setIsSaving(false);
-        }
     };
 
     const handleReject = async () => {
@@ -179,18 +198,27 @@ export default function MyDocumentsPage() {
         }
 
         setIsSaving(true);
-        try {
-            await updateDoc(doc(firestore, 'memorandums', selectedMemo.id), {
-                status: 'rejected',
-                defense: defense.trim()
+        const memoRef = doc(firestore, 'memorandums', selectedMemo.id);
+        const updateData = {
+            status: 'rejected',
+            defense: defense.trim()
+        };
+
+        updateDoc(memoRef, updateData)
+            .then(() => {
+                toast({ title: 'Documento Rechazado', description: 'Su descargo ha sido registrado oficialmente.' });
+                setSelectedMemo(null);
+            })
+            .catch(async (error) => {
+                errorEmitter.emit('permission-error', new FirestorePermissionError({
+                    path: memoRef.path,
+                    operation: 'update',
+                    requestResourceData: updateData
+                }));
+            })
+            .finally(() => {
+                setIsSaving(false);
             });
-            toast({ title: 'Documento Rechazado', description: 'Su descargo ha sido registrado oficialmente.' });
-            setSelectedMemo(null);
-        } catch (e) {
-            toast({ variant: 'destructive', title: 'Error', description: 'No se pudo procesar el rechazo.' });
-        } finally {
-            setIsSaving(false);
-        }
     };
 
     if (profileLoading) {
@@ -272,15 +300,14 @@ export default function MyDocumentsPage() {
                                             <FileText className="h-12 w-12 opacity-20" />
                                             <p>No tienes documentos registrados en tu historial.</p>
                                         </div>
-                                    </TableRow>
-                                </TableCell>
+                                    </TableCell>
+                                </TableRow>
                             )}
                         </TableBody>
                     </Table>
                 </CardContent>
             </Card>
 
-            {/* Memo Viewer and Management Dialog */}
             <Dialog open={!!selectedMemo} onOpenChange={(open) => !open && setSelectedMemo(null)}>
                 <DialogContent className="max-w-4xl max-h-[95vh] flex flex-col p-0 overflow-hidden">
                     {selectedMemo && (
@@ -295,7 +322,6 @@ export default function MyDocumentsPage() {
                                     </div>
                                 </DialogHeader>
 
-                                {/* Document Content Box */}
                                 <div className="space-y-6 bg-white p-8 border rounded-lg shadow-sm font-serif text-slate-800">
                                     <div className="flex justify-between text-sm">
                                         <div className="space-y-1">
@@ -318,7 +344,6 @@ export default function MyDocumentsPage() {
                                         {selectedMemo.content}
                                     </div>
 
-                                    {/* Signatures Area */}
                                     <div className="pt-10 grid grid-cols-2 gap-12">
                                         <div className="text-center border-t pt-2">
                                             <div className="h-24 flex flex-col items-center justify-center mt-1">
@@ -358,7 +383,6 @@ export default function MyDocumentsPage() {
                                     </div>
                                 </div>
 
-                                {/* Decision Interaction Panel (Only for Llamados de Atencion without final status) */}
                                 {selectedMemo.type === "Memorando de Llamado de Atención" && 
                                  selectedMemo.status !== 'signed' && 
                                  selectedMemo.status !== 'rejected' && (
