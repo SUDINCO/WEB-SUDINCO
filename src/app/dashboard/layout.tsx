@@ -32,7 +32,7 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@/components/accordion";
+} from "@/components/ui/accordion";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth, useUser, useCollection, useFirestore } from "@/firebase";
@@ -339,7 +339,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                   />
                 </Link>
                 <div className="header-icons">
-                  {/* Celebrations Mobile */}
+                  {/* Celebrations Mobile (TODAY ONLY) */}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" className="header-icon-btn">
@@ -348,8 +348,8 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-72">
-                      <DropdownMenuLabel className="flex items-center gap-2">
-                        <Gift className="h-4 w-4 text-accent" />
+                      <DropdownMenuLabel className="flex items-center gap-2 text-accent font-bold">
+                        <Gift className="h-4 w-4" />
                         Cumpleaños de Hoy
                       </DropdownMenuLabel>
                       <DropdownMenuSeparator />
@@ -362,19 +362,19 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                                 <AvatarFallback>{bday.nombres[0]}</AvatarFallback>
                               </Avatar>
                               <div className="flex flex-col min-w-0">
-                                <span className="text-xs font-bold truncate text-accent">
-                                  🎂 {bday.nombres} {bday.apellidos}
+                                <span className="text-xs font-bold truncate text-accent uppercase">
+                                  {bday.nombres} {bday.apellidos}
                                 </span>
-                                <span className="text-[10px] text-muted-foreground">
-                                  ¡Hoy está de cumpleaños!
+                                <span className="text-[10px] text-muted-foreground italic">
+                                  ¡Hoy está celebrando su día!
                                 </span>
                               </div>
                             </DropdownMenuItem>
                           ))}
                         </div>
                       ) : (
-                        <div className="py-6 text-center text-xs text-muted-foreground">
-                          No hay cumpleaños el día de hoy.
+                        <div className="py-6 text-center text-xs text-muted-foreground italic">
+                          No hay cumpleaños registrados para hoy.
                         </div>
                       )}
                     </DropdownMenuContent>
