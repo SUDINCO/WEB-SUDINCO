@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -72,11 +71,12 @@ const permissionsMap = [
     tabs: [
       { id: 'publications', name: 'Publicaciones' },
       { id: 'calendar', name: 'Calendario' },
-      { id: 'performance-evaluation', name: 'Evaluación de Desempeño (Admin)' },
+      { id: 'performance-evaluation', name: 'Evaluación de Desempeño' },
       { id: 'roles', name: 'Roles y Permisos' },
       { id: 'leader-assignment', name: 'Asignación de Líderes' },
       { id: 'schedule-settings', name: 'Configuración de Horarios' },
       { id: 'equipment-control', name: 'Control de Dotación' },
+      { id: 'document-management', name: 'Gestión Documental' },
     ],
   },
 ];
