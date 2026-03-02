@@ -32,7 +32,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/table';
+} from '@/components/ui/table';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -315,7 +315,7 @@ export default function DocumentManagementPage() {
             try {
                 const dateObj = parseISO(eventDate);
                 const periodDate = dateObj.getDate() < 21 ? dateObj : addMonths(dateObj, 1);
-                const periodId = format(periodDate, 'yyyy-MM');
+                const periodIdentifier = format(periodDate, 'yyyy-MM');
                 const periodSchedules = savedSchedules.filter(s => s.id.startsWith(periodIdentifier));
                 let foundShift = "";
                 let foundInSchedules = false;
@@ -1026,7 +1026,7 @@ export default function DocumentManagementPage() {
                                             </div>
                                             <div className="flex flex-col items-center space-y-3">
                                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b pb-1 w-full text-center">Firma del Colaborador</p>
-                                                <div className="w-full h-24 flex flex-col items-center justify-center text-center">
+                                                <div className="w-full h-24 flex flex-center items-center justify-center text-center">
                                                     {selectedMemoForView.signature ? (
                                                         <div className="mb-2">
                                                             <img src={selectedMemoForView.signature} alt="Firma Colaborador" className="h-12 object-contain opacity-90 mx-auto" />
