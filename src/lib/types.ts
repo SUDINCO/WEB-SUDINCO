@@ -409,3 +409,9 @@ export interface Notification {
   actedBy?: string;
   actedAt?: string;
 }
+
+export interface Fine {
+  id: string;
+  name: string;
+  amount: number;
+}

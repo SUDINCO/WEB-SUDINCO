@@ -92,7 +92,7 @@ export default function AttendanceMap({ workLocations, records, viewType, onLoca
     
       return new L.DivIcon({
         html: `<div style="width: 36px; height: 36px; border-radius: 50%; border: 2px solid ${borderColor}; background-color: white; padding: 2px; box-shadow: 0 2px 5px rgba(0,0,0,0.3);">${avatarHtml}</div>`,
-        className: '', // important to have an empty className
+        className: '', 
         iconSize: [40, 40],
         iconAnchor: [20, 40],
         popupAnchor: [0, -40]
@@ -128,7 +128,7 @@ export default function AttendanceMap({ workLocations, records, viewType, onLoca
     }, [records, workLocations, viewType]);
 
     const bounds = React.useMemo(() => {
-        if (highlightedPoint) return null; // Don't fit bounds if we are focusing on a point
+        if (highlightedPoint) return null;
 
         const points: L.LatLngTuple[] = [];
 
@@ -177,14 +177,12 @@ export default function AttendanceMap({ workLocations, records, viewType, onLoca
             <SelectionManager point={highlightedPoint} />
             {bounds && <BoundsFitter bounds={bounds} />}
             
-            {/* Highlighted selection marker */}
             {highlightedPoint && (
                 <Marker position={[highlightedPoint.lat, highlightedPoint.lng]} icon={locationIcon}>
                     <Popup>{highlightedPoint.label}</Popup>
                 </Marker>
             )}
             
-            {/* Render geofences and markers for attendance view */}
             {viewType === 'attendance' && workLocations.map(location => {
                 const count = locationCounts.get(location.id) || 0;
                 
@@ -209,7 +207,6 @@ export default function AttendanceMap({ workLocations, records, viewType, onLoca
                                 {location.name} ({count})
                             </Tooltip>
                         </Marker>
-                        {/* Geofence Circle */}
                         <Circle
                             center={[location.latitude, location.longitude]}
                             radius={location.radius}
@@ -219,7 +216,6 @@ export default function AttendanceMap({ workLocations, records, viewType, onLoca
                 );
             })}
 
-            {/* Render out-of-bounds records for attendance view */}
             {viewType === 'attendance' && outOfBoundsRecords.map(record => {
                 if (!isAttendanceRecord(record)) return null;
 
@@ -251,7 +247,6 @@ export default function AttendanceMap({ workLocations, records, viewType, onLoca
                 );
             })}
 
-            {/* Render location reports */}
             {viewType === 'reports' && records.map(report => {
                 if (!isLocationReport(report)) return null;
 

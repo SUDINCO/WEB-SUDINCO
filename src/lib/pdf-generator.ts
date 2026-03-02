@@ -288,7 +288,7 @@ export const generateMemorandumPDF = async (memo: Memorandum) => {
     doc.setTextColor(30, 41, 59);
     const headerTitle = `MEMORANDO INSTITUCIONAL - ${memo.targetUserEmpresa || 'GENERAL'}`.toUpperCase();
     
-    // Handle long title with wrap
+    // Manejo de títulos largos
     const splitTitle = doc.splitTextToSize(headerTitle, pageWidth - (margin * 2));
     doc.text(splitTitle, pageWidth / 2, currentY, { align: 'center' });
     currentY += (splitTitle.length * 6) + 2;

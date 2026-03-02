@@ -101,7 +101,7 @@ const reasonsByType: Record<MemorandumType, string[]> = {
         "Otro (requiere detalle adicional)"
     ],
     "Memorando Informativo": [
-        "Recordatorio de procedimiento",
+        "Recordatorio de procedureimiento",
         "Nueva disposición interna",
         "Convocatoria a capacitación"
     ],
@@ -114,9 +114,9 @@ const reasonsByType: Record<MemorandumType, string[]> = {
 };
 
 const DEFAULT_TEMPLATES: Record<string, string> = {
-    "Recordatorio de procedimiento": "Por medio del presente se comunica al colaborador que debe cumplir estrictamente el procedimiento operativo de control de accesos y registro en bitácora conforme lo establece la normativa interna vigente.\n\nLa presente comunicación tiene carácter informativo y preventivo.",
+    "Recordatorio de procedureimiento": "Por medio del presente se comunica al colaborador que debe cumplir estrictamente el procedureimiento operativo de control de accesos y registro en bitácora conforme lo establece la normativa interna vigente.\n\nLa presente comunicación tiene carácter informativo y preventivo.",
     "Nueva disposición interna": "Se informa la implementación de una nueva disposición interna relacionada con los protocolos de seguridad y registros obligatorios. El cumplimiento de esta disposición es de carácter inmediato y obligatorio para todo el personal asignado.",
-    "Convocatoria a capacitación": "Se convoca al colaborador a la sesión de capacitación obligatoria sobre protocolos de seguridad y actualización de procedimientos. La asistencia es fundamental para garantizar los estándares de calidad del servicio.",
+    "Convocatoria a capacitación": "Se convoca al colaborador a la sesión de capacitación obligatoria sobre protocolos de seguridad y actualización de procedureimientos. La asistencia es fundamental para garantizar los estándares de calidad del servicio.",
     "Atraso injustificado": "Se deja constancia que el colaborador registró un atraso injustificado el día {FECHA_EVENTO} durante el turno {TURNO}.\n\nEsta conducta constituye un incumplimiento a las obligaciones laborales establecidas en el Reglamento Interno de la empresa.\n\nSe emite el presente llamado de atención con la finalidad de prevenir futuras reincidencias y exhortar al cumplimiento estricto del horario asignado.",
     "Inasistencia injustificada": "Se deja constancia que el colaborador no asistió a su jornada laboral sin presentar la debida justificación previa, afectando la continuidad operativa del servicio.",
     "Abandono de puesto": "Se evidenció que el colaborador abandonó su puesto de servicio durante el turno asignado sin la debida autorización del supervisor, lo cual constituye una falta grave a la seguridad del cliente.",
@@ -125,7 +125,7 @@ const DEFAULT_TEMPLATES: Record<string, string> = {
     "Uso indebido de celular": "Se observó el uso indebido de teléfono celular para fines personales durante el turno operativo, distrayendo la atención de las responsabilidades de vigilancia asignadas.",
     "Falta de respeto": "Se registró una conducta inadecuada relacionada con falta de respeto hacia compañeros, superiores o usuarios, afectando el entorno laboral y la imagen institucional.",
     "Desobediencia a instrucciones": "Se constató el incumplimiento de instrucciones directas e impartidas por el supervisor o jefe de área en relación a las operaciones de seguridad.",
-    "Incumplimiento de procedimiento operativo": "Se evidenció el no cumplimiento del procedimiento establecido para rondas, registros en bitácora y comunicación de novedades.",
+    "Incumplimiento de procedureimiento operativo": "Se evidenció el no cumplimiento del procedureimiento establecido para rondas, registros en bitácora y comunicación de novedades.",
     "Entrega tardía de reporte": "Se verificó la entrega tardía del reporte diario o reporte de novedades correspondiente al turno asignado, dificultando la gestión administrativa del puesto.",
     "Conducta inadecuada": "Se deja constancia de una conducta inapropiada que contraviene los principios institucionales y los valores de la empresa de seguridad.",
     "Otro (requiere detalle adicional)": "Se deja constancia de una novedad disciplinaria u operativa detectada en el ejercicio de sus funciones, la cual se detalla a continuación.",
@@ -139,7 +139,6 @@ export default function DocumentManagementPage() {
     const { user: authUser } = useUser();
     const firestore = useFirestore();
     
-    // State for Creation
     const [selectedType, setSelectedType] = useState<MemorandumType | "">("");
     const [selectedReason, setSelectedReason] = useState("");
     const [selectedUserId, setSelectedUserId] = useState<string>("");
@@ -152,24 +151,20 @@ export default function DocumentManagementPage() {
     const [isEditing, setIsEditing] = useState(false);
     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
     
-    // Attachment State
     const [attachmentUrl, setAttachmentUrl] = useState<string | null>(null);
     const [attachmentType, setAttachmentType] = useState<'image' | 'pdf' | null>(null);
     const [isUploading, setIsUploading] = useState(false);
     const attachmentInputRef = useRef<HTMLInputElement>(null);
 
-    // Signature State
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [isDrawing, setIsDrawing] = useState(false);
     const [isLocked, setIsLocked] = useState(false);
 
-    // State for Lists/Filtering
     const [activeTab, setActiveTab] = useState("create");
     const [memoFilter, setMemorandumFilter] = useState("");
     const [memoToDelete, setMemorandumToDelete] = useState<Memorandum | null>(null);
     const [selectedMemoForView, setSelectedMemoForView] = useState<Memorandum | null>(null);
 
-    // Data Hooks
     const { data: workers } = useCollection<UserProfile>(useMemo(() => firestore ? collection(firestore, 'users') : null, [firestore]));
     const { data: memorandums, isLoading: memosLoading } = useCollection<Memorandum>(useMemo(() => firestore ? query(collection(firestore, 'memorandums'), orderBy('createdAt', 'desc'), limit(100)) : null, [firestore]));
     const { data: savedSchedules } = useCollection<SavedSchedule>(useMemo(() => firestore ? collection(firestore, 'savedSchedules') : null, [firestore]));
@@ -182,7 +177,6 @@ export default function DocumentManagementPage() {
 
     const showTurnoLine = selectedType === "Memorando de Llamado de Atención";
 
-    // File Handling Logic
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -237,15 +231,9 @@ export default function DocumentManagementPage() {
                 setIsUploading(false);
             }
         };
-        
-        if (file.type === 'application/pdf') {
-            reader.readAsDataURL(file);
-        } else {
-            reader.readAsDataURL(file);
-        }
+        reader.readAsDataURL(file);
     };
 
-    // Signature Canvas Logic
     const clearCanvas = () => {
         const canvas = canvasRef.current;
         if (canvas) {
@@ -290,7 +278,6 @@ export default function DocumentManagementPage() {
         }
     };
 
-    // Template Sync
     useEffect(() => {
         if (selectedReason) {
             const custom = customTemplates?.find(t => t.id === selectedReason);
@@ -301,7 +288,6 @@ export default function DocumentManagementPage() {
         }
     }, [selectedReason, customTemplates]);
 
-    // Intelligent Shift Lookup
     useEffect(() => {
         if (selectedType === "Memorando de Llamado de Atención" && selectedUserId && eventDate && savedSchedules && workers) {
             const worker = workers.find(w => w.id === selectedUserId);
