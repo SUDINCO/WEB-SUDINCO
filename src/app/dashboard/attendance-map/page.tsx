@@ -13,12 +13,12 @@ import { format, startOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Calendar as CalendarIcon, LoaderCircle, Search, MapPin } from 'lucide-react';
 import type { WorkLocation, AttendanceRecord, LocationReport, UserProfile } from '@/lib/types';
-import type { RecordWithUser } from '@/components/map/attendance-map';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Combobox } from '@/components/ui/combobox';
 import { cn } from '@/lib/utils';
+import type { RecordWithUser } from '@/components/map/attendance-map';
 
 const AttendanceMap = dynamic(() => import('../../../components/map/attendance-map'), {
     ssr: false,
@@ -105,7 +105,7 @@ export default function AttendanceMapPage() {
             return {
                 ...rec,
                 userCargo: user?.cargo || 'N/A',
-                userName: user ? `${user.nombres} ${user.apellidos}` : (rec as any).userName,
+                userName: user ? `${user.nombres} ${user.apellidos}` : (rec as any).userName as string || 'Desconocido',
                 userPhotoUrl: user?.photoUrl,
                 initials: user ? `${user.nombres?.[0] || ''}${user.apellidos?.[0] || ''}` : 'U'
             };

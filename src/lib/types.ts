@@ -391,3 +391,19 @@ export interface Role {
     [key: string]: boolean;
   };
 }
+
+export interface NotificationChange {
+  field: string;
+  from: any;
+  to: any;
+}
+
+export interface Notification {
+  id: string;
+  recordId: string;
+  status: 'pending' | 'approved' | 'rejected';
+  changes: NotificationChange[];
+  adminObservation?: string;
+  actedBy?: string;
+  actedAt?: string;
+}
