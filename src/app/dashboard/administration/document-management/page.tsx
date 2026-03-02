@@ -6,6 +6,7 @@ import { collection, doc, writeBatch, query, orderBy, limit, deleteDoc, setDoc }
 import { toast } from '@/hooks/use-toast';
 import { format, parseISO, addMonths } from 'date-fns';
 import { es } from 'date-fns/locale';
+import Image from 'next/image';
 
 import {
   Card,
@@ -68,11 +69,15 @@ import {
     Eye,
     FileDown,
     XCircle,
-    MessageSquare
+    MessageSquare,
+    FileText,
+    ShieldCheck
 } from 'lucide-react';
 import { Combobox } from '@/components/ui/combobox';
 import type { UserProfile, Memorandum, MemorandumType, SavedSchedule } from '@/lib/types';
 import { cn } from '@/lib/utils';
+
+const LOGO_URL = 'https://i.postimg.cc/B6HGbmCz/LOGO-CADENVILL.png';
 
 const memorandumTypes: { value: MemorandumType; label: string }[] = [
     { value: "Memorando Informativo", label: "🔵 Memorando Informativo" },
@@ -405,8 +410,8 @@ export default function DocumentManagementPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Gestión Documental</h1>
-                    <p className="text-muted-foreground">Emisión y control de memorandos institucionales.</p>
+                    <h1 className="text-2xl font-bold tracking-tight text-slate-900">Gestión Documental</h1>
+                    <p className="text-muted-foreground">Emisión y control de memorandos institucionales certificados.</p>
                 </div>
             </div>
 
@@ -418,10 +423,10 @@ export default function DocumentManagementPage() {
 
                 <TabsContent value="create" className="mt-6">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <Card className="lg:col-span-1">
+                        <Card className="lg:col-span-1 shadow-md">
                             <CardHeader>
                                 <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                                    <Filter className="h-4 w-4" /> Configuración
+                                    <Filter className="h-4 w-4" /> Configuración de Envío
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">
@@ -438,7 +443,7 @@ export default function DocumentManagementPage() {
                                 </div>
 
                                 <div className={cn("space-y-2 transition-all", !selectedType && "opacity-50 pointer-events-none")}>
-                                    <Label>Motivo</Label>
+                                    <Label>Motivo Específico</Label>
                                     <Select value={selectedReason} onValueChange={setSelectedReason}>
                                         <SelectTrigger>
                                             <SelectValue placeholder="Seleccione el motivo..." />
@@ -453,7 +458,7 @@ export default function DocumentManagementPage() {
 
                                 <div className="space-y-2">
                                     <div className="flex items-center justify-between">
-                                        <Label>Destinatario</Label>
+                                        <Label>Destinatario(s)</Label>
                                         {selectedType === "Memorando Informativo" && (
                                             <Button 
                                                 variant="ghost" 
@@ -465,7 +470,7 @@ export default function DocumentManagementPage() {
                                                 }}
                                             >
                                                 {isGeneralSelection ? <UserMinus className="h-3 w-3" /> : <Users className="h-3 w-3" />}
-                                                {isGeneralSelection ? "Individual" : "Seleccionar Todos"}
+                                                {isGeneralSelection ? "Individual" : "Todo el Personal"}
                                             </Button>
                                         )}
                                     </div>
@@ -513,12 +518,12 @@ export default function DocumentManagementPage() {
 
                                 <div className="space-y-3 pt-2">
                                     <div className="flex justify-between items-center">
-                                        <Label className="font-bold text-xs uppercase">Mi Firma (Emisor)</Label>
-                                        {isLocked && <Badge className="bg-primary h-4 text-[9px]">CERTIFICADA</Badge>}
+                                        <Label className="font-bold text-xs uppercase text-slate-700">Mi Firma Digital *</Label>
+                                        {isLocked && <Badge className="bg-emerald-600 h-4 text-[9px] uppercase font-black">Certificada</Badge>}
                                     </div>
                                     <div className={cn(
                                         "border-2 rounded-lg bg-white relative overflow-hidden transition-all",
-                                        isLocked ? "border-primary/20 bg-slate-50" : "border-dashed border-slate-300 shadow-inner"
+                                        isLocked ? "border-emerald-500/30 bg-slate-50" : "border-dashed border-slate-300 shadow-inner"
                                     )}>
                                         <canvas 
                                             ref={canvasRef}
@@ -526,7 +531,7 @@ export default function DocumentManagementPage() {
                                             height={150}
                                             className={cn(
                                                 "w-full h-[100px] cursor-crosshair touch-none",
-                                                isLocked && "pointer-events-none opacity-50"
+                                                isLocked && "pointer-events-none opacity-50 grayscale"
                                             )}
                                             onMouseDown={startDrawing}
                                             onMouseMove={draw}
@@ -544,134 +549,173 @@ export default function DocumentManagementPage() {
                                     </div>
                                     <Button 
                                         variant={isLocked ? "outline" : "default"} 
-                                        className="w-full h-8 text-[10px] uppercase font-bold" 
+                                        className={cn("w-full h-9 text-[10px] uppercase font-black tracking-widest", !isLocked && "bg-slate-900")} 
                                         onClick={() => setIsLocked(!isLocked)}
                                     >
                                         {isLocked ? <Unlock className="h-3 w-3 mr-1" /> : <Lock className="h-3 w-3 mr-1" />}
-                                        {isLocked ? "Modificar Firma" : "Bloquear y Certificar"}
+                                        {isLocked ? "Modificar Firma" : "Bloquear y Certificar Firma"}
                                     </Button>
                                 </div>
                             </CardContent>
                         </Card>
 
-                        <Card className="lg:col-span-2">
-                            <CardHeader className="bg-slate-50 border-b">
-                                <div className="text-center space-y-1">
-                                    <h3 className="font-black text-slate-900 uppercase">
-                                        {isGeneralSelection ? 'VARIAS EMPRESAS' : (selectedWorkerData?.empresa || 'XXXXX')}
-                                    </h3>
-                                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Sistema de Gestión Documental – Performa</p>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="pt-6">
-                                <div className="space-y-6 max-w-2xl mx-auto font-serif text-slate-800">
-                                    <div className="flex justify-between text-sm">
-                                        <div className="space-y-1">
-                                            <p><span className="font-bold">Código:</span> MEM-{isGeneralSelection ? 'GEN' : (selectedWorkerData?.empresa?.slice(0,3).toUpperCase() || 'XXX')}-{new Date().getFullYear()}-XXXX</p>
-                                            <p><span className="font-bold">Fecha:</span> {format(new Date(), "d 'de' MMMM 'de' yyyy", { locale: es })}</p>
+                        <Card className="lg:col-span-2 shadow-2xl overflow-hidden bg-slate-100 border-none flex flex-col">
+                            <div className="flex-1 overflow-y-auto p-4 md:p-8">
+                                <div className="bg-white shadow-lg mx-auto max-w-2xl min-h-full border border-slate-200 relative flex flex-col">
+                                    {/* Header Institucional al estilo Acta de Dotación */}
+                                    <div className="w-full relative h-[120px] border-b overflow-hidden bg-white">
+                                        <Image 
+                                            src={LOGO_URL} 
+                                            alt="Header Cadenvill Security" 
+                                            fill
+                                            className="object-fill object-center"
+                                            unoptimized
+                                        />
+                                    </div>
+
+                                    <div className="px-10 py-8 space-y-8 flex-1 font-serif text-slate-800">
+                                        <div className="text-center space-y-1">
+                                            <h2 className="text-xl font-black tracking-tight text-slate-900 border-b-2 border-primary inline-block px-4 pb-1 uppercase italic">
+                                                Memorando Institucional
+                                            </h2>
+                                            <p className="text-[9px] font-bold text-slate-500 tracking-[0.2em] uppercase">Control de Gestión Documental Interna</p>
                                         </div>
-                                    </div>
 
-                                    <div className="space-y-1 text-sm">
-                                        <p><span className="font-bold">PARA:</span> {isGeneralSelection ? 'PERSONAL DE LA EMPRESA' : (selectedWorkerData ? `${selectedWorkerData.nombres} ${selectedWorkerData.apellidos}` : '____________________')}</p>
-                                        <p><span className="font-bold">CARGO:</span> {isGeneralSelection ? 'PERSONAL OPERATIVO' : (selectedWorkerData ? selectedWorkerData.cargo : '____________________')}</p>
-                                        <p><span className="font-bold">PUESTO:</span> {isGeneralSelection ? 'MULTIPLE' : (selectedWorkerData ? selectedWorkerData.ubicacion : '____________________')}</p>
-                                        {showTurnoLine && <p><span className="font-bold">TURNO:</span> {eventShift || '____________________'}</p>}
-                                    </div>
-
-                                    <div className="border-y py-2 flex justify-between items-center">
-                                        <p className="font-bold text-sm">ASUNTO: {selectedType ? `${selectedType} – ${selectedReason || '__________'}` : '____________________'}</p>
-                                        {selectedReason && (
-                                            <Button 
-                                                variant="ghost" 
-                                                size="sm" 
-                                                className="h-7 text-[10px] font-bold"
-                                                onClick={() => setIsEditing(!isEditing)}
-                                            >
-                                                {isEditing ? <CheckCircle className="mr-1 h-3 w-3" /> : <Edit3 className="mr-1 h-3 w-3" />}
-                                                {isEditing ? 'Finalizar Edición' : 'Editar Texto'}
-                                            </Button>
-                                        )}
-                                    </div>
-
-                                    <div className="text-sm leading-relaxed whitespace-pre-wrap min-h-[200px]">
-                                        {selectedReason ? (
-                                            isEditing ? (
-                                                <div className="space-y-4">
-                                                    <Textarea 
-                                                        value={editableContent}
-                                                        onChange={(e) => setEditableContent(e.target.value)}
-                                                        className="min-h-[200px] font-serif text-sm leading-relaxed"
-                                                    />
-                                                    <Button 
-                                                        size="sm" 
-                                                        className="bg-primary text-xs" 
-                                                        onClick={handleSaveTemplate}
-                                                        disabled={isSavingTemplate}
-                                                    >
-                                                        {isSavingTemplate ? <LoaderCircle className="mr-2 h-3 w-3 animate-spin" /> : <Save className="mr-2 h-3 w-3" />}
-                                                        Guardar como Plantilla Permanente
-                                                    </Button>
+                                        {/* Metadata Grid al estilo Acta de Dotación */}
+                                        <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+                                            <div className="space-y-1">
+                                                <p className="text-[9px] font-black text-slate-400 uppercase">Código del Documento</p>
+                                                <p className="font-bold text-slate-800">MEM-{isGeneralSelection ? 'GEN' : (selectedWorkerData?.empresa?.slice(0,3).toUpperCase() || 'XXX')}-{new Date().getFullYear()}-XXXX</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <p className="text-[9px] font-black text-slate-400 uppercase">Fecha de Emisión</p>
+                                                <p className="font-bold text-slate-800">{format(new Date(), "d 'de' MMMM 'de' yyyy", { locale: es })}</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <p className="text-[9px] font-black text-slate-400 uppercase">Destinatario (PARA)</p>
+                                                <p className="font-bold text-slate-800">{isGeneralSelection ? 'TODO EL PERSONAL' : (selectedWorkerData ? `${selectedWorkerData.apellidos} ${selectedWorkerData.nombres}` : '____________________')}</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <p className="text-[9px] font-black text-slate-400 uppercase">Cargo / Función</p>
+                                                <p className="font-bold text-slate-800">{isGeneralSelection ? 'OPERATIVO / ADMINISTRATIVO' : (selectedWorkerData ? selectedWorkerData.cargo : '____________________')}</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <p className="text-[9px] font-black text-slate-400 uppercase">Ubicación / Puesto</p>
+                                                <p className="font-bold text-slate-800">{isGeneralSelection ? 'MULTIPLE' : (selectedWorkerData ? selectedWorkerData.ubicacion : '____________________')}</p>
+                                            </div>
+                                            {showTurnoLine && (
+                                                <div className="space-y-1">
+                                                    <p className="text-[9px] font-black text-slate-400 uppercase">Turno del Evento</p>
+                                                    <p className="font-bold text-emerald-700">{eventShift || '____________________'}</p>
                                                 </div>
-                                            ) : (
-                                                editableContent
-                                            )
-                                        ) : (
-                                            <div className="h-full flex items-center justify-center text-muted-foreground italic">
-                                                Seleccione un tipo y motivo para generar el contenido del documento.
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <div className="pt-10 grid grid-cols-2 gap-12">
-                                        <div className="text-center border-t pt-2">
-                                            <div className="h-24 flex flex-col items-center justify-center">
-                                                {isLocked ? (
-                                                    <>
-                                                        <img src={canvasRef.current?.toDataURL()} alt="Firma Emisor" className="h-12 mb-1 opacity-90" />
-                                                        <p className="font-bold text-[11px] text-primary leading-tight">{currentUserProfile?.nombres} {currentUserProfile?.apellidos}</p>
-                                                        <p className="text-[9px] text-muted-foreground uppercase leading-tight">{currentUserProfile?.cargo}</p>
-                                                    </>
-                                                ) : (
-                                                    <p className="text-[10px] text-muted-foreground italic">Pendiente de certificación</p>
-                                                )}
-                                            </div>
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">Firma del Emisor</p>
+                                            )}
                                         </div>
-                                        <div className="text-center border-t pt-2">
-                                            <div className="h-24 flex items-center justify-center">
-                                                {selectedType === "Memorando de Llamado de Atención" ? (
-                                                    <p className="text-[10px] text-muted-foreground italic">Pendiente de firma</p>
+
+                                        <div className="border-y py-3 flex justify-between items-center">
+                                            <p className="font-black text-sm uppercase tracking-tight">ASUNTO: {selectedType ? `${selectedType} – ${selectedReason || '__________'}` : '____________________'}</p>
+                                            {selectedReason && (
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="sm" 
+                                                    className="h-7 text-[10px] font-black uppercase tracking-widest text-primary"
+                                                    onClick={() => setIsEditing(!isEditing)}
+                                                >
+                                                    {isEditing ? <CheckCircle className="mr-1 h-3 w-3" /> : <Edit3 className="mr-1 h-3 w-3" />}
+                                                    {isEditing ? 'Listo' : 'Editar'}
+                                                </Button>
+                                            )}
+                                        </div>
+
+                                        <div className="text-sm leading-relaxed whitespace-pre-wrap min-h-[250px] px-2">
+                                            {selectedReason ? (
+                                                isEditing ? (
+                                                    <div className="space-y-4">
+                                                        <Textarea 
+                                                            value={editableContent}
+                                                            onChange={(e) => setEditableContent(e.target.value)}
+                                                            className="min-h-[250px] font-serif text-sm leading-relaxed border-primary/20"
+                                                        />
+                                                        <Button 
+                                                            size="sm" 
+                                                            className="bg-primary text-[10px] font-black uppercase tracking-widest" 
+                                                            onClick={handleSaveTemplate}
+                                                            disabled={isSavingTemplate}
+                                                        >
+                                                            {isSavingTemplate ? <LoaderCircle className="mr-2 h-3 w-3 animate-spin" /> : <Save className="mr-2 h-3 w-3" />}
+                                                            Actualizar Plantilla Base
+                                                        </Button>
+                                                    </div>
                                                 ) : (
-                                                    <Badge variant="outline" className="text-[8px] h-4">No requiere firma</Badge>
-                                                )}
+                                                    editableContent
+                                                )
+                                            ) : (
+                                                <div className="h-full flex flex-col items-center justify-center text-muted-foreground italic py-20 opacity-40">
+                                                    <FileText className="h-12 w-12 mb-2" />
+                                                    <p>Seleccione configuración para redactar el documento.</p>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Bloques de Firma Estilo Handover */}
+                                        <div className="pt-12 grid grid-cols-2 gap-16">
+                                            <div className="flex flex-col items-center space-y-3">
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b pb-1 w-full text-center">Firma del Emisor</p>
+                                                <div className="w-full h-24 flex flex-col items-center justify-center relative">
+                                                    {isLocked ? (
+                                                        <>
+                                                            <div className="text-center mb-2">
+                                                                <p className="font-black text-[11px] text-slate-900 leading-tight uppercase">{currentUserProfile?.nombres} {currentUserProfile?.apellidos}</p>
+                                                                <p className="text-[9px] text-primary font-bold uppercase leading-tight">{currentUserProfile?.cargo}</p>
+                                                            </div>
+                                                            <img src={canvasRef.current?.toDataURL()} alt="Firma Emisor" className="h-12 object-contain opacity-90" />
+                                                        </>
+                                                    ) : (
+                                                        <p className="text-[10px] text-muted-foreground italic">Pendiente de certificación</p>
+                                                    )}
+                                                </div>
                                             </div>
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">Firma del Colaborador</p>
+                                            <div className="flex flex-col items-center space-y-3">
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b pb-1 w-full text-center">Firma del Colaborador</p>
+                                                <div className="w-full h-24 flex items-center justify-center">
+                                                    {selectedType === "Memorando de Llamado de Atención" ? (
+                                                        <p className="text-[10px] text-muted-foreground italic uppercase font-bold opacity-50">Espacio para Firma</p>
+                                                    ) : (
+                                                        <Badge variant="outline" className="text-[8px] font-black uppercase opacity-40">No requiere firma</Badge>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="pt-12 border-t border-slate-100 pb-4">
+                                            <p className="text-[8px] text-slate-400 leading-tight text-center italic">
+                                                Documento oficial generado por la plataforma Performa para Cadenvill Security. 
+                                                Este registro electrónico constituye prueba auditable de comunicación institucional.
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
-                            </CardContent>
-                            <CardFooter className="bg-slate-50 border-t py-4">
+                            </div>
+                            <div className="bg-slate-900 p-4 border-t border-slate-800 flex justify-end">
                                 <Button 
-                                    className="ml-auto min-w-[200px]" 
+                                    className="min-w-[250px] font-black uppercase tracking-widest text-xs h-11" 
                                     onClick={handleIssueMemorandums}
                                     disabled={isSaving || isEditing || !selectedType || !selectedReason || (!selectedUserId && !isGeneralSelection) || !isLocked}
                                 >
                                     {isSaving ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                                    {isGeneralSelection ? `Emitir a todo el personal (${workers?.filter(w => w.Status === 'active').length})` : 'Emitir y Notificar'}
+                                    {isGeneralSelection ? `Emitir a ${workers?.filter(w => w.Status === 'active').length} personas` : 'Emitir y Notificar'}
                                 </Button>
-                            </CardFooter>
+                            </div>
                         </Card>
                     </div>
                 </TabsContent>
 
                 <TabsContent value="history" className="mt-6">
-                    <Card>
+                    <Card className="shadow-md">
                         <CardHeader>
                             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                                 <div>
-                                    <CardTitle>Historial de Documentos</CardTitle>
-                                    <CardDescription>Visualiza y gestiona todos los memorandos emitidos.</CardDescription>
+                                    <CardTitle>Archivo de Documentos</CardTitle>
+                                    <CardDescription>Expediente histórico de memorandos emitidos y su estado legal.</CardDescription>
                                 </div>
                                 <div className="relative w-full md:max-w-sm">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -687,61 +731,61 @@ export default function DocumentManagementPage() {
                         <CardContent>
                             <Table>
                                 <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Código</TableHead>
-                                        <TableHead>Fecha</TableHead>
-                                        <TableHead>Tipo</TableHead>
-                                        <TableHead>Trabajador</TableHead>
-                                        <TableHead>Motivo</TableHead>
-                                        <TableHead>Estado</TableHead>
-                                        <TableHead className="text-right">Acción</TableHead>
+                                    <TableRow className="bg-slate-50">
+                                        <TableHead className="font-black uppercase text-[10px]">Código</TableHead>
+                                        <TableHead className="font-black uppercase text-[10px]">Fecha</TableHead>
+                                        <TableHead className="font-black uppercase text-[10px]">Tipo</TableHead>
+                                        <TableHead className="font-black uppercase text-[10px]">Colaborador</TableHead>
+                                        <TableHead className="font-black uppercase text-[10px]">Motivo</TableHead>
+                                        <TableHead className="font-black uppercase text-[10px]">Estado</TableHead>
+                                        <TableHead className="text-right font-black uppercase text-[10px]">Acción</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {memosLoading ? (
-                                        <TableRow><TableCell colSpan={7} className="h-24 text-center"><LoaderCircle className="animate-spin inline-block mr-2" /> Cargando...</TableCell></TableRow>
+                                        <TableRow><TableCell colSpan={7} className="h-24 text-center"><LoaderCircle className="animate-spin inline-block mr-2" /> Cargando historial...</TableCell></TableRow>
                                     ) : filteredMemos.length > 0 ? (
                                         filteredMemos.map(memo => (
-                                            <TableRow key={memo.id}>
-                                                <TableCell className="font-bold">{memo.code}</TableCell>
-                                                <TableCell>{format(memo.createdAt, 'dd/MM/yyyy')}</TableCell>
+                                            <TableRow key={memo.id} className="hover:bg-slate-50 transition-colors">
+                                                <TableCell className="font-mono text-xs font-bold text-primary">{memo.code}</TableCell>
+                                                <TableCell className="text-xs">{format(memo.createdAt, 'dd/MM/yyyy')}</TableCell>
                                                 <TableCell>
-                                                    <Badge variant="outline">
+                                                    <Badge variant="outline" className="text-[9px] uppercase font-bold">
                                                         {memo.type?.split(' ').pop()}
                                                     </Badge>
                                                 </TableCell>
                                                 <TableCell>
                                                     <div className="flex flex-col">
-                                                        <span className="font-medium">{memo.targetUserName}</span>
-                                                        <span className="text-xs text-muted-foreground">{memo.targetUserCargo}</span>
+                                                        <span className="font-bold text-xs uppercase">{memo.targetUserName}</span>
+                                                        <span className="text-[9px] text-muted-foreground uppercase">{memo.targetUserCargo}</span>
                                                     </div>
                                                 </TableCell>
-                                                <TableCell className="max-w-[200px] truncate">{memo.reason}</TableCell>
+                                                <TableCell className="max-w-[150px] truncate text-xs italic">"{memo.reason}"</TableCell>
                                                 <TableCell>
                                                     {memo.status === 'signed' ? (
-                                                        <Badge className="bg-green-600 gap-1"><CheckCircle className="h-3 w-3" /> Firmado</Badge>
+                                                        <Badge className="bg-emerald-600 text-[9px] font-black uppercase gap-1"><CheckCircle className="h-3 w-3" /> Firmado</Badge>
                                                     ) : memo.status === 'rejected' ? (
-                                                        <Badge variant="destructive" className="gap-1"><XCircle className="h-3 w-3" /> Rechazado</Badge>
+                                                        <Badge variant="destructive" className="text-[9px] font-black uppercase gap-1"><XCircle className="h-3 w-3" /> Rechazado</Badge>
                                                     ) : memo.status === 'read' ? (
-                                                        <Badge variant="secondary" className="bg-blue-100 text-blue-700">Leído</Badge>
+                                                        <Badge variant="secondary" className="bg-blue-100 text-blue-700 text-[9px] font-black uppercase">Leído</Badge>
                                                     ) : (
-                                                        <Badge variant="outline">Emitido</Badge>
+                                                        <Badge variant="outline" className="text-[9px] font-black uppercase animate-pulse">Emitido</Badge>
                                                     )}
                                                 </TableCell>
                                                 <TableCell className="text-right">
-                                                    <div className="flex justify-end gap-2">
-                                                        <Button variant="ghost" size="icon" onClick={() => setSelectedMemoForView(memo)}>
+                                                    <div className="flex justify-end gap-1">
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary hover:text-white" onClick={() => setSelectedMemoForView(memo)}>
                                                             <Eye className="h-4 w-4" />
                                                         </Button>
-                                                        <Button variant="ghost" size="icon" onClick={() => setMemorandumToDelete(memo)}>
-                                                            <Trash2 className="h-4 w-4 text-destructive" />
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-destructive/10 text-destructive" onClick={() => setMemorandumToDelete(memo)}>
+                                                            <Trash2 className="h-4 w-4" />
                                                         </Button>
                                                     </div>
                                                 </TableCell>
                                             </TableRow>
                                         ))
                                     ) : (
-                                        <TableRow><TableCell colSpan={7} className="h-24 text-center text-muted-foreground">No se encontraron documentos.</TableCell></TableRow>
+                                        <TableRow><TableCell colSpan={7} className="h-24 text-center text-muted-foreground italic">No se han emitido documentos aún.</TableCell></TableRow>
                                     )}
                                 </TableBody>
                             </Table>
@@ -750,98 +794,128 @@ export default function DocumentManagementPage() {
                 </TabsContent>
             </Tabs>
 
-            {/* Viewer Dialog */}
+            {/* Viewer Dialog al estilo Handover */}
             <Dialog open={!!selectedMemoForView} onOpenChange={(open) => !open && setSelectedMemoForView(null)}>
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-w-5xl max-h-[95vh] p-0 flex flex-col overflow-hidden bg-slate-100 border-none">
                     {selectedMemoForView && (
                         <>
-                            <DialogHeader>
-                                <div className="text-center space-y-1">
-                                    <h2 className="text-lg font-black text-slate-900 uppercase">
-                                        {selectedMemoForView.targetUserCargo?.includes('GUARDIA') ? 'CADENVILL SECURITY' : 'GRUPO SUDINCO'}
-                                    </h2>
-                                    <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest">Sistema de Gestión Documental – Performa</p>
-                                </div>
-                            </DialogHeader>
-
-                            <div className="py-6 space-y-6 bg-white p-8 border rounded-lg shadow-inner font-serif text-slate-800">
-                                <div className="flex justify-between text-sm">
-                                    <div className="space-y-1">
-                                        <p><span className="font-bold">Código:</span> {selectedMemoForView.code}</p>
-                                        <p><span className="font-bold">Fecha:</span> {format(selectedMemoForView.createdAt, "d 'de' MMMM 'de' yyyy", { locale: es })}</p>
+                            <div className="flex-1 overflow-y-auto p-4 md:p-10">
+                                <div className="bg-white shadow-2xl mx-auto max-w-2xl min-h-full border border-slate-200 relative flex flex-col">
+                                    <div className="w-full relative h-[140px] border-b overflow-hidden bg-white">
+                                        <Image 
+                                            src={LOGO_URL} 
+                                            alt="Header Cadenvill Security" 
+                                            fill
+                                            className="object-fill object-center"
+                                            unoptimized
+                                        />
                                     </div>
-                                </div>
 
-                                <div className="space-y-1 text-sm">
-                                    <p><span className="font-bold">PARA:</span> {selectedMemoForView.targetUserName}</p>
-                                    <p><span className="font-bold">CARGO:</span> {selectedMemoForView.targetUserCargo}</p>
-                                </div>
-
-                                <div className="border-y py-2">
-                                    <p className="font-bold text-sm">ASUNTO: {selectedMemoForView.type} – {selectedMemoForView.reason}</p>
-                                </div>
-
-                                <div className="text-sm leading-relaxed whitespace-pre-wrap min-h-[200px]">
-                                    {selectedMemoForView.content}
-                                </div>
-
-                                {selectedMemoForView.status === 'rejected' && selectedMemoForView.defense && (
-                                    <div className="mt-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-r-md">
-                                        <div className="flex items-center gap-2 text-red-700 font-bold mb-1">
-                                            <MessageSquare className="h-4 w-4" />
-                                            <span className="text-xs uppercase">Respuesta / Descargo del Colaborador:</span>
+                                    <div className="px-10 py-8 space-y-8 flex-1 font-serif text-slate-800">
+                                        <div className="text-center space-y-1">
+                                            <h2 className="text-xl font-black tracking-tight text-slate-900 border-b-2 border-primary inline-block px-4 pb-1 uppercase italic">
+                                                Memorando Institucional
+                                            </h2>
+                                            <p className="text-[9px] font-bold text-slate-500 tracking-[0.2em] uppercase">Control de Auditoría #{selectedMemoForView.id.slice(-8).toUpperCase()}</p>
                                         </div>
-                                        <p className="text-sm italic text-red-900 leading-relaxed">
-                                            "{selectedMemoForView.defense}"
-                                        </p>
-                                    </div>
-                                )}
 
-                                <div className="pt-10 grid grid-cols-2 gap-12">
-                                    <div className="text-center border-t pt-2">
-                                        <div className="h-24 flex flex-col items-center justify-center mt-1">
-                                            {selectedMemoForView.issuerSignature && (
-                                                <>
-                                                    <img src={selectedMemoForView.issuerSignature} alt="Firma Emisor" className="h-12 mb-1 opacity-90" />
-                                                    <p className="font-bold text-[11px] text-primary leading-tight">{selectedMemoForView.issuerName}</p>
-                                                    <p className="text-[9px] text-muted-foreground uppercase leading-tight">{selectedMemoForView.issuerCargo}</p>
-                                                </>
-                                            )}
+                                        <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+                                            <div className="space-y-1">
+                                                <p className="text-[9px] font-black text-slate-400 uppercase">Código</p>
+                                                <p className="font-bold text-slate-800">{selectedMemoForView.code}</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <p className="text-[9px] font-black text-slate-400 uppercase">Fecha Emisión</p>
+                                                <p className="font-bold text-slate-800">{format(selectedMemoForView.createdAt, "d 'de' MMMM 'de' yyyy", { locale: es })}</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <p className="text-[9px] font-black text-slate-400 uppercase">PARA:</p>
+                                                <p className="font-bold text-slate-800 uppercase">{selectedMemoForView.targetUserName}</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <p className="text-[9px] font-black text-slate-400 uppercase">CARGO:</p>
+                                                <p className="font-bold text-slate-800 uppercase">{selectedMemoForView.targetUserCargo}</p>
+                                            </div>
                                         </div>
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Firma del Emisor</p>
-                                    </div>
-                                    <div className="text-center border-t pt-2">
-                                        <div className="h-24 flex flex-col items-center justify-center mt-1">
-                                            {selectedMemoForView.signature ? (
-                                                <>
-                                                    <img src={selectedMemoForView.signature} alt="Firma Colaborador" className="h-12 mb-1 opacity-90" />
-                                                    <p className="font-bold text-[11px] text-primary leading-tight">{selectedMemoForView.targetUserName}</p>
-                                                    <p className="text-[9px] text-muted-foreground uppercase leading-tight">{selectedMemoForView.targetUserCargo}</p>
-                                                </>
-                                            ) : (
-                                                selectedMemoForView.status === 'rejected' ? (
-                                                    <div className="flex flex-col items-center gap-1">
-                                                        <XCircle className="h-8 w-8 text-red-500" />
-                                                        <span className="text-[10px] font-bold text-red-600">RECHAZADO</span>
-                                                    </div>
-                                                ) : selectedMemoForView.type === "Memorando de Llamado de Atención" ? (
-                                                    <p className="text-[10px] text-muted-foreground italic mt-4">Pendiente de firma</p>
-                                                ) : (
-                                                    <Badge variant="outline" className="text-[8px] h-4">No requiere firma</Badge>
-                                                )
-                                            )}
+
+                                        <div className="border-y py-3">
+                                            <p className="font-black text-sm uppercase tracking-tight">ASUNTO: {selectedMemoForView.type} – {selectedMemoForView.reason}</p>
                                         </div>
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Firma del Colaborador</p>
+
+                                        <div className="text-sm leading-relaxed whitespace-pre-wrap min-h-[200px] px-2 text-slate-700">
+                                            {selectedMemoForView.content}
+                                        </div>
+
+                                        {selectedMemoForView.status === 'rejected' && selectedMemoForView.defense && (
+                                            <div className="mt-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-r-md">
+                                                <div className="flex items-center gap-2 text-red-700 font-bold mb-1">
+                                                    <MessageSquare className="h-4 w-4" />
+                                                    <span className="text-[10px] uppercase tracking-widest font-black">Respuesta / Descargo del Colaborador:</span>
+                                                </div>
+                                                <p className="text-sm italic text-red-900 leading-relaxed font-serif">
+                                                    "{selectedMemoForView.defense}"
+                                                </p>
+                                            </div>
+                                        )}
+
+                                        <div className="pt-12 grid grid-cols-2 gap-16">
+                                            <div className="flex flex-col items-center space-y-3">
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b pb-1 w-full text-center">Firma del Emisor</p>
+                                                <div className="w-full h-24 flex flex-col items-center justify-center text-center">
+                                                    {selectedMemoForView.issuerSignature && (
+                                                        <>
+                                                            <div className="mb-2">
+                                                                <p className="font-black text-[11px] text-slate-900 leading-tight uppercase">{selectedMemoForView.issuerName}</p>
+                                                                <p className="text-[9px] text-primary font-bold uppercase leading-tight">{selectedMemoForView.issuerCargo}</p>
+                                                            </div>
+                                                            <img src={selectedMemoForView.issuerSignature} alt="Firma Emisor" className="h-12 object-contain opacity-90" />
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col items-center space-y-3">
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b pb-1 w-full text-center">Firma del Colaborador</p>
+                                                <div className="w-full h-24 flex flex-col items-center justify-center text-center">
+                                                    {selectedMemoForView.signature ? (
+                                                        <>
+                                                            <div className="mb-2">
+                                                                <p className="font-black text-[11px] text-slate-900 leading-tight uppercase">{selectedMemoForView.targetUserName}</p>
+                                                                <p className="text-[9px] text-emerald-700 font-bold uppercase leading-tight">{selectedMemoForView.targetUserCargo}</p>
+                                                            </div>
+                                                            <img src={selectedMemoForView.signature} alt="Firma Colaborador" className="h-12 object-contain opacity-90" />
+                                                        </>
+                                                    ) : (
+                                                        selectedMemoForView.status === 'rejected' ? (
+                                                            <div className="flex flex-col items-center gap-1 border-2 border-red-500 p-2 rounded rotate-[-5deg]">
+                                                                <span className="text-[12px] font-black text-red-600">RECHAZADO</span>
+                                                                <span className="text-[8px] font-bold text-red-400">{format(selectedMemoForView.createdAt, 'dd/MM/yyyy')}</span>
+                                                            </div>
+                                                        ) : selectedMemoForView.type === "Memorando de Llamado de Atención" ? (
+                                                            <p className="text-[10px] text-muted-foreground italic font-medium">Pendiente de firma</p>
+                                                        ) : (
+                                                            <Badge variant="outline" className="text-[8px] font-black uppercase opacity-40">No requiere firma</Badge>
+                                                        )
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="pt-12 border-t border-slate-100 pb-4">
+                                            <p className="text-[8px] text-slate-400 leading-tight text-center italic">
+                                                Copia digital auténtica para el expediente laboral. 
+                                                Este documento tiene validez probatoria institucional.
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <DialogFooter className="pt-6 border-t mt-6">
-                                <Button variant="outline" onClick={() => setSelectedMemoForView(null)}>Cerrar</Button>
-                                <Button className="gap-2 bg-blue-600 hover:bg-blue-700" onClick={() => handleDownloadPdf(selectedMemoForView)} disabled={isGeneratingPdf}>
-                                    {isGeneratingPdf ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />} Descargar PDF
+                            <div className="bg-slate-900 p-4 flex justify-between items-center px-10 border-t border-slate-800">
+                                <Button variant="ghost" onClick={() => setSelectedMemoForView(null)} className="text-white hover:bg-white/10 font-bold uppercase text-[10px]">Cerrar Vista</Button>
+                                <Button className="gap-2 bg-blue-600 hover:bg-blue-700 font-black uppercase text-[10px] tracking-widest px-8" onClick={() => handleDownloadPdf(selectedMemoForView)} disabled={isGeneratingPdf}>
+                                    {isGeneratingPdf ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />} Descargar PDF Oficial
                                 </Button>
-                            </DialogFooter>
+                            </div>
                         </>
                     )}
                 </DialogContent>
@@ -850,12 +924,12 @@ export default function DocumentManagementPage() {
             <AlertDialog open={!!memoToDelete} onOpenChange={() => setMemorandumToDelete(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>¿Eliminar este memorando?</AlertDialogTitle>
-                        <AlertDialogDescription>Esta acción es permanente y eliminará el documento oficial del historial.</AlertDialogDescription>
+                        <AlertDialogTitle>¿Eliminar documento oficial?</AlertDialogTitle>
+                        <AlertDialogDescription>Esta acción es irreversible y removerá el memorando de los registros históricos del trabajador.</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDeleteMemorandum} className="bg-destructive text-destructive-foreground">Eliminar</AlertDialogAction>
+                        <AlertDialogAction onClick={handleDeleteMemorandum} className="bg-destructive text-destructive-foreground font-bold">Eliminar permanentemente</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

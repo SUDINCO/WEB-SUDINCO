@@ -274,100 +274,111 @@ export const generateMemorandumPDF = async (memo: Memorandum) => {
 
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 20;
-    let currentY = 15;
+    const margin = 10;
+    let currentY = 0;
 
-    // Header Empresa
+    // Header Institucional estilo Handover
+    const headerHeight = 35;
+    doc.addImage(LOGO_URL, 'PNG', 0, 0, pageWidth, headerHeight);
+    currentY = headerHeight + 5;
+
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
+    doc.setFontSize(16);
     doc.setTextColor(30, 41, 59);
-    doc.text(memo.targetUserCargo?.includes('GUARDIA') ? 'CADENVILL SECURITY' : 'GRUPO SUDINCO', pageWidth / 2, currentY, { align: 'center' });
+    doc.text('MEMORANDO INSTITUCIONAL', pageWidth / 2, currentY, { align: 'center' });
     currentY += 6;
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(100, 116, 139);
-    doc.text('SISTEMA DE GESTIÓN DOCUMENTAL - PERFORMA', pageWidth / 2, currentY, { align: 'center' });
-    
-    currentY += 10;
-    doc.setDrawColor(200);
-    doc.line(margin, currentY, pageWidth - margin, currentY);
-    
-    currentY += 10;
-    doc.setFontSize(10);
-    doc.setTextColor(0);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`CÓDIGO: ${memo.code}`, margin, currentY);
-    doc.text(`FECHA: ${format(new Date(memo.createdAt), "d 'de' MMMM 'de' yyyy", { locale: es })}`, pageWidth - margin, currentY, { align: 'right' });
-    
-    currentY += 12;
-    doc.text('PARA:', margin, currentY);
-    doc.setFont('helvetica', 'normal');
-    doc.text(memo.targetUserName, margin + 25, currentY);
-    
-    currentY += 6;
-    doc.setFont('helvetica', 'bold');
-    doc.text('CARGO:', margin, currentY);
-    doc.setFont('helvetica', 'normal');
-    doc.text(memo.targetUserCargo, margin + 25, currentY);
-    
-    currentY += 10;
-    doc.setDrawColor(230);
-    doc.line(margin, currentY, pageWidth - margin, currentY);
+    doc.text(`Documento de Auditoría Institucional #${memo.id.slice(-8).toUpperCase()}`, pageWidth / 2, currentY, { align: 'center' });
     currentY += 8;
-    
+
+    const metadata = [
+        ['CÓDIGO DOCUMENTO', memo.code, 'FECHA DE EMISIÓN', format(new Date(memo.createdAt), 'dd/MM/yyyy', { locale: es })],
+        ['PARA (COLABORADOR)', memo.targetUserName.toUpperCase(), 'CARGO / FUNCIÓN', memo.targetUserCargo.toUpperCase()]
+    ];
+
+    (doc as any).autoTable({
+        startY: currentY,
+        body: metadata,
+        theme: 'grid',
+        styles: { fontSize: 8, cellPadding: 2.5 },
+        columnStyles: {
+            0: { fontStyle: 'bold', fillColor: [241, 245, 249], cellWidth: 35 },
+            1: { cellWidth: 55 },
+            2: { fontStyle: 'bold', fillColor: [241, 245, 249], cellWidth: 35 },
+            3: { cellWidth: 55 }
+        },
+        margin: { left: margin, right: margin }
+    });
+    currentY = (doc as any).lastAutoTable.finalY + 8;
+
     doc.setFont('helvetica', 'bold');
-    doc.text('ASUNTO:', margin, currentY);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`${memo.type} - ${memo.reason}`, margin + 25, currentY);
-    
-    currentY += 10;
-    doc.setDrawColor(230);
-    doc.line(margin, currentY, pageWidth - margin, currentY);
-    currentY += 12;
-    
-    // Contenido
     doc.setFontSize(10);
+    doc.setTextColor(30, 41, 59);
+    doc.text(`ASUNTO: ${memo.type.toUpperCase()} - ${memo.reason.toUpperCase()}`, margin, currentY);
+    currentY += 8;
+
+    // Contenido del Memorando
+    doc.setFont('times', 'normal');
+    doc.setFontSize(11);
+    doc.setTextColor(0);
     const splitContent = doc.splitTextToSize(memo.content, pageWidth - margin * 2);
-    doc.text(splitContent, margin, currentY, { lineHeightFactor: 1.5 });
+    doc.text(splitContent, margin, currentY, { align: 'justify', lineHeightFactor: 1.5 });
     
-    // Calcular posición de firmas (siempre al final o en nueva página)
-    let sigY = pageHeight - 60;
-    const contentHeight = splitContent.length * 5;
-    if (currentY + contentHeight > sigY - 20) {
+    currentY += (splitContent.length * 6) + 15;
+
+    // Si el contenido es muy largo, saltar página para firmas
+    if (currentY > pageHeight - 60) {
         doc.addPage();
-        sigY = pageHeight - 60;
+        currentY = 20;
     }
 
     const sigWidth = 70;
-    
+    const sigY = pageHeight - 45;
+
     // Firma Emisor
+    doc.setDrawColor(200);
+    doc.line(margin, sigY, margin + sigWidth, sigY);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.text(memo.issuerName.toUpperCase(), margin + sigWidth / 2, sigY + 4, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.text(memo.issuerCargo.toUpperCase(), margin + sigWidth / 2, sigY + 8, { align: 'center' });
+    doc.setFont('helvetica', 'bold');
+    doc.text('FIRMA DEL EMISOR', margin + sigWidth / 2, sigY + 12, { align: 'center' });
     if (memo.issuerSignature) {
         doc.addImage(memo.issuerSignature, 'PNG', margin + 5, sigY - 25, sigWidth - 10, 20);
     }
-    doc.setDrawColor(200);
-    doc.line(margin, sigY, margin + sigWidth, sigY);
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'bold');
-    doc.text(memo.issuerName, margin + sigWidth / 2, sigY + 4, { align: 'center' });
-    doc.setFont('helvetica', 'normal');
-    doc.text(memo.issuerCargo, margin + sigWidth / 2, sigY + 8, { align: 'center' });
-    doc.setFont('helvetica', 'bold');
-    doc.text('EMISOR', margin + sigWidth / 2, sigY + 12, { align: 'center' });
 
-    // Firma Colaborador (solo si existe)
+    // Firma Colaborador (si aplica)
     if (memo.type === "Memorando de Llamado de Atención") {
+        doc.line(pageWidth - margin - sigWidth, sigY, pageWidth - margin, sigY);
+        doc.setFont('helvetica', 'bold');
+        doc.text(memo.targetUserName.toUpperCase(), pageWidth - margin - sigWidth / 2, sigY + 4, { align: 'center' });
+        doc.setFont('helvetica', 'normal');
+        doc.text(memo.targetUserCargo.toUpperCase(), pageWidth - margin - sigWidth / 2, sigY + 8, { align: 'center' });
+        doc.setFont('helvetica', 'bold');
+        doc.text('FIRMA DEL COLABORADOR', pageWidth - margin - sigWidth / 2, sigY + 12, { align: 'center' });
+        
         if (memo.signature) {
             doc.addImage(memo.signature, 'PNG', pageWidth - margin - sigWidth + 5, sigY - 25, sigWidth - 10, 20);
+        } else if (memo.status === 'rejected') {
+            doc.setTextColor(220, 38, 38);
+            doc.setFontSize(14);
+            doc.text('RECHAZADO', pageWidth - margin - sigWidth / 2, sigY - 10, { align: 'center' });
+            doc.setTextColor(0);
         }
-        doc.line(pageWidth - margin - sigWidth, sigY, pageWidth - margin, sigY);
-        doc.setFontSize(8);
-        doc.setFont('helvetica', 'bold');
-        doc.text(memo.targetUserName, pageWidth - margin - sigWidth / 2, sigY + 4, { align: 'center' });
-        doc.setFont('helvetica', 'normal');
-        doc.text(memo.targetUserCargo, pageWidth - margin - sigWidth / 2, sigY + 8, { align: 'center' });
-        doc.setFont('helvetica', 'bold');
-        doc.text('COLABORADOR', pageWidth - margin - sigWidth / 2, sigY + 12, { align: 'center' });
     }
+
+    const footerY = pageHeight - 15;
+    doc.setDrawColor(241, 245, 249);
+    doc.line(margin, footerY - 5, pageWidth - margin, footerY - 5);
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(7);
+    doc.setTextColor(148, 163, 184);
+    const legalText = 'Este documento constituye una notificación oficial vinculante. La firma electrónica certifica la recepción y conocimiento de los términos aquí expuestos.';
+    doc.text(doc.splitTextToSize(legalText, pageWidth - margin * 2), pageWidth / 2, footerY, { align: 'center' });
 
     doc.save(`Memorando_${memo.code.replace(/\//g, '_')}.pdf`);
 };
