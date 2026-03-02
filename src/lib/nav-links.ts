@@ -21,6 +21,8 @@ import {
   Users,
   BarChart,
   ShieldCheck,
+  FolderOpen,
+  FileBadge
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -69,6 +71,12 @@ export const allNavLinks = [
           { name: "Vacaciones y Permisos", href: "/dashboard/vacation-requests", icon: CalendarDays, id: "vacation-requests" },
         ]
       },
+      {
+        title: "Mi Perfil",
+        sublinks: [
+          { name: "Mis Documentos", href: "/dashboard/my-documents", icon: FileBadge, id: "my-documents" },
+        ]
+      }
     ]
   },
   {
@@ -82,6 +90,7 @@ export const allNavLinks = [
     module: "Administración",
     icon: Shield,
     sublinks: [
+      { name: "Gestión Documental", href: "/dashboard/administration/document-management", icon: FolderOpen, id: "document-management" },
       { name: "Publicaciones", href: "/dashboard/administration/publications", icon: Megaphone, id: "publications" },
       { name: "Calendario", href: "/dashboard/administration/calendar", icon: CalendarDays, id: "calendar" },
       { name: "Evaluación de Desempeño (Admin)", href: "/dashboard/performance-evaluation", icon: ClipboardCheck, id: "performance-evaluation" },

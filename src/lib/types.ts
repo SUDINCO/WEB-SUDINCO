@@ -26,6 +26,39 @@ export interface UserProfile {
   requiresPasswordChange?: boolean;
 }
 
+export type MemorandumType = "Informativo" | "Llamado de atención" | "Amonestación escrita" | "Sanción" | "Inicio de proceso disciplinario" | "Reconocimiento";
+export type MemorandumStatus = "draft" | "issued" | "read" | "signed" | "rejected";
+
+export interface Memorandum {
+  id: string;
+  code: string;
+  type: MemorandumType;
+  causalId: string;
+  causalTitle: string;
+  targetUserId: string;
+  targetUserName: string;
+  targetUserCargo: string;
+  issuerId: string;
+  issuerName: string;
+  issuerCargo: string;
+  content: string;
+  status: MemorandumStatus;
+  createdAt: number;
+  readAt?: number;
+  signedAt?: number;
+  signature?: string;
+  defense?: string;
+  severity?: "N/A" | "Leve" | "Grave" | "Muy Grave";
+}
+
+export interface MemorandumCausal {
+  id: string;
+  category: "Incumplimiento Laboral" | "Conducta" | "Operativa" | "Administrativa" | "Positiva";
+  title: string;
+  legalBasis: string;
+  severity: "N/A" | "Leve" | "Grave" | "Muy Grave";
+}
+
 export interface PrivacyConsent {
   id?: string;
   uid: string;
@@ -183,24 +216,6 @@ export type HiringProcessWithShortlist = HiringProcess & {
     shortlist: (Candidate & { evaluation?: ProfileEvaluation })[] 
 };
 
-type CandidateInfo = {
-  id: string;
-  nombres: string;
-  apellidos: string;
-  cedula: string;
-};
-
-type ShortlistItem = {
-  candidateId: string;
-  candidateInfo: CandidateInfo;
-  evaluationInfo: ProfileEvaluation;
-};
-
-type Recommendation = {
-  candidateId: string;
-  comment: string;
-};
-
 export type HiringApproval = {
   id: string;
   processId?: string;
@@ -217,8 +232,8 @@ export type HiringApproval = {
     effectiveHiringDate?: string;
     justificationForRetroactive?: string;
   };
-  shortlist: ShortlistItem[];
-  recommendations: Recommendation[];
+  shortlist: any[];
+  recommendations: any[];
   bossSelection?: {
     selectedCandidateId: string;
     bossComments?: string;
@@ -280,30 +295,18 @@ export interface Lactation {
 
 export interface AttendanceRecord {
   id: string;
-  collaborator?: Collaborator;
   collaboratorId?: string;
-  userName?: string;
   date: any;
   scheduledShift: string | null;
   entryTime: any | null;
   exitTime: any | null;
-  status?: 'on-time' | 'late' | 'absent' | 'in-progress' | 'completed' | 'day-off';
+  status?: string;
   entryLatitude?: number;
   entryLongitude?: number;
   exitLatitude?: number;
   exitLongitude?: number;
   entryWorkLocationName?: string;
   exitWorkLocationName?: string;
-  isEntryRegistered?: boolean;
-  isExitRegistered?: boolean;
-  latenessInMinutes?: number;
-  workedHours?: number | null;
-  extraHours25?: number;
-  extraHours50?: number;
-  extraHours100?: number;
-  observations?: string;
-  registrationStatus?: 'Completo' | 'Incompleto' | 'Falta' | 'N/A' | 'Programado';
-  complianceStatus?: 'A Tiempo' | 'Atraso' | 'Falta' | 'N/A';
 }
 
 export interface Holiday {
@@ -323,7 +326,6 @@ export interface OvertimeRule {
     nightSurcharge: number;
     sup50: number;
     ext100: number;
-    isPlaceholder?: boolean;
 }
 
 export interface ShiftPattern {
@@ -351,26 +353,6 @@ export interface LocationReport {
   notes?: string;
 }
 
-export interface NotificationChange {
-  field: string;
-  from: any;
-  to: any;
-}
-
-export interface Notification {
-  id: string;
-  recordId: string;
-  requesterId: string;
-  requesterName: string;
-  changes: NotificationChange[];
-  status: 'pending' | 'approved' | 'rejected';
-  requestNote: string;
-  createdAt: string;
-  actedAt?: string;
-  actedBy?: string;
-  adminObservation?: string;
-}
-
 export interface ManualOverride {
   shift: string | null;
   note: string;
@@ -395,14 +377,6 @@ export interface SavedSchedule {
     name: string;
     jobTitle: string;
   };
-}
-
-export interface Fine {
-    id: string;
-    collaboratorId: string;
-    eventDate: Date;
-    percentage: number;
-    reason: string;
 }
 
 export interface Role {
