@@ -4,6 +4,7 @@ import React, { createContext, useContext, ReactNode, useMemo } from 'react';
 import { FirebaseApp } from 'firebase/app';
 import { Firestore } from 'firebase/firestore';
 import { Auth } from 'firebase/auth';
+import { Messaging } from 'firebase/messaging';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
 interface FirebaseProviderProps {
@@ -11,6 +12,7 @@ interface FirebaseProviderProps {
   firebaseApp: FirebaseApp;
   firestore: Firestore;
   auth: Auth;
+  messaging?: Messaging;
 }
 
 // Combined state for the Firebase context
@@ -18,6 +20,7 @@ export interface FirebaseContextState {
   firebaseApp: FirebaseApp;
   firestore: Firestore;
   auth: Auth;
+  messaging?: Messaging;
 }
 
 // React Context
@@ -31,13 +34,15 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   firebaseApp,
   firestore,
   auth,
+  messaging
 }) => {
   // Memoize the context value
   const contextValue = useMemo((): FirebaseContextState => ({
     firebaseApp,
     firestore,
     auth,
-  }), [firebaseApp, firestore, auth]);
+    messaging
+  }), [firebaseApp, firestore, auth, messaging]);
 
   return (
     <FirebaseContext.Provider value={contextValue}>

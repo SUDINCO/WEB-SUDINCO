@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from "next/link";
@@ -51,6 +50,7 @@ import { UserProfileProvider, useUserProfile } from '@/context/user-profile-cont
 import { allNavLinks } from '@/lib/nav-links';
 import { useRecentLinks } from '@/hooks/use-recent-links';
 import { PrivacyConsentModal } from "@/components/PrivacyConsentModal";
+import { PushNotificationManager } from "@/components/PushNotificationManager";
 import type { HiringApproval, PerformanceEvaluation, UserProfile, Memorandum, Vacation, EquipmentHandover } from "@/lib/types";
 import { format, parseISO, isSameDay } from "date-fns";
 import { es } from "date-fns/locale";
@@ -188,6 +188,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   return (
      <>
       <NextTopLoader color="hsl(var(--accent))" height={3} showSpinner={false} />
+      <PushNotificationManager />
       <div className="h-full">
         <PrivacyConsentModal />
         <div className="md:hidden">

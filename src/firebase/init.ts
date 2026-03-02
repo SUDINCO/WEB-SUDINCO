@@ -4,16 +4,14 @@ import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
+import { getMessaging, Messaging, isSupported } from 'firebase/messaging';
 
 type FirebaseServices = {
   firebaseApp: FirebaseApp;
   auth: Auth;
   firestore: Firestore;
+  messaging?: Messaging;
 };
-
-// NOTE: We are intentionally not caching the services object in a module-level variable.
-// This is to ensure that on every HMR (Hot Module Replacement) during development,
-// the initializeFirebase function is re-executed.
 
 export function initializeFirebase(): FirebaseServices {
   const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
@@ -26,6 +24,15 @@ export function initializeFirebase(): FirebaseServices {
     auth: auth,
     firestore: firestore
   };
+
+  // Solo inicializar messaging en el cliente y si es soportado
+  if (typeof window !== 'undefined') {
+    isSupported().then(supported => {
+      if (supported) {
+        services.messaging = getMessaging(app);
+      }
+    });
+  }
   
   return services;
 }
