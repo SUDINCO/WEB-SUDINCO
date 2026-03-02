@@ -105,7 +105,7 @@ export default function AttendanceMapPage() {
             return {
                 ...rec,
                 userCargo: user?.cargo || 'N/A',
-                userName: user ? `${user.nombres} ${user.apellidos}` : rec.userName,
+                userName: user ? `${user.nombres} ${user.apellidos}` : (rec as any).userName,
                 userPhotoUrl: user?.photoUrl,
                 initials: user ? `${user.nombres?.[0] || ''}${user.apellidos?.[0] || ''}` : 'U'
             };

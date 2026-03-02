@@ -180,7 +180,7 @@ export default function AttendanceMap({ workLocations, records, viewType, onLoca
             {/* Highlighted selection marker */}
             {highlightedPoint && (
                 <Marker position={[highlightedPoint.lat, highlightedPoint.lng]} icon={locationIcon}>
-                    <Popup open>{highlightedPoint.label}</Popup>
+                    <Popup>{highlightedPoint.label}</Popup>
                 </Marker>
             )}
             

@@ -15,7 +15,6 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  CardFooter
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -48,8 +47,6 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
-    DialogDescription,
-    DialogFooter
 } from '@/components/ui/dialog';
 import { 
     Search, 
@@ -66,7 +63,6 @@ import {
     Eraser,
     Lock,
     Unlock,
-    FileSignature,
     Eye,
     FileDown,
     XCircle,
@@ -74,7 +70,6 @@ import {
     FileText,
     ShieldCheck,
     Paperclip,
-    X,
     FileUp,
     Camera
 } from 'lucide-react';
