@@ -75,7 +75,8 @@ import {
     ShieldCheck,
     Paperclip,
     X,
-    FileUp
+    FileUp,
+    Camera
 } from 'lucide-react';
 import { Combobox } from '@/components/ui/combobox';
 import type { UserProfile, Memorandum, MemorandumType, SavedSchedule } from '@/lib/types';
