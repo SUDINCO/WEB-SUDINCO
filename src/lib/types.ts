@@ -26,15 +26,14 @@ export interface UserProfile {
   requiresPasswordChange?: boolean;
 }
 
-export type MemorandumType = "Informativo" | "Llamado de atención" | "Amonestación escrita" | "Sanción" | "Inicio de proceso disciplinario" | "Reconocimiento";
+export type MemorandumType = "Memorando Informativo" | "Memorando de Llamado de Atención" | "Memorando de Reconocimiento";
 export type MemorandumStatus = "draft" | "issued" | "read" | "signed" | "rejected";
 
 export interface Memorandum {
   id: string;
   code: string;
   type: MemorandumType;
-  causalId: string;
-  causalTitle: string;
+  reason: string;
   targetUserId: string;
   targetUserName: string;
   targetUserCargo: string;
@@ -48,7 +47,6 @@ export interface Memorandum {
   signedAt?: number;
   signature?: string;
   defense?: string;
-  severity?: "N/A" | "Leve" | "Grave" | "Muy Grave";
 }
 
 export interface MemorandumCausal {

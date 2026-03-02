@@ -21,11 +21,8 @@ import { Button } from '@/components/ui/button';
 import { 
     FileText, 
     FileSignature, 
-    Clock, 
     CheckCircle, 
-    AlertTriangle, 
     Eye,
-    Send,
     LoaderCircle,
     Eraser,
     Lock,
@@ -187,16 +184,16 @@ export default function MyDocumentsPage() {
                                         <Badge variant="destructive" className="animate-pulse">Pendiente</Badge>
                                     )}
                                 </div>
-                                <CardTitle className="text-base mt-2">{memo.type}</CardTitle>
+                                <CardTitle className="text-sm mt-2">{memo.type}</CardTitle>
                                 <CardDescription>{format(memo.createdAt, 'PPP', { locale: es })}</CardDescription>
                             </CardHeader>
                             <CardContent className="pb-4">
-                                <p className="text-sm font-semibold mb-1">Causal:</p>
-                                <p className="text-sm text-muted-foreground line-clamp-2">{memo.causalTitle}</p>
+                                <p className="text-xs font-semibold mb-1">Motivo:</p>
+                                <p className="text-sm text-muted-foreground line-clamp-2">{memo.reason}</p>
                             </CardContent>
                             <CardFooter className="pt-0">
                                 <Button variant="secondary" className="w-full gap-2" onClick={() => handleOpenMemo(memo)}>
-                                    <Eye className="h-4 w-4" /> Ver y Gestionar
+                                    <Eye className="h-4 w-4" /> Ver y Firmar
                                 </Button>
                             </CardFooter>
                         </Card>
@@ -245,7 +242,7 @@ export default function MyDocumentsPage() {
                                 <Separator />
 
                                 <div className="space-y-4">
-                                    <p className="font-bold underline uppercase tracking-widest text-xs">Asunto: {selectedMemo.type} - {selectedMemo.causalTitle}</p>
+                                    <p className="font-bold underline uppercase tracking-widest text-xs">Asunto: {selectedMemo.type} - {selectedMemo.reason}</p>
                                     <div className="text-base leading-relaxed text-slate-800 whitespace-pre-wrap font-serif">
                                         {selectedMemo.content}
                                     </div>
