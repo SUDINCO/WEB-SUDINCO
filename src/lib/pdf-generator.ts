@@ -284,7 +284,7 @@ export const generateMemorandumPDF = async (memo: Memorandum) => {
     currentY = headerHeight + 5;
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14); // Reduced slightly to handle long names
+    doc.setFontSize(14); 
     doc.setTextColor(30, 41, 59);
     const headerTitle = `MEMORANDO INSTITUCIONAL - ${memo.targetUserEmpresa || 'GENERAL'}`.toUpperCase();
     

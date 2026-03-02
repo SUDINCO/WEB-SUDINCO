@@ -311,6 +311,8 @@ export interface AttendanceRecord {
   exitLongitude?: number;
   entryWorkLocationName?: string;
   exitWorkLocationName?: string;
+  registrationStatus?: string;
+  complianceStatus?: string;
 }
 
 export interface Holiday {

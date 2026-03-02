@@ -33,7 +33,6 @@ export default function AttendanceMapPage() {
   const [cargoFilter, setCargoFilter] = useState('todos');
   const [colaboradorFilter, setColaboradorFilter] = useState('todos');
   
-  // Estado para centrar el mapa en un punto específico seleccionado desde la tabla
   const [highlightedPoint, setHighlightedPoint] = useState<{ lat: number; lng: number; label: string } | null>(null);
 
   const firestore = useFirestore();
@@ -94,7 +93,7 @@ export default function AttendanceMapPage() {
             return cargoMatch && colaboradorMatch;
         }) as RecordWithUser[];
 
-    } else { // 'reports'
+    } else {
         const reportsForDay = allReports?.filter(report => {
             const reportDate = new Date(report.timestamp);
             return format(reportDate, 'yyyy-MM-dd') === selectedDateStr;
@@ -105,7 +104,7 @@ export default function AttendanceMapPage() {
             return {
                 ...rec,
                 userCargo: user?.cargo || 'N/A',
-                userName: user ? `${user.nombres} ${user.apellidos}` : (rec as any).userName as string || 'Desconocido',
+                userName: user ? `${user.nombres} ${user.apellidos}` : ((rec as any).userName as string || 'Desconocido'),
                 userPhotoUrl: user?.photoUrl,
                 initials: user ? `${user.nombres?.[0] || ''}${user.apellidos?.[0] || ''}` : 'U'
             };
@@ -122,7 +121,7 @@ export default function AttendanceMapPage() {
 
     const location = workLocations?.find(l => l.id === locationId);
     if (location) {
-        setSheetFilter(''); // Reset filter on new sheet open
+        setSheetFilter(''); 
         const recordsForLocation = allAttendance
             .filter(record => {
                 const recordDate = (record.date as any)?.toDate ? (record.date as any).toDate() : new Date(record.date);
@@ -130,7 +129,7 @@ export default function AttendanceMapPage() {
             })
             .map(record => {
                 const user = allUsers.find(u => u.id === record.collaboratorId);
-                const userName = user ? `${user.nombres} ${user.apellidos}` : (record as any).userName || 'Desconocido';
+                const userName = user ? `${user.nombres} ${user.apellidos}` : ((record as any).userName as string || 'Desconocido');
                 const userCargo = user ? user.cargo : 'N/A';
                 return {
                     ...record,
@@ -155,13 +154,13 @@ export default function AttendanceMapPage() {
     const user = allUsers.find(u => u.id === record.collaboratorId);
     const enrichedRecord = {
         ...record,
-        userName: user ? `${user.nombres} ${user.apellidos}` : (record as any).userName || 'Desconocido',
+        userName: user ? `${user.nombres} ${user.apellidos}` : ((record as any).userName as string || 'Desconocido'),
         userCargo: user ? user.cargo : 'N/A',
         entryTime: record.entryTime && (record.entryTime as any)?.toDate ? (record.entryTime as any).toDate() : null,
         exitTime: record.exitTime && (record.exitTime as any)?.toDate ? (record.exitTime as any).toDate() : null,
     };
     
-    setSheetFilter(''); // Reset filter
+    setSheetFilter('');
     setSheetData({
         title: `Detalle de Timbre Fuera de Zona`,
         description: `Registro de ${enrichedRecord.userName} el día ${format(date, 'dd MMMM, yyyy', { locale: es })}.`,
@@ -172,7 +171,7 @@ export default function AttendanceMapPage() {
   const handleShowOnMap = (lat: number | undefined, lng: number | undefined, label: string) => {
     if (lat && lng) {
         setHighlightedPoint({ lat, lng, label });
-        setSheetData(null); // Cerrar el panel para mostrar el mapa
+        setSheetData(null);
     }
   };
 
@@ -182,8 +181,8 @@ export default function AttendanceMapPage() {
 
     const lowercasedFilter = sheetFilter.toLowerCase();
     return sheetData.records.filter(record =>
-        record.userName?.toLowerCase().includes(lowercasedFilter) ||
-        record.userCargo?.toLowerCase().includes(lowercasedFilter)
+        String(record.userName || '').toLowerCase().includes(lowercasedFilter) ||
+        String(record.userCargo || '').toLowerCase().includes(lowercasedFilter)
     );
   }, [sheetData, sheetFilter]);
 
