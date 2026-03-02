@@ -42,6 +42,14 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter
+} from '@/components/ui/dialog';
 import { 
     Search, 
     Trash2, 
@@ -57,7 +65,9 @@ import {
     Eraser,
     Lock,
     Unlock,
-    FileSignature
+    FileSignature,
+    Eye,
+    FileDown
 } from 'lucide-react';
 import { Combobox } from '@/components/ui/combobox';
 import type { UserProfile, Memorandum, MemorandumType, SavedSchedule } from '@/lib/types';
@@ -139,6 +149,7 @@ export default function DocumentManagementPage() {
     const [isSaving, setIsSaving] = useState(false);
     const [isSavingTemplate, setIsSavingTemplate] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
+    const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
     
     // Signature State
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -149,6 +160,7 @@ export default function DocumentManagementPage() {
     const [activeTab, setActiveTab] = useState("create");
     const [memoFilter, setMemorandumFilter] = useState("");
     const [memoToDelete, setMemorandumToDelete] = useState<Memorandum | null>(null);
+    const [selectedMemoForView, setSelectedMemoForView] = useState<Memorandum | null>(null);
 
     // Data Hooks
     const { data: workers, isLoading: workersLoading } = useCollection<UserProfile>(useMemo(() => firestore ? collection(firestore, 'users') : null, [firestore]));
@@ -356,6 +368,20 @@ export default function DocumentManagementPage() {
             toast({ variant: 'destructive', title: 'Error al eliminar' });
         } finally {
             setMemorandumToDelete(null);
+        }
+    };
+
+    const handleDownloadPdf = async (memo: Memorandum) => {
+        setIsGeneratingPdf(true);
+        try {
+            const { generateMemorandumPDF } = await import('@/lib/pdf-generator');
+            await generateMemorandumPDF(memo);
+            toast({ title: 'PDF Generado' });
+        } catch (error) {
+            console.error(error);
+            toast({ variant: 'destructive', title: 'Error al generar PDF' });
+        } finally {
+            setIsGeneratingPdf(false);
         }
     };
 
@@ -598,7 +624,6 @@ export default function DocumentManagementPage() {
 
                                     <div className="pt-10 grid grid-cols-2 gap-12">
                                         <div className="text-center border-t pt-2">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Firma del Emisor</p>
                                             <div className="h-24 flex flex-col items-center justify-center">
                                                 {isLocked ? (
                                                     <>
@@ -610,9 +635,9 @@ export default function DocumentManagementPage() {
                                                     <p className="text-[10px] text-muted-foreground italic">Pendiente de certificación</p>
                                                 )}
                                             </div>
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">Firma del Emisor</p>
                                         </div>
                                         <div className="text-center border-t pt-2">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Firma del Colaborador</p>
                                             <div className="h-24 flex items-center justify-center">
                                                 {selectedType === "Memorando de Llamado de Atención" ? (
                                                     <p className="text-[10px] text-muted-foreground italic">Pendiente de firma</p>
@@ -620,6 +645,7 @@ export default function DocumentManagementPage() {
                                                     <Badge variant="outline" className="text-[8px] h-4">No requiere firma</Badge>
                                                 )}
                                             </div>
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">Firma del Colaborador</p>
                                         </div>
                                     </div>
                                 </div>
@@ -700,9 +726,14 @@ export default function DocumentManagementPage() {
                                                     )}
                                                 </TableCell>
                                                 <TableCell className="text-right">
-                                                    <Button variant="ghost" size="icon" onClick={() => setMemorandumToDelete(memo)}>
-                                                        <Trash2 className="h-4 w-4 text-destructive" />
-                                                    </Button>
+                                                    <div className="flex justify-end gap-2">
+                                                        <Button variant="ghost" size="icon" onClick={() => setSelectedMemoForView(memo)}>
+                                                            <Eye className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button variant="ghost" size="icon" onClick={() => setMemorandumToDelete(memo)}>
+                                                            <Trash2 className="h-4 w-4 text-destructive" />
+                                                        </Button>
+                                                    </div>
                                                 </TableCell>
                                             </TableRow>
                                         ))
@@ -715,6 +746,84 @@ export default function DocumentManagementPage() {
                     </Card>
                 </TabsContent>
             </Tabs>
+
+            {/* Viewer Dialog */}
+            <Dialog open={!!selectedMemoForView} onOpenChange={(open) => !open && setSelectedMemoForView(null)}>
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                    {selectedMemoForView && (
+                        <>
+                            <DialogHeader>
+                                <div className="text-center space-y-1">
+                                    <h2 className="text-lg font-black text-slate-900 uppercase">
+                                        {selectedMemoForView.targetUserCargo?.includes('GUARDIA') ? 'CADENVILL SECURITY' : 'GRUPO SUDINCO'}
+                                    </h2>
+                                    <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest">Sistema de Gestión Documental – Performa</p>
+                                </div>
+                            </DialogHeader>
+
+                            <div className="py-6 space-y-6 bg-white p-8 border rounded-lg shadow-inner font-serif text-slate-800">
+                                <div className="flex justify-between text-sm">
+                                    <div className="space-y-1">
+                                        <p><span className="font-bold">Código:</span> {selectedMemoForView.code}</p>
+                                        <p><span className="font-bold">Fecha:</span> {format(selectedMemoForView.createdAt, "d 'de' MMMM 'de' yyyy", { locale: es })}</p>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-1 text-sm">
+                                    <p><span className="font-bold">PARA:</span> {selectedMemoForView.targetUserName}</p>
+                                    <p><span className="font-bold">CARGO:</span> {selectedMemoForView.targetUserCargo}</p>
+                                </div>
+
+                                <div className="border-y py-2">
+                                    <p className="font-bold text-sm">ASUNTO: {selectedMemoForView.type} – {selectedMemoForView.reason}</p>
+                                </div>
+
+                                <div className="text-sm leading-relaxed whitespace-pre-wrap min-h-[200px]">
+                                    {selectedMemoForView.content}
+                                </div>
+
+                                <div className="pt-10 grid grid-cols-2 gap-12">
+                                    <div className="text-center border-t pt-2">
+                                        <div className="h-24 flex flex-col items-center justify-center mt-1">
+                                            {selectedMemoForView.issuerSignature && (
+                                                <img src={selectedMemoForView.issuerSignature} alt="Firma Emisor" className="h-12 mb-1 opacity-90" />
+                                            )}
+                                            <p className="font-bold text-[11px] text-primary leading-tight">{selectedMemoForView.issuerName}</p>
+                                            <p className="text-[9px] text-muted-foreground uppercase leading-tight">{selectedMemoForView.issuerCargo}</p>
+                                        </div>
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Firma del Emisor</p>
+                                    </div>
+                                    <div className="text-center border-t pt-2">
+                                        <div className="h-24 flex flex-col items-center justify-center mt-1">
+                                            {selectedMemoForView.signature ? (
+                                                <>
+                                                    <img src={selectedMemoForView.signature} alt="Firma Colaborador" className="h-12 mb-1 opacity-90" />
+                                                    <p className="font-bold text-[11px] text-primary leading-tight">{selectedMemoForView.targetUserName}</p>
+                                                    <p className="text-[9px] text-muted-foreground uppercase leading-tight">{selectedMemoForView.targetUserCargo}</p>
+                                                </>
+                                            ) : (
+                                                selectedMemoForView.type === "Memorando de Llamado de Atención" ? (
+                                                    <p className="text-[10px] text-muted-foreground italic mt-4">Pendiente de firma</p>
+                                                ) : (
+                                                    <Badge variant="outline" className="text-[8px] h-4">No requiere firma</Badge>
+                                                )
+                                            )}
+                                        </div>
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Firma del Colaborador</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <DialogFooter className="pt-6 border-t mt-6">
+                                <Button variant="outline" onClick={() => setSelectedMemoForView(null)}>Cerrar</Button>
+                                <Button className="gap-2 bg-blue-600 hover:bg-blue-700" onClick={() => handleDownloadPdf(selectedMemoForView)} disabled={isGeneratingPdf}>
+                                    {isGeneratingPdf ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />} Descargar PDF
+                                </Button>
+                            </DialogFooter>
+                        </>
+                    )}
+                </DialogContent>
+            </Dialog>
 
             <AlertDialog open={!!memoToDelete} onOpenChange={() => setMemorandumToDelete(null)}>
                 <AlertDialogContent>
