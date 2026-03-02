@@ -40,6 +40,7 @@ export interface Memorandum {
   issuerId: string;
   issuerName: string;
   issuerCargo: string;
+  issuerSignature?: string;
   content: string;
   status: MemorandumStatus;
   createdAt: number;

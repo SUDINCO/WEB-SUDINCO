@@ -54,7 +54,7 @@ export default function MyDocumentsPage() {
     const [isDrawing, setIsDrawing] = useState(false);
     const [isLocked, setIsLocked] = useState(false);
 
-    // Get current user profile directly by ID to avoid listing users collection
+    // Get current user profile directly by ID
     const userDocRef = useMemo(() => {
         if (!firestore || !authUser?.uid) return null;
         return doc(firestore, 'users', authUser.uid);
@@ -64,7 +64,6 @@ export default function MyDocumentsPage() {
 
     const memosQuery = useMemo(() => {
         if (!firestore || !authUser?.uid) return null;
-        // The rules allow listing if the targetUserId matches the current auth.uid
         return query(
             collection(firestore, 'memorandums'), 
             where('targetUserId', '==', authUser.uid),
@@ -76,10 +75,11 @@ export default function MyDocumentsPage() {
 
     const handleOpenMemo = async (memo: Memorandum) => {
         setSelectedMemo(memo);
-        // Mark as read if it's the first time
+        // Mark as read if it's the first time and it's not a warning memo (which needs signature)
         if (memo.status === 'issued' && firestore) {
+            const newStatus = memo.type === "Memorando de Llamado de Atención" ? 'issued' : 'read';
             await updateDoc(doc(firestore, 'memorandums', memo.id), {
-                status: 'read',
+                status: newStatus,
                 readAt: Date.now()
             });
         }
@@ -189,6 +189,8 @@ export default function MyDocumentsPage() {
                                     <Badge variant="outline">{memo.code}</Badge>
                                     {memo.status === 'signed' ? (
                                         <Badge className="bg-green-100 text-green-800">Firmado</Badge>
+                                    ) : memo.status === 'read' ? (
+                                        <Badge variant="secondary" className="bg-blue-100 text-blue-700">Leído</Badge>
                                     ) : (
                                         <Badge variant="destructive" className="animate-pulse">Pendiente</Badge>
                                     )}
@@ -202,7 +204,7 @@ export default function MyDocumentsPage() {
                             </CardContent>
                             <CardFooter className="pt-0">
                                 <Button variant="secondary" className="w-full gap-2" onClick={() => handleOpenMemo(memo)}>
-                                    <Eye className="h-4 w-4" /> Ver y Firmar
+                                    <Eye className="h-4 w-4" /> {memo.type === "Memorando de Llamado de Atención" && memo.status !== 'signed' ? 'Ver y Firmar' : 'Ver Documento'}
                                 </Button>
                             </CardFooter>
                         </Card>
@@ -254,25 +256,34 @@ export default function MyDocumentsPage() {
                                 <div className="pt-10 grid grid-cols-2 gap-12">
                                     <div className="text-center border-t pt-2">
                                         <p className="text-[10px] font-bold text-slate-400 uppercase">Firma del Emisor</p>
-                                        <p className="font-bold text-xs mt-4">{selectedMemo.issuerName}</p>
-                                        <p className="text-[10px] text-muted-foreground">{selectedMemo.issuerCargo}</p>
+                                        <div className="h-16 flex flex-col items-center justify-center mt-2">
+                                            <p className="font-bold text-[11px] text-primary">{selectedMemo.issuerName}</p>
+                                            <p className="text-[9px] text-muted-foreground uppercase">{selectedMemo.issuerCargo}</p>
+                                            {selectedMemo.issuerSignature && (
+                                                <img src={selectedMemo.issuerSignature} alt="Firma Emisor" className="h-10 mt-1 opacity-80" />
+                                            )}
+                                        </div>
                                     </div>
                                     <div className="text-center border-t pt-2">
                                         <p className="text-[10px] font-bold text-slate-400 uppercase">Firma del Colaborador</p>
-                                        {selectedMemo.signature ? (
-                                            <div className="h-12 flex items-center justify-center mt-2">
-                                                <img src={selectedMemo.signature} alt="Firma" className="max-h-full" />
-                                            </div>
-                                        ) : (
-                                            <p className="text-[10px] text-muted-foreground italic mt-4">Pendiente de firma</p>
-                                        )}
+                                        <div className="h-16 flex items-center justify-center mt-2">
+                                            {selectedMemo.signature ? (
+                                                <img src={selectedMemo.signature} alt="Firma Colaborador" className="max-h-full" />
+                                            ) : (
+                                                selectedMemo.type === "Memorando de Llamado de Atención" ? (
+                                                    <p className="text-[10px] text-muted-foreground italic mt-4">Pendiente de firma</p>
+                                                ) : (
+                                                    <Badge variant="outline" className="text-[8px] h-4">No requiere firma</Badge>
+                                                )
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
 
                             <DialogFooter className="pt-6 border-t mt-6">
                                 <Button variant="outline" onClick={() => setSelectedMemo(null)}>Cerrar Vista</Button>
-                                {selectedMemo.status !== 'signed' && (
+                                {selectedMemo.type === "Memorando de Llamado de Atención" && selectedMemo.status !== 'signed' && (
                                     <Button className="gap-2 bg-blue-600 hover:bg-blue-700" onClick={() => setIsSignModalOpen(true)}>
                                         <FileSignature className="h-4 w-4" /> Proceder a Firma
                                     </Button>

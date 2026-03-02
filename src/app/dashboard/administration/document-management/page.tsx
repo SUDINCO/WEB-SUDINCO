@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useCollection, useFirestore, useUser } from '@/firebase';
 import { collection, doc, writeBatch, query, orderBy, limit, deleteDoc, setDoc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
@@ -23,6 +23,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import {
   Table,
   TableBody,
@@ -52,7 +53,11 @@ import {
     Edit3,
     Sparkles,
     Users,
-    UserMinus
+    UserMinus,
+    Eraser,
+    Lock,
+    Unlock,
+    FileSignature
 } from 'lucide-react';
 import { Combobox } from '@/components/ui/combobox';
 import type { UserProfile, Memorandum, MemorandumType, SavedSchedule } from '@/lib/types';
@@ -135,6 +140,11 @@ export default function DocumentManagementPage() {
     const [isSavingTemplate, setIsSavingTemplate] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     
+    // Signature State
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const [isDrawing, setIsDrawing] = useState(false);
+    const [isLocked, setIsLocked] = useState(false);
+
     // State for Lists/Filtering
     const [activeTab, setActiveTab] = useState("create");
     const [memoFilter, setMemorandumFilter] = useState("");
@@ -152,6 +162,51 @@ export default function DocumentManagementPage() {
     }, [authUser, workers]);
 
     const showTurnoLine = selectedType === "Memorando de Llamado de Atención";
+
+    // Signature Canvas Logic
+    const clearCanvas = () => {
+        const canvas = canvasRef.current;
+        if (canvas) {
+            const ctx = canvas.getContext('2d');
+            if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+    };
+
+    const getCoordinates = (e: any) => {
+        if (!canvasRef.current) return { x: 0, y: 0 };
+        const canvas = canvasRef.current;
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        return {
+            x: (clientX - rect.left) * (canvas.width / rect.width),
+            y: (clientY - rect.top) * (canvas.height / rect.height)
+        };
+    };
+
+    const startDrawing = (e: any) => {
+        if (isLocked) return;
+        const { x, y } = getCoordinates(e);
+        const ctx = canvasRef.current?.getContext('2d');
+        if (ctx) {
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = '#000';
+            setIsDrawing(true);
+        }
+    };
+
+    const draw = (e: any) => {
+        if (!isDrawing || isLocked || !canvasRef.current) return;
+        const { x, y } = getCoordinates(e);
+        const ctx = canvasRef.current.getContext('2d');
+        if (ctx) {
+            ctx.lineTo(x, y);
+            ctx.stroke();
+        }
+    };
 
     // Template Sync
     useEffect(() => {
@@ -219,8 +274,8 @@ export default function DocumentManagementPage() {
     };
 
     const handleIssueMemorandums = async () => {
-        if (!firestore || !currentUserProfile || !selectedType || !selectedReason) {
-            toast({ variant: 'destructive', title: 'Faltan datos', description: 'Por favor complete todos los campos requeridos.' });
+        if (!firestore || !currentUserProfile || !selectedType || !selectedReason || !isLocked) {
+            toast({ variant: 'destructive', title: 'Faltan datos', description: 'Por favor complete todos los campos y certifique su firma.' });
             return;
         }
 
@@ -230,6 +285,7 @@ export default function DocumentManagementPage() {
         }
 
         setIsSaving(true);
+        const issuerSignature = canvasRef.current!.toDataURL('image/png');
         const batch = writeBatch(firestore);
         const memoRef = collection(firestore, 'memorandums');
         const now = Date.now();
@@ -263,6 +319,7 @@ export default function DocumentManagementPage() {
                 issuerId: currentUserProfile.id,
                 issuerName: `${currentUserProfile.nombres} ${currentUserProfile.apellidos}`,
                 issuerCargo: currentUserProfile.cargo,
+                issuerSignature: issuerSignature,
                 content: editableContent,
                 status: "issued",
                 createdAt: now,
@@ -279,6 +336,8 @@ export default function DocumentManagementPage() {
             setIsGeneralSelection(false);
             setEventShift("");
             setEditableContent("");
+            setIsLocked(false);
+            clearCanvas();
             setActiveTab("history");
         } catch (error) {
             console.error(error);
@@ -422,6 +481,49 @@ export default function DocumentManagementPage() {
                                         />
                                     </div>
                                 </div>
+
+                                <Separator />
+
+                                <div className="space-y-3 pt-2">
+                                    <div className="flex justify-between items-center">
+                                        <Label className="font-bold text-xs uppercase">Mi Firma (Emisor)</Label>
+                                        {isLocked && <Badge className="bg-primary h-4 text-[9px]">CERTIFICADA</Badge>}
+                                    </div>
+                                    <div className={cn(
+                                        "border-2 rounded-lg bg-white relative overflow-hidden transition-all",
+                                        isLocked ? "border-primary/20 bg-slate-50" : "border-dashed border-slate-300 shadow-inner"
+                                    )}>
+                                        <canvas 
+                                            ref={canvasRef}
+                                            width={400}
+                                            height={150}
+                                            className={cn(
+                                                "w-full h-[100px] cursor-crosshair touch-none",
+                                                isLocked && "pointer-events-none opacity-50"
+                                            )}
+                                            onMouseDown={startDrawing}
+                                            onMouseMove={draw}
+                                            onMouseUp={() => setIsDrawing(false)}
+                                            onMouseOut={() => setIsDrawing(false)}
+                                            onTouchStart={startDrawing}
+                                            onTouchMove={draw}
+                                            onTouchEnd={() => setIsDrawing(false)}
+                                        />
+                                        {!isLocked && (
+                                            <Button variant="ghost" size="icon" className="absolute bottom-1 right-1 h-6 w-6" onClick={clearCanvas}>
+                                                <Eraser className="h-3 w-3 text-slate-400" />
+                                            </Button>
+                                        )}
+                                    </div>
+                                    <Button 
+                                        variant={isLocked ? "outline" : "default"} 
+                                        className="w-full h-8 text-[10px] uppercase font-bold" 
+                                        onClick={() => setIsLocked(!isLocked)}
+                                    >
+                                        {isLocked ? <Unlock className="h-3 w-3 mr-1" /> : <Lock className="h-3 w-3 mr-1" />}
+                                        {isLocked ? "Modificar Firma" : "Bloquear y Certificar"}
+                                    </Button>
+                                </div>
                             </CardContent>
                         </Card>
 
@@ -497,12 +599,27 @@ export default function DocumentManagementPage() {
                                     <div className="pt-10 grid grid-cols-2 gap-12">
                                         <div className="text-center border-t pt-2">
                                             <p className="text-[10px] font-bold text-slate-400 uppercase">Firma del Emisor</p>
-                                            <p className="font-bold text-xs mt-4">{currentUserProfile?.nombres} {currentUserProfile?.apellidos}</p>
-                                            <p className="text-[10px] text-muted-foreground">{currentUserProfile?.cargo}</p>
+                                            <div className="h-16 flex flex-col items-center justify-center">
+                                                {isLocked ? (
+                                                    <>
+                                                        <p className="font-bold text-[11px] text-primary">{currentUserProfile?.nombres} {currentUserProfile?.apellidos}</p>
+                                                        <p className="text-[9px] text-muted-foreground uppercase">{currentUserProfile?.cargo}</p>
+                                                        <img src={canvasRef.current?.toDataURL()} alt="Firma Emisor" className="h-10 mt-1 opacity-80" />
+                                                    </>
+                                                ) : (
+                                                    <p className="text-[10px] text-muted-foreground italic">Pendiente de certificación</p>
+                                                )}
+                                            </div>
                                         </div>
                                         <div className="text-center border-t pt-2">
                                             <p className="text-[10px] font-bold text-slate-400 uppercase">Firma del Colaborador</p>
-                                            <p className="text-[10px] text-muted-foreground italic mt-4">Pendiente de firma</p>
+                                            <div className="h-16 flex items-center justify-center">
+                                                {selectedType === "Memorando de Llamado de Atención" ? (
+                                                    <p className="text-[10px] text-muted-foreground italic">Pendiente de firma</p>
+                                                ) : (
+                                                    <Badge variant="outline" className="text-[8px] h-4">No requiere firma</Badge>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -511,7 +628,7 @@ export default function DocumentManagementPage() {
                                 <Button 
                                     className="ml-auto min-w-[200px]" 
                                     onClick={handleIssueMemorandums}
-                                    disabled={isSaving || isEditing || !selectedType || !selectedReason || (!selectedUserId && !isGeneralSelection)}
+                                    disabled={isSaving || isEditing || !selectedType || !selectedReason || (!selectedUserId && !isGeneralSelection) || !isLocked}
                                 >
                                     {isSaving ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                                     {isGeneralSelection ? `Emitir a todo el personal (${workers?.filter(w => w.Status === 'active').length})` : 'Emitir y Notificar'}
