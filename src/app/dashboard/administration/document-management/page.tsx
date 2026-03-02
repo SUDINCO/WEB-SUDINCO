@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
@@ -67,7 +66,9 @@ import {
     Unlock,
     FileSignature,
     Eye,
-    FileDown
+    FileDown,
+    XCircle,
+    MessageSquare
 } from 'lucide-react';
 import { Combobox } from '@/components/ui/combobox';
 import type { UserProfile, Memorandum, MemorandumType, SavedSchedule } from '@/lib/types';
@@ -719,6 +720,8 @@ export default function DocumentManagementPage() {
                                                 <TableCell>
                                                     {memo.status === 'signed' ? (
                                                         <Badge className="bg-green-600 gap-1"><CheckCircle className="h-3 w-3" /> Firmado</Badge>
+                                                    ) : memo.status === 'rejected' ? (
+                                                        <Badge variant="destructive" className="gap-1"><XCircle className="h-3 w-3" /> Rechazado</Badge>
                                                     ) : memo.status === 'read' ? (
                                                         <Badge variant="secondary" className="bg-blue-100 text-blue-700">Leído</Badge>
                                                     ) : (
@@ -782,14 +785,28 @@ export default function DocumentManagementPage() {
                                     {selectedMemoForView.content}
                                 </div>
 
+                                {selectedMemoForView.status === 'rejected' && selectedMemoForView.defense && (
+                                    <div className="mt-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-r-md">
+                                        <div className="flex items-center gap-2 text-red-700 font-bold mb-1">
+                                            <MessageSquare className="h-4 w-4" />
+                                            <span className="text-xs uppercase">Respuesta / Descargo del Colaborador:</span>
+                                        </div>
+                                        <p className="text-sm italic text-red-900 leading-relaxed">
+                                            "{selectedMemoForView.defense}"
+                                        </p>
+                                    </div>
+                                )}
+
                                 <div className="pt-10 grid grid-cols-2 gap-12">
                                     <div className="text-center border-t pt-2">
                                         <div className="h-24 flex flex-col items-center justify-center mt-1">
                                             {selectedMemoForView.issuerSignature && (
-                                                <img src={selectedMemoForView.issuerSignature} alt="Firma Emisor" className="h-12 mb-1 opacity-90" />
+                                                <>
+                                                    <img src={selectedMemoForView.issuerSignature} alt="Firma Emisor" className="h-12 mb-1 opacity-90" />
+                                                    <p className="font-bold text-[11px] text-primary leading-tight">{selectedMemoForView.issuerName}</p>
+                                                    <p className="text-[9px] text-muted-foreground uppercase leading-tight">{selectedMemoForView.issuerCargo}</p>
+                                                </>
                                             )}
-                                            <p className="font-bold text-[11px] text-primary leading-tight">{selectedMemoForView.issuerName}</p>
-                                            <p className="text-[9px] text-muted-foreground uppercase leading-tight">{selectedMemoForView.issuerCargo}</p>
                                         </div>
                                         <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Firma del Emisor</p>
                                     </div>
@@ -802,7 +819,12 @@ export default function DocumentManagementPage() {
                                                     <p className="text-[9px] text-muted-foreground uppercase leading-tight">{selectedMemoForView.targetUserCargo}</p>
                                                 </>
                                             ) : (
-                                                selectedMemoForView.type === "Memorando de Llamado de Atención" ? (
+                                                selectedMemoForView.status === 'rejected' ? (
+                                                    <div className="flex flex-col items-center gap-1">
+                                                        <XCircle className="h-8 w-8 text-red-500" />
+                                                        <span className="text-[10px] font-bold text-red-600">RECHAZADO</span>
+                                                    </div>
+                                                ) : selectedMemoForView.type === "Memorando de Llamado de Atención" ? (
                                                     <p className="text-[10px] text-muted-foreground italic mt-4">Pendiente de firma</p>
                                                 ) : (
                                                     <Badge variant="outline" className="text-[8px] h-4">No requiere firma</Badge>
