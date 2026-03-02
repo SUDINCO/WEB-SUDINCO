@@ -409,3 +409,112 @@ export const generateMemorandumPDF = async (memo: Memorandum) => {
 
     doc.save(`Memorando_${memo.code.replace(/\//g, '_')}.pdf`);
 };
+
+export const generateHiringApprovalPDF = async (
+    approval: any,
+    candidate: any,
+    evaluation: any,
+    evaluator: any,
+    boss: any,
+    rhDirector: any,
+    process: any
+) => {
+    const { default: jsPDF } = await import('jspdf');
+    await import('jspdf-autotable');
+
+    const doc = new jsPDF({
+        orientation: 'p',
+        unit: 'mm',
+        format: 'a4'
+    });
+
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 14;
+    let currentY = 15;
+
+    // Header Sudinco
+    doc.addImage(LOGO_SUDINCO, 'PNG', margin, 10, 40, 12);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('RESUMEN DE PROCESO DE SELECCIÓN Y APROBACIÓN', pageWidth / 2, 25, { align: 'center' });
+    
+    currentY = 35;
+    
+    // Process info
+    doc.setFillColor(240, 240, 240);
+    doc.rect(margin, currentY, pageWidth - margin * 2, 7, 'F');
+    doc.setFontSize(9);
+    doc.text('INFORMACIÓN DEL PUESTO', pageWidth / 2, currentY + 5, { align: 'center' });
+    currentY += 7;
+
+    (doc as any).autoTable({
+        startY: currentY,
+        body: [
+            ['EMPRESA', process.empresa, 'CARGO', process.cargo],
+            ['UBICACIÓN', process.ubicacion, 'TIPO CONTRATO', process.tipoContrato]
+        ],
+        theme: 'grid',
+        styles: { fontSize: 8 },
+        columnStyles: { 0: { fontStyle: 'bold', fillColor: [245, 245, 245] }, 2: { fontStyle: 'bold', fillColor: [245, 245, 245] } }
+    });
+    currentY = (doc as any).lastAutoTable.finalY + 5;
+
+    // Candidate Info
+    doc.setFillColor(240, 240, 240);
+    doc.rect(margin, currentY, pageWidth - margin * 2, 7, 'F');
+    doc.text('CANDIDATO SELECCIONADO', pageWidth / 2, currentY + 5, { align: 'center' });
+    currentY += 7;
+
+    (doc as any).autoTable({
+        startY: currentY,
+        body: [
+            ['NOMBRE COMPLETO', `${candidate.nombres} ${candidate.apellidos}`, 'CÉDULA', candidate.cedula],
+            ['EDAD', candidate.edad, 'ASPIRACIÓN SALARIAL', evaluation.aspiracionSalarial ? `$${evaluation.aspiracionSalarial}` : 'N/A']
+        ],
+        theme: 'grid',
+        styles: { fontSize: 8 },
+        columnStyles: { 0: { fontStyle: 'bold', fillColor: [245, 245, 245] }, 2: { fontStyle: 'bold', fillColor: [245, 245, 245] } }
+    });
+    currentY = (doc as any).lastAutoTable.finalY + 5;
+
+    // Evaluation Scores
+    doc.setFillColor(240, 240, 240);
+    doc.rect(margin, currentY, pageWidth - margin * 2, 7, 'F');
+    doc.text('PUNTUACIÓN DE EVALUACIÓN', pageWidth / 2, currentY + 5, { align: 'center' });
+    currentY += 7;
+
+    (doc as any).autoTable({
+        startY: currentY,
+        head: [['CRITERIO', 'PUNTUACIÓN']],
+        body: [
+            ['Formación Académica', evaluation.formacionAcademica === 1 ? 'Cumple' : 'No Cumple'],
+            ['Conocimientos Técnicos', `${evaluation.conocimientosTecnicos} / 10`],
+            ['Experiencia', `${evaluation.experiencia} / 20`],
+            ['Competencias', `${evaluation.competencias} / 5`],
+            [{ content: 'NOTA FINAL', styles: { fontStyle: 'bold' } }, { content: `${evaluation.notaGeneral}%`, styles: { fontStyle: 'bold' } }]
+        ],
+        theme: 'grid',
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [30, 41, 59] }
+    });
+    currentY = (doc as any).lastAutoTable.finalY + 10;
+
+    // Signatures
+    const sigWidth = 50;
+    const sigY = pageHeight - 40;
+
+    doc.line(margin, sigY, margin + sigWidth, sigY);
+    doc.text('SOLICITANTE (RRHH)', margin + sigWidth / 2, sigY + 5, { align: 'center' });
+    doc.text(`${evaluator.nombres} ${evaluator.apellidos}`, margin + sigWidth / 2, sigY + 10, { align: 'center' });
+
+    doc.line(pageWidth / 2 - sigWidth / 2, sigY, pageWidth / 2 + sigWidth / 2, sigY);
+    doc.text('JEFE INMEDIATO', pageWidth / 2, sigY + 5, { align: 'center' });
+    doc.text(`${boss.nombres} ${boss.apellidos}`, pageWidth / 2, sigY + 10, { align: 'center' });
+
+    doc.line(pageWidth - margin - sigWidth, sigY, pageWidth - margin, sigY);
+    doc.text('DIRECTOR RRHH', pageWidth - margin - sigWidth / 2, sigY + 5, { align: 'center' });
+    doc.text(`${rhDirector.nombres} ${rhDirector.apellidos}`, pageWidth - margin - sigWidth / 2, sigY + 10, { align: 'center' });
+
+    doc.save(`Aprobacion_${candidate.cedula}_${process.cargo.replace(/\s+/g, '_')}.pdf`);
+};
