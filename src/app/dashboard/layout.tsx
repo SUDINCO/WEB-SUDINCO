@@ -59,6 +59,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const { addRecentLink } = useRecentLinks();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isAppsMenuOpen, setAppsMenuOpen] = useState(false);
+  const [birthdayBadgeSeen, setBirthdayBadgeSeen] = useState(false);
 
   const { user, loading: userLoading } = useUser();
   const { userProfile, userRole, isLoading: profileLoading } = useUserProfile();
@@ -185,6 +186,11 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         u.birthDate.getDate() === currentDay
       );
   }, [users]);
+
+  // Reset birthday badge seen when the list of birthdays changes (new day)
+  useEffect(() => {
+    setBirthdayBadgeSeen(false);
+  }, [todayBirthdays.length]);
 
   // Notifications (Tasks) logic
   const tasks = useMemo(() => {
@@ -340,11 +346,15 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                 </Link>
                 <div className="header-icons">
                   {/* Celebrations Mobile (TODAY ONLY) */}
-                  <DropdownMenu>
+                  <DropdownMenu onOpenChange={(open) => { if(open) setBirthdayBadgeSeen(true); }}>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" className="header-icon-btn">
                         <Cake />
-                        {todayBirthdays.length > 0 && <span className="badge bg-accent text-accent-foreground">{todayBirthdays.length}</span>}
+                        {todayBirthdays.length > 0 && !birthdayBadgeSeen && (
+                          <span className="badge bg-accent text-accent-foreground">
+                            {todayBirthdays.length}
+                          </span>
+                        )}
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-72">
