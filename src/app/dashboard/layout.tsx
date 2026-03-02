@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from "next/link";
@@ -482,85 +481,6 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
             </div>
 
             <div className="flex items-center gap-4">
-              {/* Celebrations Desktop */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-10 w-10 rounded-full text-white hover:bg-white/10">
-                    <Cake className="h-5 w-5" />
-                    {monthBirthdays.length > 0 && (
-                      <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-accent border-2 border-primary" />
-                    )}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-80">
-                  <DropdownMenuLabel className="flex items-center gap-2 font-bold text-accent">
-                    <Gift className="h-4 w-4" />
-                    Cumpleaños del Mes ({format(new Date(), 'MMMM', { locale: es })})
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {monthBirthdays.length > 0 ? (
-                    <div className="max-h-96 overflow-y-auto">
-                      {monthBirthdays.map((bday) => {
-                        const isTodayBday = isSameDay(bday.birthDate, new Date());
-                        return (
-                          <DropdownMenuItem key={bday.id} className="flex items-center gap-4 py-3">
-                            <Avatar className={cn("h-10 w-10 border-2", isTodayBday ? "border-accent" : "border-transparent")}>
-                              <AvatarImage src={bday.photoUrl} />
-                              <AvatarFallback>{bday.nombres[0]}</AvatarFallback>
-                            </Avatar>
-                            <div className="flex flex-col min-w-0">
-                              <span className={cn("text-sm font-bold truncate", isTodayBday && "text-accent")}>
-                                {bday.nombres} {bday.apellidos}
-                              </span>
-                              <span className="text-xs text-muted-foreground">
-                                {isTodayBday ? "Hoy está de cumpleaños 🎉" : format(bday.birthDate, "d 'de' MMMM", { locale: es })}
-                              </span>
-                            </div>
-                          </DropdownMenuItem>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="py-8 text-center text-sm text-muted-foreground flex flex-col items-center gap-2">
-                      No hay cumpleaños registrados para este mes.
-                    </div>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              {/* Notifications Desktop */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-10 w-10 rounded-full text-white hover:bg-white/10">
-                    <Bell className="h-5 w-5" />
-                    {tasks.length > 0 && (
-                      <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-primary" />
-                    )}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-80">
-                  <DropdownMenuLabel>Tareas Pendientes</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {tasks.length > 0 ? (
-                    <div className="max-h-96 overflow-y-auto">
-                      {tasks.map((task) => (
-                        <DropdownMenuItem key={task.id} asChild>
-                          <Link href={task.href} className="flex items-start gap-3 py-3 cursor-pointer">
-                            <task.icon className="h-5 w-5 mt-0.5 text-primary shrink-0" />
-                            <span className="text-sm font-medium leading-tight">{task.title}</span>
-                          </Link>
-                        </DropdownMenuItem>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="py-8 text-center text-sm text-muted-foreground flex flex-col items-center gap-2">
-                      <CheckCircle className="h-10 w-10 text-green-500/50" />
-                      No tienes tareas pendientes.
-                    </div>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="flex items-center gap-2 text-white hover:bg-primary-foreground/10 hover:text-white px-3 py-2 h-auto text-base rounded-md">
