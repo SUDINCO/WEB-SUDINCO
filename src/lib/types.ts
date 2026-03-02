@@ -51,6 +51,8 @@ export interface Memorandum {
   signedAt?: number;
   signature?: string;
   defense?: string;
+  attachmentUrl?: string | null;
+  attachmentType?: 'image' | 'pdf' | null;
 }
 
 export interface MemorandumCausal {

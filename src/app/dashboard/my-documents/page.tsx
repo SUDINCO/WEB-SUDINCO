@@ -35,7 +35,9 @@ import {
     ChevronRight,
     AlertTriangle,
     Send,
-    ShieldCheck
+    ShieldCheck,
+    Paperclip,
+    Download
 } from 'lucide-react';
 import {
   Dialog,
@@ -251,6 +253,7 @@ export default function MyDocumentsPage() {
                                 <TableHead className="font-black uppercase text-[10px] tracking-widest">Tipo de Documento</TableHead>
                                 <TableHead className="font-black uppercase text-[10px] tracking-widest">Fecha</TableHead>
                                 <TableHead className="font-black uppercase text-[10px] tracking-widest">Motivo</TableHead>
+                                <TableHead className="font-black uppercase text-[10px] tracking-widest">Adjuntos</TableHead>
                                 <TableHead className="font-black uppercase text-[10px] tracking-widest">Estado</TableHead>
                                 <TableHead className="text-right font-black uppercase text-[10px] tracking-widest">Acción</TableHead>
                             </TableRow>
@@ -258,7 +261,7 @@ export default function MyDocumentsPage() {
                         <TableBody>
                             {memosLoading ? (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
+                                    <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
                                         <LoaderCircle className="animate-spin inline-block mr-2" /> Cargando expediente digital...
                                     </TableCell>
                                 </TableRow>
@@ -277,6 +280,13 @@ export default function MyDocumentsPage() {
                                         </TableCell>
                                         <TableCell className="max-w-[200px] truncate italic text-xs text-slate-600">
                                             "{memo.reason}"
+                                        </TableCell>
+                                        <TableCell>
+                                            {memo.attachmentUrl ? (
+                                                <Badge variant="outline" className="text-[9px] gap-1 py-0 h-5 border-primary/30 bg-primary/5">
+                                                    <Paperclip className="h-3 w-3" /> SI
+                                                </Badge>
+                                            ) : '-'}
                                         </TableCell>
                                         <TableCell>
                                             {memo.status === 'signed' ? (
@@ -299,7 +309,7 @@ export default function MyDocumentsPage() {
                                 ))
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="h-48 text-center text-muted-foreground">
+                                    <TableCell colSpan={7} className="h-48 text-center text-muted-foreground">
                                         <div className="flex flex-col items-center gap-3 opacity-30">
                                             <FileText className="h-16 w-16" />
                                             <p className="font-bold uppercase tracking-widest text-xs">Sin documentos registrados</p>
@@ -318,7 +328,6 @@ export default function MyDocumentsPage() {
                         <>
                             <div className="flex-1 overflow-y-auto p-4 md:p-10">
                                 <div className="bg-white shadow-2xl mx-auto max-w-2xl min-h-full border border-slate-200 relative flex flex-col">
-                                    {/* Header Institucional estilo Handover */}
                                     <div className="w-full relative h-[140px] border-b overflow-hidden bg-white">
                                         <Image 
                                             src={LOGO_URL} 
@@ -337,7 +346,6 @@ export default function MyDocumentsPage() {
                                             <p className="text-[9px] font-bold text-slate-500 tracking-[0.2em] uppercase">Control de Auditoría #{selectedMemo.id.slice(-8).toUpperCase()}</p>
                                         </div>
 
-                                        {/* Metadata Grid al estilo Acta de Dotación */}
                                         <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 border border-slate-200 rounded-lg text-xs">
                                             <div className="space-y-1">
                                                 <p className="text-[9px] font-black text-slate-400 uppercase">Código del Documento</p>
@@ -373,18 +381,40 @@ export default function MyDocumentsPage() {
                                             {selectedMemo.content}
                                         </div>
 
+                                        {selectedMemo.attachmentUrl && (
+                                            <div className="mt-8 border-t pt-6 space-y-4">
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b pb-1">Anexo / Evidencia Institucional</p>
+                                                {selectedMemo.attachmentType === 'image' ? (
+                                                    <div className="relative w-full aspect-video rounded-lg overflow-hidden border shadow-sm">
+                                                        <Image src={selectedMemo.attachmentUrl} alt="Evidencia" fill className="object-contain" unoptimized />
+                                                    </div>
+                                                ) : (
+                                                    <div className="p-4 bg-slate-50 border rounded-lg flex items-center justify-between">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="p-2 bg-red-100 rounded text-red-600"><FileText className="h-6 w-6" /></div>
+                                                            <div>
+                                                                <p className="text-xs font-bold text-slate-700">Documento PDF Adjunto</p>
+                                                                <p className="text-[10px] text-slate-500 uppercase">Este archivo complementa la comunicación</p>
+                                                            </div>
+                                                        </div>
+                                                        <Button variant="outline" size="sm" className="h-8 text-[9px] font-black uppercase" onClick={() => window.open(selectedMemo.attachmentUrl!, '_blank')}>
+                                                            <Download className="h-3 w-3 mr-1" /> Abrir PDF
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
                                         <div className="pt-12 grid grid-cols-2 gap-16">
                                             <div className="flex flex-col items-center space-y-3">
                                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b pb-1 w-full text-center">Firma del Emisor</p>
                                                 <div className="w-full h-24 flex flex-col items-center justify-center text-center">
                                                     {selectedMemo.issuerSignature && (
-                                                        <>
-                                                            <div className="mb-2">
-                                                                <img src={selectedMemo.issuerSignature} alt="Firma Emisor" className="h-12 object-contain opacity-90 mx-auto" />
-                                                                <p className="font-black text-[11px] text-slate-900 leading-tight uppercase">{selectedMemo.issuerName}</p>
-                                                                <p className="text-[9px] text-primary font-bold uppercase leading-tight">{selectedMemo.issuerCargo}</p>
-                                                            </div>
-                                                        </>
+                                                        <div className="mb-2">
+                                                            <img src={selectedMemo.issuerSignature} alt="Firma Emisor" className="h-12 object-contain opacity-90 mx-auto" />
+                                                            <p className="font-black text-[11px] text-slate-900 leading-tight uppercase">{selectedMemo.issuerName}</p>
+                                                            <p className="text-[9px] text-primary font-bold uppercase leading-tight">{selectedMemo.issuerCargo}</p>
+                                                        </div>
                                                     )}
                                                 </div>
                                             </div>
@@ -392,13 +422,11 @@ export default function MyDocumentsPage() {
                                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b pb-1 w-full text-center">Firma del Colaborador</p>
                                                 <div className="w-full h-24 flex flex-col items-center justify-center text-center">
                                                     {selectedMemo.signature ? (
-                                                        <>
-                                                            <div className="mb-2">
-                                                                <img src={selectedMemo.signature} alt="Firma Colaborador" className="h-12 object-contain opacity-90 mx-auto" />
-                                                                <p className="font-black text-[11px] text-slate-900 leading-tight uppercase">{selectedMemo.targetUserName}</p>
-                                                                <p className="text-[9px] text-emerald-700 font-bold uppercase leading-tight">{selectedMemo.targetUserCargo}</p>
-                                                            </div>
-                                                        </>
+                                                        <div className="mb-2">
+                                                            <img src={selectedMemo.signature} alt="Firma Colaborador" className="h-12 object-contain opacity-90 mx-auto" />
+                                                            <p className="font-black text-[11px] text-slate-900 leading-tight uppercase">{selectedMemo.targetUserName}</p>
+                                                            <p className="text-[9px] text-emerald-700 font-bold uppercase leading-tight">{selectedMemo.targetUserCargo}</p>
+                                                        </div>
                                                     ) : (
                                                         selectedMemo.type === "Memorando de Llamado de Atención" ? (
                                                             selectedMemo.status === 'rejected' ? (

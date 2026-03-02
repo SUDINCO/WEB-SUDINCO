@@ -72,7 +72,10 @@ import {
     XCircle,
     MessageSquare,
     FileText,
-    ShieldCheck
+    ShieldCheck,
+    Paperclip,
+    X,
+    FileUp
 } from 'lucide-react';
 import { Combobox } from '@/components/ui/combobox';
 import type { UserProfile, Memorandum, MemorandumType, SavedSchedule } from '@/lib/types';
@@ -115,12 +118,9 @@ const reasonsByType: Record<MemorandumType, string[]> = {
 };
 
 const DEFAULT_TEMPLATES: Record<string, string> = {
-    // Informativos
     "Recordatorio de procedimiento": "Por medio del presente se comunica al colaborador que debe cumplir estrictamente el procedimiento operativo de control de accesos y registro en bitácora conforme lo establece la normativa interna vigente.\n\nLa presente comunicación tiene carácter informativo y preventivo.",
     "Nueva disposición interna": "Se informa la implementación de una nueva disposición interna relacionada con los protocolos de seguridad y registros obligatorios. El cumplimiento de esta disposición es de carácter inmediato y obligatorio para todo el personal asignado.",
     "Convocatoria a capacitación": "Se convoca al colaborador a la sesión de capacitación obligatoria sobre protocolos de seguridad y actualización de procedimientos. La asistencia es fundamental para garantizar los estándares de calidad del servicio.",
-    
-    // Llamados de atención
     "Atraso injustificado": "Se deja constancia que el colaborador registró un atraso injustificado el día {FECHA_EVENTO} durante el turno {TURNO}.\n\nEsta conducta constituye un incumplimiento a las obligaciones laborales establecidas en el Reglamento Interno de la empresa.\n\nSe emite el presente llamado de atención con la finalidad de prevenir futuras reincidencias y exhortar al cumplimiento estricto del horario asignado.",
     "Inasistencia injustificada": "Se deja constancia que el colaborador no asistió a su jornada laboral sin presentar la debida justificación previa, afectando la continuidad operativa del servicio.",
     "Abandono de puesto": "Se evidenció que el colaborador abandonó su puesto de servicio durante el turno asignado sin la debida autorización del supervisor, lo cual constituye una falta grave a la seguridad del cliente.",
@@ -133,8 +133,6 @@ const DEFAULT_TEMPLATES: Record<string, string> = {
     "Entrega tardía de reporte": "Se verificó la entrega tardía del reporte diario o reporte de novedades correspondiente al turno asignado, dificultando la gestión administrativa del puesto.",
     "Conducta inadecuada": "Se deja constancia de una conducta inapropiada que contraviene los principios institucionales y los valores de la empresa de seguridad.",
     "Otro (requiere detalle adicional)": "Se deja constancia de una novedad disciplinaria u operativa detectada en el ejercicio de sus funciones, la cual se detalla a continuación.",
-
-    // Reconocimientos
     "Cumplimiento destacado": "La empresa reconoce el desempeño destacado del colaborador en el cumplimiento de sus funciones, demostrando compromiso y excelencia en sus responsabilidades asignadas.",
     "Buen desempeño operativo": "Se reconoce el compromiso y responsabilidad demostrados en el puesto asignado, destacando su profesionalismo en la ejecución de los protocolos de seguridad.",
     "Actuación en emergencia": "Se reconoce la actuación oportuna, valiente y responsable del colaborador ante un evento de emergencia, garantizando la integridad de las personas y activos bajo su custodia.",
@@ -158,6 +156,12 @@ export default function DocumentManagementPage() {
     const [isEditing, setIsEditing] = useState(false);
     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
     
+    // Attachment State
+    const [attachmentUrl, setAttachmentUrl] = useState<string | null>(null);
+    const [attachmentType, setAttachmentType] = useState<'image' | 'pdf' | null>(null);
+    const [isUploading, setIsUploading] = useState(false);
+    const attachmentInputRef = useRef<HTMLInputElement>(null);
+
     // Signature State
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [isDrawing, setIsDrawing] = useState(false);
@@ -170,7 +174,7 @@ export default function DocumentManagementPage() {
     const [selectedMemoForView, setSelectedMemoForView] = useState<Memorandum | null>(null);
 
     // Data Hooks
-    const { data: workers, isLoading: workersLoading } = useCollection<UserProfile>(useMemo(() => firestore ? collection(firestore, 'users') : null, [firestore]));
+    const { data: workers } = useCollection<UserProfile>(useMemo(() => firestore ? collection(firestore, 'users') : null, [firestore]));
     const { data: memorandums, isLoading: memosLoading } = useCollection<Memorandum>(useMemo(() => firestore ? query(collection(firestore, 'memorandums'), orderBy('createdAt', 'desc'), limit(100)) : null, [firestore]));
     const { data: savedSchedules } = useCollection<SavedSchedule>(useMemo(() => firestore ? collection(firestore, 'savedSchedules') : null, [firestore]));
     const { data: customTemplates } = useCollection<{ id: string; content: string }>(useMemo(() => firestore ? collection(firestore, 'memorandumTemplates') : null, [firestore]));
@@ -181,6 +185,69 @@ export default function DocumentManagementPage() {
     }, [authUser, workers]);
 
     const showTurnoLine = selectedType === "Memorando de Llamado de Atención";
+
+    // File Handling Logic
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (file.size > 2 * 1024 * 1024) {
+            toast({ variant: 'destructive', title: 'Archivo muy grande', description: 'El límite es de 2MB.' });
+            return;
+        }
+
+        setIsUploading(true);
+        const reader = new FileReader();
+        
+        reader.onload = (event) => {
+            const result = event.target?.result as string;
+            
+            if (file.type.startsWith('image/')) {
+                const img = new window.Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 1024;
+                    const MAX_HEIGHT = 1024;
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                    } else {
+                        if (height > MAX_HEIGHT) {
+                            width *= MAX_HEIGHT / height;
+                            height = MAX_HEIGHT;
+                        }
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx?.drawImage(img, 0, 0, width, height);
+                    const compressed = canvas.toDataURL('image/jpeg', 0.7);
+                    setAttachmentUrl(compressed);
+                    setAttachmentType('image');
+                    setIsUploading(false);
+                };
+                img.src = result;
+            } else if (file.type === 'application/pdf') {
+                setAttachmentUrl(result);
+                setAttachmentType('pdf');
+                setIsUploading(false);
+            } else {
+                toast({ variant: 'destructive', title: 'Tipo no soportado', description: 'Solo se admiten imágenes o PDFs.' });
+                setIsUploading(false);
+            }
+        };
+        
+        if (file.type === 'application/pdf') {
+            reader.readAsDataURL(file);
+        } else {
+            reader.readAsDataURL(file);
+        }
+    };
 
     // Signature Canvas Logic
     const clearCanvas = () => {
@@ -248,7 +315,6 @@ export default function DocumentManagementPage() {
                 const dateObj = parseISO(eventDate);
                 const periodDate = dateObj.getDate() < 21 ? dateObj : addMonths(dateObj, 1);
                 const periodId = format(periodDate, 'yyyy-MM');
-                
                 const periodSchedules = savedSchedules.filter(s => s.id.startsWith(periodId));
                 let foundShift = "";
                 let foundInSchedules = false;
@@ -261,14 +327,9 @@ export default function DocumentManagementPage() {
                         break;
                     }
                 }
-
-                if (foundInSchedules) {
-                    setEventShift(foundShift);
-                } else {
-                    setEventShift("");
-                }
+                setEventShift(foundInSchedules ? foundShift : "");
             } catch (e) {
-                console.error("Error parsing date or looking up shift", e);
+                console.error("Error lookup shift", e);
                 setEventShift("");
             }
         } else if (selectedType !== "Memorando de Llamado de Atención") {
@@ -283,10 +344,10 @@ export default function DocumentManagementPage() {
             await setDoc(doc(firestore, 'memorandumTemplates', selectedReason), {
                 content: editableContent
             });
-            toast({ title: 'Plantilla Guardada', description: 'El texto preestablecido para este motivo ha sido actualizado.' });
+            toast({ title: 'Plantilla Guardada' });
             setIsEditing(false);
         } catch (e) {
-            toast({ variant: 'destructive', title: 'Error', description: 'No se pudo guardar la plantilla.' });
+            toast({ variant: 'destructive', title: 'Error' });
         } finally {
             setIsSavingTemplate(false);
         }
@@ -295,11 +356,6 @@ export default function DocumentManagementPage() {
     const handleIssueMemorandums = async () => {
         if (!firestore || !currentUserProfile || !selectedType || !selectedReason || !isLocked) {
             toast({ variant: 'destructive', title: 'Faltan datos', description: 'Por favor complete todos los campos y certifique su firma.' });
-            return;
-        }
-
-        if (!isGeneralSelection && !selectedUserId) {
-            toast({ variant: 'destructive', title: 'Falta destinatario', description: 'Por favor seleccione un trabajador.' });
             return;
         }
 
@@ -345,25 +401,29 @@ export default function DocumentManagementPage() {
                 content: editableContent,
                 status: "issued",
                 createdAt: now,
+                attachmentUrl: attachmentUrl,
+                attachmentType: attachmentType
             };
             batch.set(newDoc, memoData);
         });
 
         try {
             await batch.commit();
-            toast({ title: 'Documentos Emitidos', description: `Se han generado ${targetWorkers.length} documentos oficialmente.` });
+            toast({ title: 'Documentos Emitidos', description: `Se han generado ${targetWorkers.length} documentos.` });
             setSelectedType("");
             setSelectedReason("");
             setSelectedUserId("");
             setIsGeneralSelection(false);
             setEventShift("");
             setEditableContent("");
+            setAttachmentUrl(null);
+            setAttachmentType(null);
             setIsLocked(false);
             clearCanvas();
             setActiveTab("history");
         } catch (error) {
             console.error(error);
-            toast({ variant: 'destructive', title: 'Error', description: 'No se pudo emitir el documento.' });
+            toast({ variant: 'destructive', title: 'Error' });
         } finally {
             setIsSaving(false);
         }
@@ -375,7 +435,7 @@ export default function DocumentManagementPage() {
             await deleteDoc(doc(firestore, 'memorandums', memoToDelete.id));
             toast({ title: 'Documento eliminado' });
         } catch (e) {
-            toast({ variant: 'destructive', title: 'Error al eliminar' });
+            toast({ variant: 'destructive', title: 'Error' });
         } finally {
             setMemorandumToDelete(null);
         }
@@ -481,7 +541,7 @@ export default function DocumentManagementPage() {
                                     {isGeneralSelection ? (
                                         <div className="p-3 bg-primary/5 border border-primary/20 rounded-md text-sm font-medium text-primary flex items-center gap-2">
                                             <CheckCircle className="h-4 w-4" />
-                                            Todo el personal activo ({workers?.filter(w => w.Status === 'active').length})
+                                            Todo el personal activo
                                         </div>
                                     ) : (
                                         <Combobox 
@@ -504,7 +564,7 @@ export default function DocumentManagementPage() {
                                         <Label className="flex items-center gap-1.5">
                                             Turno
                                             {showTurnoLine && selectedUserId && eventShift && (
-                                                <Badge variant="secondary" className="h-4 px-1 text-[9px] bg-blue-100 text-blue-700 border-none animate-in fade-in zoom-in duration-300">
+                                                <Badge variant="secondary" className="h-4 px-1 text-[9px] bg-blue-100 text-blue-700 border-none">
                                                     <Sparkles className="h-2 w-2 mr-0.5" /> Detectado
                                                 </Badge>
                                             )}
@@ -516,6 +576,42 @@ export default function DocumentManagementPage() {
                                             disabled={!showTurnoLine}
                                         />
                                     </div>
+                                </div>
+
+                                <div className="space-y-2 pt-2">
+                                    <Label className="flex items-center gap-2">
+                                        <Paperclip className="h-4 w-4" /> Adjunto (Opcional)
+                                    </Label>
+                                    <div className="flex gap-2">
+                                        <Button 
+                                            variant="outline" 
+                                            className={cn("w-full h-9 text-[10px] uppercase font-black tracking-widest", attachmentUrl && "border-primary text-primary")}
+                                            onClick={() => attachmentInputRef.current?.click()}
+                                            disabled={isUploading}
+                                        >
+                                            {isUploading ? <LoaderCircle className="animate-spin mr-2 h-3 w-3" /> : <FileUp className="mr-2 h-3 w-3" />}
+                                            {attachmentUrl ? "Cambiar Adjunto" : "Subir Foto / PDF"}
+                                        </Button>
+                                        <input 
+                                            type="file" 
+                                            ref={attachmentInputRef} 
+                                            className="hidden" 
+                                            accept="image/*,application/pdf"
+                                            onChange={handleFileChange}
+                                        />
+                                        {attachmentUrl && (
+                                            <Button variant="ghost" size="icon" className="h-9 w-9 text-destructive" onClick={() => { setAttachmentUrl(null); setAttachmentType(null); }}>
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        )}
+                                    </div>
+                                    {attachmentUrl && (
+                                        <div className="p-2 border rounded-md bg-slate-50 flex items-center gap-2">
+                                            {attachmentType === 'image' ? <Camera className="h-4 w-4 text-primary" /> : <FileText className="h-4 w-4 text-red-500" />}
+                                            <span className="text-[10px] font-bold uppercase truncate flex-1">Archivo cargado exitosamente</span>
+                                            <CheckCircle className="h-3 w-3 text-green-600" />
+                                        </div>
+                                    )}
                                 </div>
 
                                 <Separator />
@@ -566,7 +662,6 @@ export default function DocumentManagementPage() {
                         <Card className="lg:col-span-2 shadow-2xl overflow-hidden bg-slate-100 border-none flex flex-col">
                             <div className="flex-1 overflow-y-auto p-4 md:p-8">
                                 <div className="bg-white shadow-lg mx-auto max-w-2xl min-h-full border border-slate-200 relative flex flex-col">
-                                    {/* Header Institucional al estilo Acta de Dotación */}
                                     <div className="w-full relative h-[120px] border-b overflow-hidden bg-white">
                                         <Image 
                                             src={LOGO_URL} 
@@ -585,7 +680,6 @@ export default function DocumentManagementPage() {
                                             <p className="text-[9px] font-bold text-slate-500 tracking-[0.2em] uppercase">Control de Gestión Documental Interna</p>
                                         </div>
 
-                                        {/* Metadata Grid al estilo Acta de Dotación */}
                                         <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 border border-slate-200 rounded-lg text-xs">
                                             <div className="space-y-1">
                                                 <p className="text-[9px] font-black text-slate-400 uppercase">Código del Documento</p>
@@ -634,7 +728,7 @@ export default function DocumentManagementPage() {
                                             )}
                                         </div>
 
-                                        <div className="text-sm leading-relaxed whitespace-pre-wrap min-h-[250px] px-2">
+                                        <div className="text-sm leading-relaxed whitespace-pre-wrap min-h-[200px] px-2">
                                             {selectedReason ? (
                                                 isEditing ? (
                                                     <div className="space-y-4">
@@ -664,19 +758,38 @@ export default function DocumentManagementPage() {
                                             )}
                                         </div>
 
-                                        {/* Bloques de Firma Estilo Handover */}
+                                        {attachmentUrl && (
+                                            <div className="mt-8 border-t pt-6 space-y-4">
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b pb-1">Anexo / Evidencia Adjunta</p>
+                                                {attachmentType === 'image' ? (
+                                                    <div className="relative w-full aspect-video rounded-lg overflow-hidden border shadow-sm group">
+                                                        <Image src={attachmentUrl} alt="Evidencia" fill className="object-contain" unoptimized />
+                                                    </div>
+                                                ) : (
+                                                    <div className="p-4 bg-slate-50 border rounded-lg flex items-center justify-between">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="p-2 bg-red-100 rounded text-red-600"><FileText className="h-6 w-6" /></div>
+                                                            <div>
+                                                                <p className="text-xs font-bold text-slate-700">Documento PDF Adjunto</p>
+                                                                <p className="text-[10px] text-slate-500 uppercase">Este archivo se incluirá en el expediente</p>
+                                                            </div>
+                                                        </div>
+                                                        <Badge variant="outline" className="text-[8px] font-black uppercase">Cargado</Badge>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
                                         <div className="pt-12 grid grid-cols-2 gap-16">
                                             <div className="flex flex-col items-center space-y-3">
                                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b pb-1 w-full text-center">Firma del Emisor</p>
                                                 <div className="w-full h-24 flex flex-col items-center justify-center relative">
                                                     {isLocked ? (
-                                                        <>
-                                                            <div className="text-center mb-2">
-                                                                <img src={canvasRef.current?.toDataURL()} alt="Firma Emisor" className="h-12 object-contain opacity-90 mx-auto" />
-                                                                <p className="font-black text-[11px] text-slate-900 leading-tight uppercase">{currentUserProfile?.nombres} {currentUserProfile?.apellidos}</p>
-                                                                <p className="text-[9px] text-primary font-bold uppercase leading-tight">{currentUserProfile?.cargo}</p>
-                                                            </div>
-                                                        </>
+                                                        <div className="text-center mb-2">
+                                                            <img src={canvasRef.current?.toDataURL()} alt="Firma Emisor" className="h-12 object-contain opacity-90 mx-auto" />
+                                                            <p className="font-black text-[11px] text-slate-900 leading-tight uppercase">{currentUserProfile?.nombres} {currentUserProfile?.apellidos}</p>
+                                                            <p className="text-[9px] text-primary font-bold uppercase leading-tight">{currentUserProfile?.cargo}</p>
+                                                        </div>
                                                     ) : (
                                                         <p className="text-[10px] text-muted-foreground italic">Pendiente de certificación</p>
                                                     )}
@@ -710,7 +823,7 @@ export default function DocumentManagementPage() {
                                     disabled={isSaving || isEditing || !selectedType || !selectedReason || (!selectedUserId && !isGeneralSelection) || !isLocked}
                                 >
                                     {isSaving ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                                    {isGeneralSelection ? `Emitir a ${workers?.filter(w => w.Status === 'active').length} personas` : 'Emitir y Notificar'}
+                                    {isGeneralSelection ? `Emitir a Todo el Personal` : 'Emitir y Notificar'}
                                 </Button>
                             </div>
                         </Card>
@@ -802,7 +915,6 @@ export default function DocumentManagementPage() {
                 </TabsContent>
             </Tabs>
 
-            {/* Viewer Dialog al estilo Handover */}
             <Dialog open={!!selectedMemoForView} onOpenChange={(open) => !open && setSelectedMemoForView(null)}>
                 <DialogContent className="max-w-5xl max-h-[95vh] p-0 flex flex-col overflow-hidden bg-slate-100 border-none">
                     {selectedMemoForView && (
@@ -864,6 +976,28 @@ export default function DocumentManagementPage() {
                                             {selectedMemoForView.content}
                                         </div>
 
+                                        {selectedMemoForView.attachmentUrl && (
+                                            <div className="mt-8 border-t pt-6 space-y-4">
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b pb-1">Anexo Adjunto</p>
+                                                {selectedMemoForView.attachmentType === 'image' ? (
+                                                    <div className="relative w-full aspect-video rounded-lg overflow-hidden border shadow-sm">
+                                                        <Image src={selectedMemoForView.attachmentUrl} alt="Anexo" fill className="object-contain" unoptimized />
+                                                    </div>
+                                                ) : (
+                                                    <div className="p-4 bg-slate-50 border rounded-lg flex items-center justify-between">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="p-2 bg-red-100 rounded text-red-600"><FileText className="h-6 w-6" /></div>
+                                                            <div>
+                                                                <p className="text-xs font-bold text-slate-700">Documento PDF Adjunto</p>
+                                                                <p className="text-[10px] text-slate-500 uppercase">Disponible en la carpeta digital del trabajador</p>
+                                                            </div>
+                                                        </div>
+                                                        <Button variant="outline" size="sm" className="h-8 text-[9px] font-black uppercase" onClick={() => window.open(selectedMemoForView.attachmentUrl!, '_blank')}>Abrir PDF</Button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
                                         {selectedMemoForView.status === 'rejected' && selectedMemoForView.defense && (
                                             <div className="mt-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-r-md">
                                                 <div className="flex items-center gap-2 text-red-700 font-bold mb-1">
@@ -881,13 +1015,11 @@ export default function DocumentManagementPage() {
                                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b pb-1 w-full text-center">Firma del Emisor</p>
                                                 <div className="w-full h-24 flex flex-col items-center justify-center text-center">
                                                     {selectedMemoForView.issuerSignature && (
-                                                        <>
-                                                            <div className="mb-2">
-                                                                <img src={selectedMemoForView.issuerSignature} alt="Firma Emisor" className="h-12 object-contain opacity-90 mx-auto" />
-                                                                <p className="font-black text-[11px] text-slate-900 leading-tight uppercase">{selectedMemoForView.issuerName}</p>
-                                                                <p className="text-[9px] text-primary font-bold uppercase leading-tight">{selectedMemoForView.issuerCargo}</p>
-                                                            </div>
-                                                        </>
+                                                        <div className="mb-2">
+                                                            <img src={selectedMemoForView.issuerSignature} alt="Firma Emisor" className="h-12 object-contain opacity-90 mx-auto" />
+                                                            <p className="font-black text-[11px] text-slate-900 leading-tight uppercase">{selectedMemoForView.issuerName}</p>
+                                                            <p className="text-[9px] text-primary font-bold uppercase leading-tight">{selectedMemoForView.issuerCargo}</p>
+                                                        </div>
                                                     )}
                                                 </div>
                                             </div>
@@ -895,13 +1027,11 @@ export default function DocumentManagementPage() {
                                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b pb-1 w-full text-center">Firma del Colaborador</p>
                                                 <div className="w-full h-24 flex flex-col items-center justify-center text-center">
                                                     {selectedMemoForView.signature ? (
-                                                        <>
-                                                            <div className="mb-2">
-                                                                <img src={selectedMemoForView.signature} alt="Firma Colaborador" className="h-12 object-contain opacity-90 mx-auto" />
-                                                                <p className="font-black text-[11px] text-slate-900 leading-tight uppercase">{selectedMemoForView.targetUserName}</p>
-                                                                <p className="text-[9px] text-emerald-700 font-bold uppercase leading-tight">{selectedMemoForView.targetUserCargo}</p>
-                                                            </div>
-                                                        </>
+                                                        <div className="mb-2">
+                                                            <img src={selectedMemoForView.signature} alt="Firma Colaborador" className="h-12 object-contain opacity-90 mx-auto" />
+                                                            <p className="font-black text-[11px] text-slate-900 leading-tight uppercase">{selectedMemoForView.targetUserName}</p>
+                                                            <p className="text-[9px] text-emerald-700 font-bold uppercase leading-tight">{selectedMemoForView.targetUserCargo}</p>
+                                                        </div>
                                                     ) : (
                                                         selectedMemoForView.status === 'rejected' ? (
                                                             <div className="flex flex-col items-center gap-1 border-2 border-red-500 p-2 rounded rotate-[-5deg]">

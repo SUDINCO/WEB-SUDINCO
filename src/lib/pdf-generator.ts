@@ -278,7 +278,7 @@ export const generateMemorandumPDF = async (memo: Memorandum) => {
     const margin = 10;
     let currentY = 0;
 
-    // Header Institucional estilo Handover
+    // Header Institucional
     const headerHeight = 35;
     doc.addImage(LOGO_URL, 'PNG', 0, 0, pageWidth, headerHeight);
     currentY = headerHeight + 5;
@@ -330,6 +330,25 @@ export const generateMemorandumPDF = async (memo: Memorandum) => {
     doc.text(splitContent, margin, currentY, { align: 'justify', lineHeightFactor: 1.5 });
     
     currentY += (splitContent.length * 6) + 15;
+
+    // Anexo si es imagen
+    if (memo.attachmentUrl && memo.attachmentType === 'image') {
+        if (currentY > pageHeight - 100) {
+            doc.addPage();
+            currentY = 20;
+        }
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.setTextColor(100, 116, 139);
+        doc.text('ANEXO ADJUNTO:', margin, currentY);
+        currentY += 5;
+        try {
+            doc.addImage(memo.attachmentUrl, 'JPEG', margin, currentY, pageWidth - (margin * 2), 80, undefined, 'FAST');
+            currentY += 85;
+        } catch (e) {
+            console.error('Error adding attachment to PDF', e);
+        }
+    }
 
     // Si el contenido es muy largo, saltar página para firmas
     if (currentY > pageHeight - 60) {
