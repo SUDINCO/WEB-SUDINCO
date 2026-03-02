@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
@@ -367,7 +366,7 @@ export default function DocumentManagementPage() {
         const now = Date.now();
         const currentYear = new Date().getFullYear();
         
-        let targetWorkers = [];
+        let targetWorkers: UserProfile[] = [];
         if (isGeneralSelection) {
             targetWorkers = workers?.filter(w => w.Status === 'active') || [];
         } else {
