@@ -97,14 +97,14 @@ import {
   DialogFooter
 } from '@/components/ui/dialog';
 import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogFooter,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogFooter,
 } from "@/components/ui/alert-dialog";
 import { Separator } from '@/components/ui/separator';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -219,151 +219,6 @@ const publicationCategories = [
     { value: 'Marketplace', label: '🛍️ Marketplace', icon: Rss },
 ];
 
-function CreatePublicationDialog({ open, onOpenChange, editingPost, onSave }: { open: boolean, onOpenChange: (open: boolean) => void, editingPost: Publication | null, onSave: (data: any) => Promise<void> }) {
-  const [publicationText, setPublicationText] = useState('');
-  const [category, setCategory] = useState('');
-  const [eventDate, setEventDate] = useState<Date | undefined>();
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (open) {
-      if (editingPost) {
-        setPublicationText(editingPost.text);
-        setCategory(editingPost.category);
-        setImagePreview(editingPost.imageUrl || null);
-        setEventDate(editingPost.eventDate ? parseISO(editingPost.eventDate) : undefined);
-      } else {
-        setPublicationText('');
-        setCategory('');
-        setImagePreview(null);
-        setEventDate(undefined);
-      }
-    }
-  }, [open, editingPost]);
-  
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 4 * 1024 * 1024) { // 4MB limit
-        toast({ variant: 'destructive', title: 'Archivo muy grande', description: 'Por favor, selecciona una imagen de menos de 4MB.' });
-        return;
-    }
-
-    const reader = new FileReader();
-    reader.onloadstart = () => setIsUploading(true);
-    reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-        setIsUploading(false);
-    };
-    reader.onerror = () => {
-        setIsUploading(false);
-        toast({ variant: 'destructive', title: 'Error', description: 'No se pudo leer el archivo de imagen.' });
-    };
-    reader.readAsDataURL(file);
-
-    if(event.target) {
-        (event.target as HTMLInputElement).value = '';
-    }
-  };
-  
-  const handleSave = async () => {
-    if ((!publicationText.trim() && !imagePreview) || !category) {
-        toast({ variant: 'destructive', title: 'Datos incompletos', description: 'Por favor, añade texto o una imagen y selecciona una categoría.'});
-        return;
-    };
-
-    setIsSaving(true);
-    const dataToSave = {
-        text: publicationText,
-        category: category,
-        imageUrl: imagePreview || null,
-        eventDate: eventDate ? format(eventDate, 'yyyy-MM-dd') : null,
-    };
-    
-    await onSave(dataToSave);
-    setIsSaving(false);
-    onOpenChange(false);
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-       <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" style={{ display: 'none' }} />
-        <DialogContent className="sm:max-w-xl">
-            <DialogHeader>
-                <DialogTitle className="text-xl">{editingPost ? 'Editar Publicación' : 'Crear Publicación'}</DialogTitle>
-            </DialogHeader>
-            <div className="py-4 space-y-4">
-                 <Textarea
-                    placeholder="¿Sobre qué quieres hablar?"
-                    className="min-h-[120px] resize-none border-0 p-0 shadow-none focus-visible:ring-0 text-base"
-                    value={publicationText}
-                    onChange={(e) => setPublicationText(e.target.value)}
-                />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Select value={category} onValueChange={setCategory}>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Selecciona una categoría..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {publicationCategories.map(cat => (
-                                <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                     <Popover>
-                        <PopoverTrigger asChild>
-                            <Button
-                                variant={"outline"}
-                                className={cn( "w-full justify-start text-left font-normal", !eventDate && "text-muted-foreground")}
-                            >
-                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                {eventDate ? format(eventDate, "PPP", { locale: es }) : <span>Fecha del evento (opcional)</span>}
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                            <Calendar mode="single" selected={eventDate} onSelect={setEventDate} initialFocus locale={es} />
-                        </PopoverContent>
-                    </Popover>
-                </div>
-                 {isUploading && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <LoaderCircle className="h-4 w-4 animate-spin" /> Cargando imagen...
-                    </div>
-                )}
-                
-                {imagePreview && !isUploading && (
-                    <div className="relative mt-2">
-                        <Image src={imagePreview} alt="Vista previa" width={500} height={300} className="rounded-lg object-cover w-full aspect-video" unoptimized />
-                        <Button variant="destructive" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={() => setImagePreview(null)}>
-                            <X className="h-4 w-4" />
-                        </Button>
-                    </div>
-                )}
-            </div>
-            <DialogFooter className="border-t pt-4">
-                <div className="flex justify-between items-center w-full">
-                    <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
-                            <ImageIcon className="h-5 w-5" />
-                        </Button>
-                         <Button variant="ghost" size="icon" disabled> <CaseSensitive className="h-5 w-5" /> </Button>
-                    </div>
-                    <Button onClick={handleSave} disabled={isSaving || isUploading}>
-                        {isSaving ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                        {isSaving ? 'Publicando...' : 'Publicar'}
-                    </Button>
-                </div>
-            </DialogFooter>
-        </DialogContent>
-    </Dialog>
-  )
-}
-
-
 function EventCreatorDialog({ open, onOpenChange, selectedDate, currentUserProfile }: { open: boolean, onOpenChange: (open: boolean) => void, selectedDate: Date | null, currentUserProfile: UserProfile | null }) {
     const firestore = useFirestore();
     const form = useForm<z.infer<typeof eventSchema>>({
@@ -477,9 +332,7 @@ export default function DashboardHomePage() {
   const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
   const [selectedEventDate, setSelectedEventDate] = useState<Date | null>(null);
   
-  const [editingPost, setEditingPost] = useState<Publication | null>(null);
   const [postToDelete, setPostToDelete] = useState<Publication | null>(null);
-  const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
 
   const firestore = useFirestore();
   const { data: users, isLoading: usersLoading } = useCollection<UserProfile>(useMemo(() => firestore ? collection(firestore, 'users') : null, [firestore]));
@@ -545,39 +398,6 @@ export default function DashboardHomePage() {
     setIsEventDialogOpen(true);
   };
   
-  const handleSavePublication = async (data: any) => {
-    if (!currentUserProfile || !firestore) return;
-
-    try {
-        if (editingPost) {
-            const postRef = doc(firestore, 'publications', editingPost.id);
-            await updateDoc(postRef, {
-                ...data,
-                status: 'pending' // Re-submit for approval on edit
-            });
-            toast({ title: 'Publicación Actualizada', description: 'Tu publicación ha sido enviada de nuevo para aprobación.' });
-        } else {
-            const newPublication = {
-              authorId: currentUserProfile.id,
-              authorName: `${currentUserProfile.nombres} ${currentUserProfile.apellidos}`,
-              authorAvatarUrl: currentUserProfile.photoUrl || '',
-              ...data,
-              status: 'pending' as const,
-              rejectionReason: '',
-              createdAt: Date.now(),
-              reactions: {},
-            };
-            const publicationsCollection = collection(firestore, 'publications');
-            await addDoc(publicationsCollection, newPublication);
-            toast({ title: 'Publicación Enviada', description: 'Tu publicación ha sido enviada para aprobación.' });
-        }
-        setEditingPost(null);
-    } catch (error) {
-        console.error("Error saving post:", error);
-        toast({ variant: 'destructive', title: 'Error', description: 'No se pudo guardar la publicación.' });
-    }
-  }
-
   const handleDeletePost = async () => {
     if (!postToDelete || !firestore) return;
     try {
@@ -1008,7 +828,6 @@ export default function DashboardHomePage() {
                   </div>
               </DialogContent>
           </Dialog>
-           <CreatePublicationDialog open={isCreateDialogOpen} onOpenChange={setCreateDialogOpen} editingPost={editingPost} onSave={handleSavePublication} />
             <AlertDialog open={!!postToDelete} onOpenChange={() => setPostToDelete(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
@@ -1029,21 +848,6 @@ export default function DashboardHomePage() {
               <MiCalendario />
           </aside>
           <main className="col-span-1 lg:col-span-2 min-h-0 space-y-6">
-              <Card onClick={() => { setEditingPost(null); setCreateDialogOpen(true); }}>
-                  <CardContent className="p-4 flex items-center gap-4 cursor-pointer">
-                      <Avatar>
-                          <AvatarImage src={currentUserProfile?.photoUrl} />
-                          <AvatarFallback>
-                          {currentUserProfile ? getInitials(currentUserProfile.nombres, currentUserProfile.apellidos) : '...'}
-                          </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 text-muted-foreground text-sm font-medium border rounded-full px-4 py-2 hover:bg-muted">
-                          Iniciar una publicación...
-                      </div>
-                      <Button variant="ghost" className="h-auto p-2"> <ImageIcon className="h-5 w-5 text-green-600" /> <span className="ml-2 hidden sm:inline">Foto</span> </Button>
-                  </CardContent>
-              </Card>
-
               <Card className="h-full flex flex-col">
                 <CardHeader>
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
@@ -1120,10 +924,6 @@ export default function DashboardHomePage() {
                                           </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
-                                          <DropdownMenuItem onSelect={() => {setEditingPost(post); setCreateDialogOpen(true); }}>
-                                            <Edit className="mr-2 h-4 w-4" />
-                                            <span>Editar</span>
-                                          </DropdownMenuItem>
                                           <DropdownMenuItem onSelect={() => setPostToDelete(post)} className="text-destructive focus:text-destructive">
                                             <Trash2 className="mr-2 h-4 w-4" />
                                             <span>Eliminar</span>

@@ -70,7 +70,7 @@ const permissionsMap = [
   {
     menu: 'Administración',
     tabs: [
-      { id: 'publications', name: 'Aprobación de Publicaciones' },
+      { id: 'publications', name: 'Publicaciones' },
       { id: 'calendar', name: 'Calendario' },
       { id: 'performance-evaluation', name: 'Evaluación de Desempeño (Admin)' },
       { id: 'roles', name: 'Roles y Permisos' },
@@ -179,7 +179,7 @@ export default function RolesAndPermissionsPage() {
      const roleDocRef = doc(firestore, 'roles', selectedRole.id);
      try {
         await deleteDoc(roleDocRef);
-        toast({ title: "Rol Eliminado", description: `El rol "${selectedRole.name}" ha sido eliminado.`});
+        toast({ title: "Rol Eliminar", description: `El rol "${selectedRole.name}" ha sido eliminado.`});
         setSelectedRoleId(null);
      } catch (error) {
         console.error("Error deleting role: ", error);

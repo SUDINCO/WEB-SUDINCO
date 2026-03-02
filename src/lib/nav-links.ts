@@ -82,7 +82,7 @@ export const allNavLinks = [
     module: "Administración",
     icon: Shield,
     sublinks: [
-      { name: "Aprobación de Publicaciones", href: "/dashboard/administration/evaluation-percentages", icon: Megaphone, id: "publications" },
+      { name: "Publicaciones", href: "/dashboard/administration/publications", icon: Megaphone, id: "publications" },
       { name: "Calendario", href: "/dashboard/administration/calendar", icon: CalendarDays, id: "calendar" },
       { name: "Evaluación de Desempeño (Admin)", href: "/dashboard/performance-evaluation", icon: ClipboardCheck, id: "performance-evaluation" },
       { name: "Roles y Permisos", href: "/dashboard/administration/roles", icon: FileText, id: "roles" },
