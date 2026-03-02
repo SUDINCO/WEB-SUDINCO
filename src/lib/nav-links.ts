@@ -23,14 +23,15 @@ import {
   ShieldCheck,
   FolderOpen,
   FileBadge,
-  FileBox
+  FileBox,
+  User,
+  UserCircle
 } from 'lucide-react';
-import type { NavLink } from 'lucide-react';
 
 export interface NavLink {
   name: string;
   href: string;
-  icon: any; // Using any to avoid strict LucideIcon typing issues in definition
+  icon: any; 
   id: string;
 }
 
@@ -71,13 +72,15 @@ export const allNavLinks = [
         sublinks: [
           { name: "Vacaciones y Permisos", href: "/dashboard/vacation-requests", icon: CalendarDays, id: "vacation-requests" },
         ]
-      },
-      {
-        title: "Documentos",
-        sublinks: [
-          { name: "Mis Documentos", href: "/dashboard/my-documents", icon: FileBadge, id: "my-documents" },
-        ]
       }
+    ]
+  },
+  {
+    module: "Documentos",
+    icon: User,
+    sublinks: [
+      { name: "Mis Documentos", href: "/dashboard/my-documents", icon: FileBadge, id: "my-documents" },
+      { name: "Mi Perfil", href: "/dashboard/profile", icon: UserCircle, id: "profile" },
     ]
   },
   {

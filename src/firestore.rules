@@ -19,7 +19,7 @@ service cloud.firestore {
     }
 
     function isMaster() {
-      return isSignedIn() && request.auth.token.email == 'master@sudinco.com';
+      return isSignedIn() && (request.auth.token.email == 'master@sudinco.com' || request.auth.token.email == 'jaespinoza@sudinco.com');
     }
 
     function isMasterOrAdmin() {
@@ -45,7 +45,7 @@ service cloud.firestore {
       allow delete: if isMaster();
     }
 
-    // PRIVACY CONSENTS: Estricto cumplimiento de privacidad. Solo el dueño accede a su consentimiento.
+    // PRIVACY CONSENTS: Estricto cumplimiento de privacidad.
     match /privacyConsents/{userId} {
       allow read, write: if isOwner(userId);
     }
@@ -64,7 +64,7 @@ service cloud.firestore {
     // PERFORMANCE EVALUATIONS: 
     match /performanceEvaluations/{evaluationId} {
       allow create: if isSignedIn();
-      allow read: if isSignedIn();
+      allow read: if isSignedIn() && (resource.data.workerId == request.auth.uid || resource.data.evaluatorId == request.auth.uid || resource.data.observerEmail == request.auth.token.email || isMasterOrAdmin());
       allow update: if isMasterOrAdmin() || (isSignedIn() && (
         request.auth.token.email == resource.data.observerEmail ||
         (request.auth.uid == resource.data.evaluatorId && resource.data.observerStatus == 'review_requested')
@@ -83,7 +83,7 @@ service cloud.firestore {
 
     // MEMORANDUMS: Gestión documental con permisos jerárquicos.
     match /memorandums/{memoId} {
-      allow read: if isSignedIn() && (resource.data.targetUserId == request.auth.uid || isMasterOrAdmin());
+      allow read: if isSignedIn() && (resource.data.targetUserId == request.auth.uid || resource.data.issuerId == request.auth.uid || isMasterOrAdmin());
       allow create: if isMasterOrAdmin();
       allow update: if isSignedIn() && (
         (isMasterOrAdmin()) || 
@@ -97,7 +97,12 @@ service cloud.firestore {
       allow write: if isMasterOrAdmin();
     }
 
-    // OPCIONES GENÉRICAS (Empresas, Cargos, etc.): Solo lectura para usuarios, escritura para Admins.
+    match /memorandumTemplates/{templateId} {
+      allow read: if isSignedIn();
+      allow write: if isMasterOrAdmin();
+    }
+
+    // OPCIONES GENÉRICAS
     match /empresas/{id} { allow read: if isSignedIn(); allow write: if isMasterOrAdmin(); }
     match /cargos/{id} { allow read: if isSignedIn(); allow write: if isMasterOrAdmin(); }
     match /ubicaciones/{id} { allow read: if isSignedIn(); allow write: if isMasterOrAdmin(); }

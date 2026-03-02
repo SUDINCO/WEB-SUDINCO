@@ -4,7 +4,8 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper Functions
+    // --- Funciones de Ayuda de Seguridad ---
+    
     function isSignedIn() {
       return request.auth != null;
     }
@@ -18,44 +19,44 @@ service cloud.firestore {
     }
 
     function isMaster() {
-      return isSignedIn() && request.auth.token.email == 'master@sudinco.com';
+      return isSignedIn() && (request.auth.token.email == 'master@sudinco.com' || request.auth.token.email == 'jaespinoza@sudinco.com');
     }
 
     function isMasterOrAdmin() {
-      if (isMaster()) {
-        return true;
-      }
-      if (!isSignedIn()) {
-        return false;
-      }
-      // Workaround for potential auth UID mismatches for specific admin users.
-      if (request.auth.token.email == 'jaespinoza@sudinco.com') {
-        return true;
-      }
-      if (!exists(/databases/$(database)/documents/users/$(request.auth.uid))) {
-        return false;
-      }
+      if (isMaster()) return true;
+      if (!isSignedIn()) return false;
+      
+      // Validación especial para administrador principal
+      if (request.auth.token.email == 'jaespinoza@sudinco.com') return true;
+      
+      // Verificación de rol en el documento del usuario
+      if (!exists(/databases/$(database)/documents/users/$(request.auth.uid))) return false;
       let userData = getUserData();
       return userData.rol == 'MASTER' || userData.rol == 'ADMINISTRADOR';
     }
     
-    // --- Collection Rules ---
+    // --- Reglas de Colecciones ---
 
-    // USERS: Users can update their own data. Admins/Masters can update any user.
+    // USERS: Solo dueños pueden editar su perfil básico. Administradores gestionan nómina.
     match /users/{userId} {
       allow read: if isSignedIn();
       allow update: if isOwner(userId) || isMasterOrAdmin();
       allow create: if isMasterOrAdmin();
       allow delete: if isMaster();
     }
+
+    // PRIVACY CONSENTS: Estricto cumplimiento de privacidad.
+    match /privacyConsents/{userId} {
+      allow read, write: if isOwner(userId);
+    }
     
-    // ROLES: Only Master can manage roles. All signed-in users can read them.
+    // ROLES: Solo Master gestiona la matriz de permisos.
     match /roles/{roleId} {
       allow read: if isSignedIn();
       allow write: if isMaster(); 
     }
 
-    // CONSULTANT GROUPS: Only Master or Admin can manage consultant groups.
+    // CONSULTANT GROUPS: Gestión restringida a administración.
     match /consultantGroups/{groupId} {
       allow read, write: if isMasterOrAdmin();
     }
@@ -63,24 +64,15 @@ service cloud.firestore {
     // PERFORMANCE EVALUATIONS: 
     match /performanceEvaluations/{evaluationId} {
       allow create: if isSignedIn();
-      allow read: if isSignedIn();
+      allow read: if isSignedIn() && (resource.data.workerId == request.auth.uid || resource.data.evaluatorId == request.auth.uid || resource.data.observerEmail == request.auth.token.email || isMasterOrAdmin());
       allow update: if isMasterOrAdmin() || (isSignedIn() && (
-        request.auth.token.email == resource.data.observerEmail
-        ||
-        (request.auth.uid == resource.data.evaluatorId && 
-         resource.data.observerStatus == 'review_requested')
+        request.auth.token.email == resource.data.observerEmail ||
+        (request.auth.uid == resource.data.evaluatorId && resource.data.observerStatus == 'review_requested')
       ));
       allow delete: if isMaster();
     }
 
-    // MANAGER EVALUATIONS: Employees evaluate their managers.
-    match /managerEvaluations/{evaluationId} {
-      allow create: if isSignedIn() && request.resource.data.employeeId == request.auth.uid;
-      allow read: if isMasterOrAdmin() || (isSignedIn() && (resource.data.managerId == request.auth.uid || resource.data.employeeId == request.auth.uid));
-      allow update, delete: if isMaster();
-    }
-
-    // VACATION REQUESTS: Users manage their own requests.
+    // VACATION REQUESTS: Los usuarios gestionan sus propias solicitudes.
     match /vacationRequests/{requestId} {
         allow create: if isMasterOrAdmin() || (isSignedIn() && request.resource.data.userId == request.auth.uid);
         allow get: if isMasterOrAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
@@ -89,62 +81,59 @@ service cloud.firestore {
         allow delete: if isMasterOrAdmin() || isOwner(resource.data.userId);
     }
 
-    // LEADER ASSIGNMENT RULES: Only Master/Admin can manage these rules.
-    match /leaderAssignmentRules/{ruleId} {
-        allow read, write: if isMasterOrAdmin();
+    // MEMORANDUMS: Gestión documental con permisos jerárquicos.
+    match /memorandums/{memoId} {
+      allow read: if isSignedIn() && (resource.data.targetUserId == request.auth.uid || resource.data.issuerId == request.auth.uid || isMasterOrAdmin());
+      allow create: if isMasterOrAdmin();
+      allow update: if isSignedIn() && (
+        (isMasterOrAdmin()) || 
+        (resource.data.targetUserId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'readAt', 'signedAt', 'signature', 'defense']))
+      );
+      allow delete: if isMaster();
     }
-    
-    // HOLIDAYS: Any signed-in user can read, but only Admins/Master can write.
-    match /holidays/{holidayId} {
+
+    match /memorandumCausals/{causalId} {
       allow read: if isSignedIn();
       allow write: if isMasterOrAdmin();
     }
 
-    // GENERIC OPTION COLLECTIONS
+    match /memorandumTemplates/{templateId} {
+      allow read: if isSignedIn();
+      allow write: if isMasterOrAdmin();
+    }
+
+    // OPCIONES GENÉRICAS
     match /empresas/{id} { allow read: if isSignedIn(); allow write: if isMasterOrAdmin(); }
     match /cargos/{id} { allow read: if isSignedIn(); allow write: if isMasterOrAdmin(); }
     match /ubicaciones/{id} { allow read: if isSignedIn(); allow write: if isMasterOrAdmin(); }
     match /areas/{id} { allow read: if isSignedIn(); allow write: if isMasterOrAdmin(); }
     match /centrosCosto/{id} { allow read: if isSignedIn(); allow write: if isMasterOrAdmin(); }
 
+    // ASISTENCIA Y DOTACIÓN
+    match /attendance/{recordId} {
+      allow read, update: if isMasterOrAdmin() || (isSignedIn() && resource.data.collaboratorId == request.auth.uid);
+      allow create: if isSignedIn() && request.resource.data.collaboratorId == request.auth.uid;
+    }
+    
+    match /equipmentHandovers/{handoverId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && (
+        request.auth.uid == resource.data.outgoingGuardId || 
+        request.auth.uid == resource.data.incomingGuardId ||
+        isMasterOrAdmin()
+      );
+    }
+
     // PUBLICATIONS: Permitir lectura a todos los usuarios autenticados
     match /publications/{publicationId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update, delete: if isMasterOrAdmin() || (isSignedIn() && resource.data.authorId == request.auth.uid);
-    }
-    
-    // SIMPLE EVENTS
-    match /simpleEvents/{eventId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn() && request.resource.data.creatorId == request.auth.uid;
-      allow update, delete: if isSignedIn() && request.resource.data.creatorId == request.auth.uid;
+      allow write: if isMasterOrAdmin();
     }
 
-    // ATTENDANCE RECORDS
-    match /attendance/{recordId} {
-      allow create: if isSignedIn() && request.resource.data.collaboratorId == request.auth.uid;
-      allow read, update: if isMasterOrAdmin() || (isSignedIn() && resource.data.collaboratorId == request.auth.uid);
-    }
-    
-    // WORK LOCATIONS
-    match /workLocations/{locationId} {
-        allow read: if isSignedIn();
-        allow write: if isMasterOrAdmin();
-    }
-    
-    // LOCATION REPORTS
-    match /locationReports/{reportId} {
-      allow read: if isMasterOrAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-    }
-
-    // MEMORANDUMS
-    match /memorandums/{memoId} {
-      allow read: if isSignedIn() && (resource.data.targetUserId == request.auth.uid || isMasterOrAdmin());
-      allow create: if isMasterOrAdmin();
-      allow update: if isSignedIn() && (isMasterOrAdmin() || resource.data.targetUserId == request.auth.uid);
-      allow delete: if isMaster();
+    // Bloqueo total para cualquier otra ruta no especificada
+    match /{path=**} {
+      allow read, write: if false;
     }
   }
 }

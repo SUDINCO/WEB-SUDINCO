@@ -1,8 +1,8 @@
 
 "use client";
 
-import React, { useState, useMemo, useRef } from 'react';
-import { useCollection, useFirestore, useUser } from '@/firebase';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { useDoc, useFirestore, useUser, useCollection } from '@/firebase';
 import { collection, doc, updateDoc, query, where, orderBy } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -38,7 +38,6 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import type { Memorandum, UserProfile } from '@/lib/types';
 
@@ -55,21 +54,23 @@ export default function MyDocumentsPage() {
     const [isDrawing, setIsDrawing] = useState(false);
     const [isLocked, setIsLocked] = useState(false);
 
-    const { data: workers } = useCollection<UserProfile>(useMemo(() => firestore ? collection(firestore, 'users') : null, [firestore]));
-    
-    const currentUserProfile = useMemo(() => {
-        if (!authUser || !workers) return null;
-        return workers.find(w => w.email?.toLowerCase() === authUser.email?.toLowerCase());
-    }, [authUser, workers]);
+    // Get current user profile directly by ID to avoid listing users collection
+    const userDocRef = useMemo(() => {
+        if (!firestore || !authUser?.uid) return null;
+        return doc(firestore, 'users', authUser.uid);
+    }, [firestore, authUser?.uid]);
+
+    const { data: currentUserProfile, isLoading: profileLoading } = useDoc<UserProfile>(userDocRef);
 
     const memosQuery = useMemo(() => {
-        if (!firestore || !currentUserProfile) return null;
+        if (!firestore || !authUser?.uid) return null;
+        // The rules allow listing if the targetUserId matches the current auth.uid
         return query(
             collection(firestore, 'memorandums'), 
-            where('targetUserId', '==', currentUserProfile.id),
+            where('targetUserId', '==', authUser.uid),
             orderBy('createdAt', 'desc')
         );
-    }, [firestore, currentUserProfile]);
+    }, [firestore, authUser?.uid]);
 
     const { data: myMemos, isLoading: memosLoading } = useCollection<Memorandum>(memosQuery);
 
@@ -155,6 +156,14 @@ export default function MyDocumentsPage() {
         }
     };
 
+    if (profileLoading) {
+        return (
+            <div className="flex h-full items-center justify-center">
+                <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -214,7 +223,7 @@ export default function MyDocumentsPage() {
                             <DialogHeader>
                                 <div className="text-center space-y-1">
                                     <h2 className="text-lg font-black text-slate-900 uppercase">
-                                        EMPRESA DE SEGURIDAD {currentUserProfile?.empresa || 'XXXXX'}
+                                        {currentUserProfile?.empresa || 'SUDINCO'}
                                     </h2>
                                     <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest">Sistema de Gestión Documental – Performa</p>
                                 </div>
