@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
@@ -30,7 +29,8 @@ import {
     XCircle,
     MessageSquare,
     ChevronRight,
-    AlertTriangle
+    AlertTriangle,
+    Send
 } from 'lucide-react';
 import {
   Dialog,
@@ -272,8 +272,8 @@ export default function MyDocumentsPage() {
                                             <FileText className="h-12 w-12 opacity-20" />
                                             <p>No tienes documentos registrados en tu historial.</p>
                                         </div>
-                                    </TableCell>
-                                </TableRow>
+                                    </TableRow>
+                                </TableCell>
                             )}
                         </TableBody>
                     </Table>
