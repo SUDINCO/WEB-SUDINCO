@@ -3,7 +3,7 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useDoc, useFirestore, useUser, useCollection } from '@/firebase';
-import { collection, doc, updateDoc, query, where, orderBy } from 'firebase/firestore';
+import { collection, doc, updateDoc, query, where } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -62,16 +62,22 @@ export default function MyDocumentsPage() {
 
     const { data: currentUserProfile, isLoading: profileLoading } = useDoc<UserProfile>(userDocRef);
 
+    // Simplificamos la query eliminando el orderBy para evitar errores de índice compuesto
+    // El ordenamiento se hará en memoria (sortedMemos)
     const memosQuery = useMemo(() => {
         if (!firestore || !authUser?.uid) return null;
         return query(
             collection(firestore, 'memorandums'), 
-            where('targetUserId', '==', authUser.uid),
-            orderBy('createdAt', 'desc')
+            where('targetUserId', '==', authUser.uid)
         );
     }, [firestore, authUser?.uid]);
 
     const { data: myMemos, isLoading: memosLoading } = useCollection<Memorandum>(memosQuery);
+
+    const sortedMemos = useMemo(() => {
+        if (!myMemos) return [];
+        return [...myMemos].sort((a, b) => b.createdAt - a.createdAt);
+    }, [myMemos]);
 
     const handleOpenMemo = async (memo: Memorandum) => {
         setSelectedMemo(memo);
@@ -178,8 +184,8 @@ export default function MyDocumentsPage() {
                     Array.from({ length: 3 }).map((_, i) => (
                         <Card key={i} className="animate-pulse h-48 bg-muted" />
                     ))
-                ) : myMemos && myMemos.length > 0 ? (
-                    myMemos.map(memo => (
+                ) : sortedMemos.length > 0 ? (
+                    sortedMemos.map(memo => (
                         <Card key={memo.id} className={cn(
                             "hover:shadow-lg transition-all border-l-4",
                             memo.status === 'signed' ? 'border-l-green-500' : 'border-l-blue-500'
@@ -225,7 +231,7 @@ export default function MyDocumentsPage() {
                             <DialogHeader>
                                 <div className="text-center space-y-1">
                                     <h2 className="text-lg font-black text-slate-900 uppercase">
-                                        {currentUserProfile?.empresa || 'SUDINCO'}
+                                        {selectedMemo.targetUserCargo?.includes('GUARDIA') ? 'CADENVILL SECURITY' : 'GRUPO SUDINCO'}
                                     </h2>
                                     <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest">Sistema de Gestión Documental – Performa</p>
                                 </div>
@@ -255,7 +261,6 @@ export default function MyDocumentsPage() {
 
                                 <div className="pt-10 grid grid-cols-2 gap-12">
                                     <div className="text-center border-t pt-2">
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Firma del Emisor</p>
                                         <div className="h-24 flex flex-col items-center justify-center mt-1">
                                             {selectedMemo.issuerSignature && (
                                                 <img src={selectedMemo.issuerSignature} alt="Firma Emisor" className="h-12 mb-1 opacity-90" />
@@ -263,9 +268,9 @@ export default function MyDocumentsPage() {
                                             <p className="font-bold text-[11px] text-primary leading-tight">{selectedMemo.issuerName}</p>
                                             <p className="text-[9px] text-muted-foreground uppercase leading-tight">{selectedMemo.issuerCargo}</p>
                                         </div>
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Firma del Emisor</p>
                                     </div>
                                     <div className="text-center border-t pt-2">
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Firma del Colaborador</p>
                                         <div className="h-24 flex flex-col items-center justify-center mt-1">
                                             {selectedMemo.signature ? (
                                                 <>
@@ -277,10 +282,11 @@ export default function MyDocumentsPage() {
                                                 selectedMemo.type === "Memorando de Llamado de Atención" ? (
                                                     <p className="text-[10px] text-muted-foreground italic mt-4">Pendiente de firma</p>
                                                 ) : (
-                                                    <Badge variant="outline" className="text-[8px] h-4">No requiere firma</Badge>
+                                                    <Badge variant="outline" className="text-[8px] h-4" style={{ marginTop: '16px' }}>No requiere firma</Badge>
                                                 )
                                             )}
                                         </div>
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Firma del Colaborador</p>
                                     </div>
                                 </div>
                             </div>
