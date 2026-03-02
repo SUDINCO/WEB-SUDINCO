@@ -1,5 +1,6 @@
+
 import { type CellHookData } from 'jspdf-autotable';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { PersonDTO, EvaluationDTO } from './contracts';
 import type { EquipmentHandover, Memorandum } from './types';
@@ -285,7 +286,8 @@ export const generateMemorandumPDF = async (memo: Memorandum) => {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(16);
     doc.setTextColor(30, 41, 59);
-    doc.text('MEMORANDO INSTITUCIONAL', pageWidth / 2, currentY, { align: 'center' });
+    const headerTitle = `MEMORANDO INSTITUCIONAL - ${memo.targetUserEmpresa || 'GENERAL'}`;
+    doc.text(headerTitle.toUpperCase(), pageWidth / 2, currentY, { align: 'center' });
     currentY += 6;
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
@@ -295,7 +297,8 @@ export const generateMemorandumPDF = async (memo: Memorandum) => {
 
     const metadata = [
         ['CÓDIGO DOCUMENTO', memo.code, 'FECHA DE EMISIÓN', format(new Date(memo.createdAt), 'dd/MM/yyyy', { locale: es })],
-        ['PARA (COLABORADOR)', memo.targetUserName.toUpperCase(), 'CARGO / FUNCIÓN', memo.targetUserCargo.toUpperCase()]
+        ['PARA (COLABORADOR)', memo.targetUserName.toUpperCase(), 'CARGO / FUNCIÓN', memo.targetUserCargo.toUpperCase()],
+        ['FECHA DEL EVENTO', memo.eventDate ? format(parseISO(memo.eventDate), 'dd/MM/yyyy', { locale: es }) : 'N/A', 'TURNO DEL EVENTO', memo.eventShift || 'N/A']
     ];
 
     (doc as any).autoTable({
@@ -342,25 +345,19 @@ export const generateMemorandumPDF = async (memo: Memorandum) => {
     doc.line(margin, sigY, margin + sigWidth, sigY);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
+    if (memo.issuerSignature) {
+        doc.addImage(memo.issuerSignature, 'PNG', margin + 5, sigY - 25, sigWidth - 10, 20);
+    }
     doc.text(memo.issuerName.toUpperCase(), margin + sigWidth / 2, sigY + 4, { align: 'center' });
     doc.setFont('helvetica', 'normal');
     doc.text(memo.issuerCargo.toUpperCase(), margin + sigWidth / 2, sigY + 8, { align: 'center' });
     doc.setFont('helvetica', 'bold');
     doc.text('FIRMA DEL EMISOR', margin + sigWidth / 2, sigY + 12, { align: 'center' });
-    if (memo.issuerSignature) {
-        doc.addImage(memo.issuerSignature, 'PNG', margin + 5, sigY - 25, sigWidth - 10, 20);
-    }
 
     // Firma Colaborador (si aplica)
     if (memo.type === "Memorando de Llamado de Atención") {
         doc.line(pageWidth - margin - sigWidth, sigY, pageWidth - margin, sigY);
         doc.setFont('helvetica', 'bold');
-        doc.text(memo.targetUserName.toUpperCase(), pageWidth - margin - sigWidth / 2, sigY + 4, { align: 'center' });
-        doc.setFont('helvetica', 'normal');
-        doc.text(memo.targetUserCargo.toUpperCase(), pageWidth - margin - sigWidth / 2, sigY + 8, { align: 'center' });
-        doc.setFont('helvetica', 'bold');
-        doc.text('FIRMA DEL COLABORADOR', pageWidth - margin - sigWidth / 2, sigY + 12, { align: 'center' });
-        
         if (memo.signature) {
             doc.addImage(memo.signature, 'PNG', pageWidth - margin - sigWidth + 5, sigY - 25, sigWidth - 10, 20);
         } else if (memo.status === 'rejected') {
@@ -369,6 +366,11 @@ export const generateMemorandumPDF = async (memo: Memorandum) => {
             doc.text('RECHAZADO', pageWidth - margin - sigWidth / 2, sigY - 10, { align: 'center' });
             doc.setTextColor(0);
         }
+        doc.text(memo.targetUserName.toUpperCase(), pageWidth - margin - sigWidth / 2, sigY + 4, { align: 'center' });
+        doc.setFont('helvetica', 'normal');
+        doc.text(memo.targetUserCargo.toUpperCase(), pageWidth - margin - sigWidth / 2, sigY + 8, { align: 'center' });
+        doc.setFont('helvetica', 'bold');
+        doc.text('FIRMA DEL COLABORADOR', pageWidth - margin - sigWidth / 2, sigY + 12, { align: 'center' });
     }
 
     const footerY = pageHeight - 15;

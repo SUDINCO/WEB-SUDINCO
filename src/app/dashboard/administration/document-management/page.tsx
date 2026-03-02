@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
@@ -334,6 +335,9 @@ export default function DocumentManagementPage() {
                 targetUserId: worker.id,
                 targetUserName: `${worker.nombres} ${worker.apellidos}`,
                 targetUserCargo: worker.cargo,
+                targetUserEmpresa: worker.empresa,
+                eventDate: eventDate,
+                eventShift: eventShift,
                 issuerId: currentUserProfile.id,
                 issuerName: `${currentUserProfile.nombres} ${currentUserProfile.apellidos}`,
                 issuerCargo: currentUserProfile.cargo,
@@ -576,7 +580,7 @@ export default function DocumentManagementPage() {
                                     <div className="px-10 py-8 space-y-8 flex-1 font-serif text-slate-800">
                                         <div className="text-center space-y-1">
                                             <h2 className="text-xl font-black tracking-tight text-slate-900 border-b-2 border-primary inline-block px-4 pb-1 uppercase italic">
-                                                Memorando Institucional
+                                                Memorando Institucional - {isGeneralSelection ? 'GENERAL' : (selectedWorkerData?.empresa || '__________')}
                                             </h2>
                                             <p className="text-[9px] font-bold text-slate-500 tracking-[0.2em] uppercase">Control de Gestión Documental Interna</p>
                                         </div>
@@ -602,6 +606,10 @@ export default function DocumentManagementPage() {
                                             <div className="space-y-1">
                                                 <p className="text-[9px] font-black text-slate-400 uppercase">Ubicación / Puesto</p>
                                                 <p className="font-bold text-slate-800">{isGeneralSelection ? 'MULTIPLE' : (selectedWorkerData ? selectedWorkerData.ubicacion : '____________________')}</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <p className="text-[9px] font-black text-slate-400 uppercase">Fecha del Evento</p>
+                                                <p className="font-bold text-slate-800">{format(parseISO(eventDate), "d 'de' MMMM 'de' yyyy", { locale: es })}</p>
                                             </div>
                                             {showTurnoLine && (
                                                 <div className="space-y-1">
@@ -664,10 +672,10 @@ export default function DocumentManagementPage() {
                                                     {isLocked ? (
                                                         <>
                                                             <div className="text-center mb-2">
+                                                                <img src={canvasRef.current?.toDataURL()} alt="Firma Emisor" className="h-12 object-contain opacity-90 mx-auto" />
                                                                 <p className="font-black text-[11px] text-slate-900 leading-tight uppercase">{currentUserProfile?.nombres} {currentUserProfile?.apellidos}</p>
                                                                 <p className="text-[9px] text-primary font-bold uppercase leading-tight">{currentUserProfile?.cargo}</p>
                                                             </div>
-                                                            <img src={canvasRef.current?.toDataURL()} alt="Firma Emisor" className="h-12 object-contain opacity-90" />
                                                         </>
                                                     ) : (
                                                         <p className="text-[10px] text-muted-foreground italic">Pendiente de certificación</p>
@@ -814,7 +822,7 @@ export default function DocumentManagementPage() {
                                     <div className="px-10 py-8 space-y-8 flex-1 font-serif text-slate-800">
                                         <div className="text-center space-y-1">
                                             <h2 className="text-xl font-black tracking-tight text-slate-900 border-b-2 border-primary inline-block px-4 pb-1 uppercase italic">
-                                                Memorando Institucional
+                                                Memorando Institucional - {selectedMemoForView.targetUserEmpresa || 'GENERAL'}
                                             </h2>
                                             <p className="text-[9px] font-bold text-slate-500 tracking-[0.2em] uppercase">Control de Auditoría #{selectedMemoForView.id.slice(-8).toUpperCase()}</p>
                                         </div>
@@ -836,6 +844,16 @@ export default function DocumentManagementPage() {
                                                 <p className="text-[9px] font-black text-slate-400 uppercase">CARGO:</p>
                                                 <p className="font-bold text-slate-800 uppercase">{selectedMemoForView.targetUserCargo}</p>
                                             </div>
+                                            <div className="space-y-1">
+                                                <p className="text-[9px] font-black text-slate-400 uppercase">Fecha del Evento</p>
+                                                <p className="font-bold text-slate-800">{selectedMemoForView.eventDate ? format(parseISO(selectedMemoForView.eventDate), "d 'de' MMMM 'de' yyyy", { locale: es }) : 'N/A'}</p>
+                                            </div>
+                                            {selectedMemoForView.eventShift && (
+                                                <div className="space-y-1">
+                                                    <p className="text-[9px] font-black text-slate-400 uppercase">Turno</p>
+                                                    <p className="font-bold text-emerald-700">{selectedMemoForView.eventShift}</p>
+                                                </div>
+                                            )}
                                         </div>
 
                                         <div className="border-y py-3">
@@ -865,10 +883,10 @@ export default function DocumentManagementPage() {
                                                     {selectedMemoForView.issuerSignature && (
                                                         <>
                                                             <div className="mb-2">
+                                                                <img src={selectedMemoForView.issuerSignature} alt="Firma Emisor" className="h-12 object-contain opacity-90 mx-auto" />
                                                                 <p className="font-black text-[11px] text-slate-900 leading-tight uppercase">{selectedMemoForView.issuerName}</p>
                                                                 <p className="text-[9px] text-primary font-bold uppercase leading-tight">{selectedMemoForView.issuerCargo}</p>
                                                             </div>
-                                                            <img src={selectedMemoForView.issuerSignature} alt="Firma Emisor" className="h-12 object-contain opacity-90" />
                                                         </>
                                                     )}
                                                 </div>
@@ -879,10 +897,10 @@ export default function DocumentManagementPage() {
                                                     {selectedMemoForView.signature ? (
                                                         <>
                                                             <div className="mb-2">
+                                                                <img src={selectedMemoForView.signature} alt="Firma Colaborador" className="h-12 object-contain opacity-90 mx-auto" />
                                                                 <p className="font-black text-[11px] text-slate-900 leading-tight uppercase">{selectedMemoForView.targetUserName}</p>
                                                                 <p className="text-[9px] text-emerald-700 font-bold uppercase leading-tight">{selectedMemoForView.targetUserCargo}</p>
                                                             </div>
-                                                            <img src={selectedMemoForView.signature} alt="Firma Colaborador" className="h-12 object-contain opacity-90" />
                                                         </>
                                                     ) : (
                                                         selectedMemoForView.status === 'rejected' ? (

@@ -1,10 +1,11 @@
+
 "use client";
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useDoc, useFirestore, useUser, useCollection } from '@/firebase';
 import { collection, doc, updateDoc, query, where } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import Image from 'next/image';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -331,7 +332,7 @@ export default function MyDocumentsPage() {
                                     <div className="px-10 py-8 space-y-8 flex-1 font-serif text-slate-800">
                                         <div className="text-center space-y-1">
                                             <h2 className="text-xl font-black tracking-tight text-slate-900 border-b-2 border-primary inline-block px-4 pb-1 uppercase italic">
-                                                Memorando Institucional
+                                                Memorando Institucional - {selectedMemo.targetUserEmpresa || 'GENERAL'}
                                             </h2>
                                             <p className="text-[9px] font-bold text-slate-500 tracking-[0.2em] uppercase">Control de Auditoría #{selectedMemo.id.slice(-8).toUpperCase()}</p>
                                         </div>
@@ -358,6 +359,10 @@ export default function MyDocumentsPage() {
                                                 <p className="text-[9px] font-black text-slate-400 uppercase">Ubicación / Puesto</p>
                                                 <p className="font-bold text-slate-800 uppercase">{currentUserProfile?.ubicacion || 'N/A'}</p>
                                             </div>
+                                            <div className="space-y-1">
+                                                <p className="text-[9px] font-black text-slate-400 uppercase">Fecha del Evento</p>
+                                                <p className="font-bold text-slate-800 uppercase">{selectedMemo.eventDate ? format(parseISO(selectedMemo.eventDate), "d 'de' MMMM 'de' yyyy", { locale: es }) : 'N/A'}</p>
+                                            </div>
                                         </div>
 
                                         <div className="border-y py-3">
@@ -375,10 +380,10 @@ export default function MyDocumentsPage() {
                                                     {selectedMemo.issuerSignature && (
                                                         <>
                                                             <div className="mb-2">
+                                                                <img src={selectedMemo.issuerSignature} alt="Firma Emisor" className="h-12 object-contain opacity-90 mx-auto" />
                                                                 <p className="font-black text-[11px] text-slate-900 leading-tight uppercase">{selectedMemo.issuerName}</p>
                                                                 <p className="text-[9px] text-primary font-bold uppercase leading-tight">{selectedMemo.issuerCargo}</p>
                                                             </div>
-                                                            <img src={selectedMemo.issuerSignature} alt="Firma Emisor" className="h-12 object-contain opacity-90" />
                                                         </>
                                                     )}
                                                 </div>
@@ -389,10 +394,10 @@ export default function MyDocumentsPage() {
                                                     {selectedMemo.signature ? (
                                                         <>
                                                             <div className="mb-2">
+                                                                <img src={selectedMemo.signature} alt="Firma Colaborador" className="h-12 object-contain opacity-90 mx-auto" />
                                                                 <p className="font-black text-[11px] text-slate-900 leading-tight uppercase">{selectedMemo.targetUserName}</p>
                                                                 <p className="text-[9px] text-emerald-700 font-bold uppercase leading-tight">{selectedMemo.targetUserCargo}</p>
                                                             </div>
-                                                            <img src={selectedMemo.signature} alt="Firma Colaborador" className="h-12 object-contain opacity-90" />
                                                         </>
                                                     ) : (
                                                         selectedMemo.type === "Memorando de Llamado de Atención" ? (

@@ -37,6 +37,9 @@ export interface Memorandum {
   targetUserId: string;
   targetUserName: string;
   targetUserCargo: string;
+  targetUserEmpresa?: string;
+  eventDate?: string;
+  eventShift?: string;
   issuerId: string;
   issuerName: string;
   issuerCargo: string;
