@@ -154,20 +154,30 @@ export default function DocumentManagementPage() {
             const worker = workers.find(w => w.id === selectedUserIds[0]);
             if (!worker) return;
 
-            const dateObj = parseISO(eventDate);
-            const periodDate = dateObj.getDate() < 21 ? dateObj : addMonths(dateObj, 1);
-            const periodId = format(periodDate, 'yyyy-MM');
-            const docId = `${periodId}_${worker.ubicacion}_${worker.cargo}`;
-            
-            const schedule = savedSchedules.find(s => s.id === docId);
-            if (schedule && schedule.schedule[worker.id]) {
-                const shift = schedule.schedule[worker.id][eventDate];
-                if (shift) {
-                    setEventShift(shift);
+            try {
+                const dateObj = parseISO(eventDate);
+                // Same logic as schedule generator: period is determined by day 21
+                const periodDate = dateObj.getDate() < 21 ? dateObj : addMonths(dateObj, 1);
+                const periodId = format(periodDate, 'yyyy-MM');
+                
+                // Normalize to match how schedules are saved
+                const normUbicacion = normalizeText(worker.ubicacion);
+                const normCargo = normalizeText(worker.cargo);
+                const docId = `${periodId}_${normUbicacion}_${normCargo}`;
+                
+                const schedule = savedSchedules.find(s => s.id === docId);
+                if (schedule && schedule.schedule[worker.id]) {
+                    const shift = schedule.schedule[worker.id][eventDate];
+                    if (shift) {
+                        setEventShift(shift);
+                    } else {
+                        setEventShift("LIBRE");
+                    }
                 } else {
                     setEventShift("");
                 }
-            } else {
+            } catch (e) {
+                console.error("Error parsing date or looking up shift", e);
                 setEventShift("");
             }
         } else if (selectedType !== "Memorando de Llamado de Atención") {
