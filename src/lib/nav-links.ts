@@ -22,7 +22,8 @@ import {
   BarChart,
   ShieldCheck,
   FolderOpen,
-  FileBadge
+  FileBadge,
+  FileBox
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -90,7 +91,7 @@ export const allNavLinks = [
     module: "Administración",
     icon: Shield,
     sublinks: [
-      { name: "Gestión Documental", href: "/dashboard/administration/document-management", icon: FolderOpen, id: "document-management" },
+      { name: "Gestión Documental", href: "/dashboard/administration/document-management", icon: FileBox, id: "document-management" },
       { name: "Publicaciones", href: "/dashboard/administration/publications", icon: Megaphone, id: "publications" },
       { name: "Calendario", href: "/dashboard/administration/calendar", icon: CalendarDays, id: "calendar" },
       { name: "Evaluación de Desempeño (Admin)", href: "/dashboard/performance-evaluation", icon: ClipboardCheck, id: "performance-evaluation" },

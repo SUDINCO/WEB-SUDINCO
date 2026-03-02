@@ -1,3 +1,4 @@
+
 import { collection, getDocs, writeBatch, Firestore, doc } from 'firebase/firestore';
 import { parse, format } from 'date-fns';
 
@@ -9,7 +10,8 @@ const initialData = {
                 "staff": true, "profile-evaluation": true, "approvals": true, "performance-evaluation": true,
                 "my-evaluations": true, "observed-evaluations": true, "vacation-requests": true, "schedule": true, 
                 "publications": true, "roles": true, "leader-assignment": true, "schedule-settings": true,
-                "work-locations": true, "attendance": true, "attendance-map": true, "equipment-control": true
+                "work-locations": true, "attendance": true, "attendance-map": true, "equipment-control": true,
+                "document-management": true, "my-documents": true
             }
         },
         {
@@ -18,7 +20,8 @@ const initialData = {
                 "staff": true, "profile-evaluation": true, "approvals": true, "performance-evaluation": true,
                 "my-evaluations": true, "observed-evaluations": true, "vacation-requests": true, "schedule": true, 
                 "publications": true, "roles": false, "leader-assignment": true, "schedule-settings": true,
-                "work-locations": true, "attendance": true, "attendance-map": true, "equipment-control": true
+                "work-locations": true, "attendance": true, "attendance-map": true, "equipment-control": true,
+                "document-management": true, "my-documents": true
             }
         }
     ],
@@ -95,6 +98,14 @@ const initialData = {
         "SUPERVISOR DE MANTENIMIENTO", "SUPERVISOR DE MANTENIMIENTO MECANICO", "SUPERVISOR DE PATIO", 
         "SUPERVISOR DE SEÑALIZACION", "SUPERVISOR VIAL", "SUPERVISOR VIAL GENERAL", 
         "TECNICO DE SOPORTE TI", "TOPOGRAFO", "TRABAJADOR SOCIAL", "VENDEDOR", "VULCANIZADOR"
+    ],
+    memorandumCausals: [
+        { category: "Incumplimiento Laboral", title: "Atraso injustificado", legalBasis: "Art. 42 del R.I.T.", severity: "Leve" },
+        { category: "Incumplimiento Laboral", title: "Abandono de puesto", legalBasis: "Art. 45 del R.I.T.", severity: "Grave" },
+        { category: "Incumplimiento Laboral", title: "Incumplimiento de funciones", legalBasis: "Art. 48 del R.I.T.", severity: "Leve" },
+        { category: "Conducta", title: "Falta de respeto a superiores", legalBasis: "Art. 52 del R.I.T.", severity: "Muy Grave" },
+        { category: "Operativa", title: "No uso de EPP", legalBasis: "Protocolo de Seguridad Industrial", severity: "Grave" },
+        { category: "Positiva", title: "Desempeño destacado", legalBasis: "Política de Reconocimiento", severity: "N/A" }
     ],
     ubicaciones: [
         "BODEGA CENTRAL", "CAMPAMENTO AMAGUAÑA", "CAMPAMENTO AMBUQUI", "CAMPAMENTO COLIBRI", 
@@ -275,6 +286,7 @@ export async function seedDatabase(db: Firestore) {
             seedCollection(db, 'areas', initialData.areas),
             seedCollection(db, 'centrosCosto', initialData.centrosCosto),
             seedCollection(db, 'shiftPatterns', initialData.shiftPatterns, 'jobTitle'),
+            seedCollection(db, 'memorandumCausals', initialData.memorandumCausals),
         ]);
 
         const overtimeCollectionRef = collection(db, 'overtimeRules');

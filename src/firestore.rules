@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -78,6 +79,22 @@ service cloud.firestore {
         allow list: if isSignedIn();
         allow update: if isMasterOrAdmin() || (isOwner(resource.data.userId) && resource.data.status == 'pending');
         allow delete: if isMasterOrAdmin() || isOwner(resource.data.userId);
+    }
+
+    // MEMORANDUMS: Gestión documental con permisos jerárquicos.
+    match /memorandums/{memoId} {
+      allow read: if isSignedIn() && (resource.data.targetUserId == request.auth.uid || isMasterOrAdmin());
+      allow create: if isMasterOrAdmin();
+      allow update: if isSignedIn() && (
+        (isMasterOrAdmin()) || 
+        (resource.data.targetUserId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'readAt', 'signedAt', 'signature', 'defense']))
+      );
+      allow delete: if isMaster();
+    }
+
+    match /memorandumCausals/{causalId} {
+      allow read: if isSignedIn();
+      allow write: if isMasterOrAdmin();
     }
 
     // OPCIONES GENÉRICAS (Empresas, Cargos, etc.): Solo lectura para usuarios, escritura para Admins.
