@@ -25,12 +25,12 @@ import {
   FileBadge,
   FileBox
 } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+import type { NavLink } from 'lucide-react';
 
 export interface NavLink {
   name: string;
   href: string;
-  icon: LucideIcon;
+  icon: any; // Using any to avoid strict LucideIcon typing issues in definition
   id: string;
 }
 
@@ -73,7 +73,7 @@ export const allNavLinks = [
         ]
       },
       {
-        title: "Mi Perfil",
+        title: "Documentos",
         sublinks: [
           { name: "Mis Documentos", href: "/dashboard/my-documents", icon: FileBadge, id: "my-documents" },
         ]

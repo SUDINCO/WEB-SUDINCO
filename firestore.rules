@@ -42,7 +42,6 @@ service cloud.firestore {
     // --- Collection Rules ---
 
     // USERS: Users can update their own data. Admins/Masters can update any user.
-    // Signed-in users can read user data (e.g., for selecting leaders, etc.).
     match /users/{userId} {
       allow read: if isSignedIn();
       allow update: if isOwner(userId) || isMasterOrAdmin();
@@ -65,12 +64,9 @@ service cloud.firestore {
     match /performanceEvaluations/{evaluationId} {
       allow create: if isSignedIn();
       allow read: if isSignedIn();
-      // The original evaluator, the designated observer, or an Admin/Master can update.
       allow update: if isMasterOrAdmin() || (isSignedIn() && (
-        // Case 1: The Observer is updating their status/comments.
         request.auth.token.email == resource.data.observerEmail
         ||
-        // Case 2: The original Evaluator is re-evaluating after a review request.
         (request.auth.uid == resource.data.evaluatorId && 
          resource.data.observerStatus == 'review_requested')
       ));
@@ -79,11 +75,8 @@ service cloud.firestore {
 
     // MANAGER EVALUATIONS: Employees evaluate their managers.
     match /managerEvaluations/{evaluationId} {
-      // An employee can create an evaluation about their manager.
       allow create: if isSignedIn() && request.resource.data.employeeId == request.auth.uid;
-      // The manager being evaluated, the employee who wrote it, or an Admin/Master can read it.
       allow read: if isMasterOrAdmin() || (isSignedIn() && (resource.data.managerId == request.auth.uid || resource.data.employeeId == request.auth.uid));
-      // Only Master can update/delete for now to be safe.
       allow update, delete: if isMaster();
     }
 
@@ -107,79 +100,25 @@ service cloud.firestore {
       allow write: if isMasterOrAdmin();
     }
 
-    // GENERIC OPTION COLLECTIONS (Empresas, Cargos, etc.):
-    // Any authenticated user can read, but only Admins/Master can write.
-    match /empresas/{empresaId} {
-      allow read: if isSignedIn();
-      allow write: if isMasterOrAdmin();
-    }
-    match /cargos/{cargoId} {
-      allow read: if isSignedIn();
-      allow write: if isMasterOrAdmin();
-    }
-    match /ubicaciones/{ubicacionId} {
-      allow read: if isSignedIn();
-      allow write: if isMasterOrAdmin();
-    }
-    match /areas/{areaId} {
-      allow read: if isSignedIn();
-      allow write: if isMasterOrAdmin();
-    }
-    match /centrosCosto/{centroCostoId} {
-      allow read: if isSignedIn();
-      allow write: if isMasterOrAdmin();
-    }
+    // GENERIC OPTION COLLECTIONS
+    match /empresas/{id} { allow read: if isSignedIn(); allow write: if isMasterOrAdmin(); }
+    match /cargos/{id} { allow read: if isSignedIn(); allow write: if isMasterOrAdmin(); }
+    match /ubicaciones/{id} { allow read: if isSignedIn(); allow write: if isMasterOrAdmin(); }
+    match /areas/{id} { allow read: if isSignedIn(); allow write: if isMasterOrAdmin(); }
+    match /centrosCosto/{id} { allow read: if isSignedIn(); allow write: if isMasterOrAdmin(); }
 
-    // HIRING & PROFILE EVALUATION MODULE:
-    match /candidates/{candidateId} {
-      allow read, write: if isMasterOrAdmin();
-    }
-    match /hiringProcesses/{processId} {
-      allow read, write: if isMasterOrAdmin();
-    }
-    match /profileEvaluations/{evaluationId} {
-      allow read, write: if isMasterOrAdmin();
-    }
-     match /profileEvaluationPercentages/{percentageId} {
-      allow read, write: if isMasterOrAdmin();
-    }
-    match /hiringApprovals/{approvalId} {
-      allow read: if isSignedIn();
-      allow create: if isMasterOrAdmin();
-      allow update: if isMasterOrAdmin() ||
-                       (isSignedIn() && request.auth.token.email == resource.data.jefeInmediatoEmail && resource.data.status == 'pending') ||
-                       (isSignedIn() && request.auth.token.email == resource.data.directorRHHEmail && resource.data.status == 'approved-boss');
-      allow delete: if isMasterOrAdmin();
-    }
-
-    // SCHEDULE MODULE:
-    match /shiftPatterns/{jobTitle} {
-      allow read, write: if isMasterOrAdmin();
-    }
-    match /overtimeRules/{ruleId} {
-      allow read: if isSignedIn();
-      allow write: if isMasterOrAdmin();
-    }
-    match /savedSchedules/{periodId} {
-      allow read, write: if isMasterOrAdmin();
-    }
-    
-    // PUBLICATIONS
+    // PUBLICATIONS: Permitir lectura a todos los usuarios autenticados
     match /publications/{publicationId} {
-      allow read: if true;
-      allow create: if isSignedIn() 
-                    && request.resource.data.authorId == request.auth.uid
-                    && request.resource.data.status == 'pending';
-      allow update: if isMasterOrAdmin() || 
-                       (isSignedIn() && resource.data.authorId == request.auth.uid && resource.data.status == 'pending');
-      allow delete: if isMasterOrAdmin() || (isSignedIn() && resource.data.authorId == request.auth.uid);
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isMasterOrAdmin() || (isSignedIn() && resource.data.authorId == request.auth.uid);
     }
     
     // SIMPLE EVENTS
     match /simpleEvents/{eventId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.creatorId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.creatorId == request.auth.uid;
+      allow update, delete: if isSignedIn() && request.resource.data.creatorId == request.auth.uid;
     }
 
     // ATTENDANCE RECORDS
@@ -188,16 +127,24 @@ service cloud.firestore {
       allow read, update: if isMasterOrAdmin() || (isSignedIn() && resource.data.collaboratorId == request.auth.uid);
     }
     
-    // WORK LOCATIONS: Any signed-in user can read locations for validation, but only admins can manage them.
+    // WORK LOCATIONS
     match /workLocations/{locationId} {
         allow read: if isSignedIn();
         allow write: if isMasterOrAdmin();
     }
     
-    // LOCATION REPORTS: Users can create their own. Admins can read all.
+    // LOCATION REPORTS
     match /locationReports/{reportId} {
       allow read: if isMasterOrAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+    }
+
+    // MEMORANDUMS
+    match /memorandums/{memoId} {
+      allow read: if isSignedIn() && (resource.data.targetUserId == request.auth.uid || isMasterOrAdmin());
+      allow create: if isMasterOrAdmin();
+      allow update: if isSignedIn() && (isMasterOrAdmin() || resource.data.targetUserId == request.auth.uid);
+      allow delete: if isMaster();
     }
   }
 }

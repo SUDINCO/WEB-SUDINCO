@@ -120,6 +120,12 @@ service cloud.firestore {
       );
     }
 
+    // PUBLICATIONS: Permitir lectura a todos los usuarios autenticados
+    match /publications/{publicationId} {
+      allow read: if isSignedIn();
+      allow write: if isMasterOrAdmin();
+    }
+
     // Bloqueo total para cualquier otra ruta no especificada
     match /{path=**} {
       allow read, write: if false;
