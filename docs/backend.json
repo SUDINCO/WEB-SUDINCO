@@ -7,9 +7,8 @@
       "description": "Official company memorandum for employees.",
       "properties": {
         "code": { "type": "string", "description": "Unique code like MEM-2025-001" },
-        "type": { "type": "string", "enum": ["Informativo", "Llamado de atención", "Amonestación escrita", "Sanción", "Inicio de proceso disciplinario", "Reconocimiento"] },
-        "causalId": { "type": "string" },
-        "causalTitle": { "type": "string" },
+        "type": { "type": "string", "enum": ["Memorando Informativo", "Memorando de Llamado de Atención", "Memorando de Reconocimiento"] },
+        "reason": { "type": "string" },
         "targetUserId": { "type": "string" },
         "targetUserName": { "type": "string" },
         "targetUserCargo": { "type": "string" },
@@ -25,6 +24,15 @@
         "defense": { "type": "string", "description": "Employee's formal response/defense" }
       },
       "required": ["code", "type", "targetUserId", "issuerId", "content", "status", "createdAt"]
+    },
+    "MemorandumTemplate": {
+      "title": "Memorandum Template",
+      "type": "object",
+      "description": "Customizable templates for each memorandum reason.",
+      "properties": {
+        "content": { "type": "string" }
+      },
+      "required": ["content"]
     },
     "MemorandumCausal": {
       "title": "Memorandum Causal",
@@ -244,6 +252,10 @@
     "/memorandums/{id}": {
       "schema": { "$ref": "#/entities/Memorandum" },
       "description": "Official company documents and disciplinary records."
+    },
+    "/memorandumTemplates/{reasonId}": {
+      "schema": { "$ref": "#/entities/MemorandumTemplate" },
+      "description": "Persistent custom text for each memorandum reason."
     },
     "/memorandumCausals/{id}": {
       "schema": { "$ref": "#/entities/MemorandumCausal" },

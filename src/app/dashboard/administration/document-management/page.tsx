@@ -3,7 +3,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useCollection, useFirestore, useUser } from '@/firebase';
-import { collection, doc, writeBatch, query, orderBy, limit, deleteDoc } from 'firebase/firestore';
+import { collection, doc, writeBatch, query, orderBy, limit, deleteDoc, setDoc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { format, parseISO, addMonths } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -48,14 +48,13 @@ import {
     LoaderCircle, 
     CheckCircle, 
     Filter,
-    FileText,
-    CalendarIcon,
-    Clock,
+    Save,
+    Edit3,
     Sparkles
 } from 'lucide-react';
-import { MultiSelectCombobox } from '@/components/ui/multi-select-combobox';
+import { Combobox } from '@/components/ui/combobox';
 import type { UserProfile, Memorandum, MemorandumType, SavedSchedule } from '@/lib/types';
-import { cn, normalizeText } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 
 const memorandumTypes: { value: MemorandumType; label: string }[] = [
     { value: "Memorando Informativo", label: "🔵 Memorando Informativo" },
@@ -91,7 +90,7 @@ const reasonsByType: Record<MemorandumType, string[]> = {
     ]
 };
 
-const templates: Record<string, string> = {
+const DEFAULT_TEMPLATES: Record<string, string> = {
     // Informativos
     "Recordatorio de procedimiento": "Por medio del presente se comunica al colaborador que debe cumplir estrictamente el procedimiento operativo de control de accesos y registro en bitácora conforme lo establece la normativa interna vigente.\n\nLa presente comunicación tiene carácter informativo y preventivo.",
     "Nueva disposición interna": "Se informa la implementación de una nueva disposición interna relacionada con los protocolos de seguridad y registros obligatorios. El cumplimiento de esta disposición es de carácter inmediato y obligatorio para todo el personal asignado.",
@@ -125,11 +124,13 @@ export default function DocumentManagementPage() {
     // State for Creation
     const [selectedType, setSelectedType] = useState<MemorandumType | "">("");
     const [selectedReason, setSelectedReason] = useState("");
-    const [selectedUserIds, setSelectedWorkers] = useState<string[]>([]);
+    const [selectedUserId, setSelectedUserId] = useState<string>("");
     const [eventDate, setEventDate] = useState(format(new Date(), 'yyyy-MM-dd'));
     const [eventShift, setEventShift] = useState("");
-    const [additionalDetail, setAdditionalDetail] = useState("");
+    const [editableContent, setEditableContent] = useState("");
     const [isSaving, setIsSaving] = useState(false);
+    const [isSavingTemplate, setIsSavingTemplate] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
     
     // State for Lists/Filtering
     const [activeTab, setActiveTab] = useState("create");
@@ -140,6 +141,7 @@ export default function DocumentManagementPage() {
     const { data: workers, isLoading: workersLoading } = useCollection<UserProfile>(useMemo(() => firestore ? collection(firestore, 'users') : null, [firestore]));
     const { data: memorandums, isLoading: memosLoading } = useCollection<Memorandum>(useMemo(() => firestore ? query(collection(firestore, 'memorandums'), orderBy('createdAt', 'desc'), limit(100)) : null, [firestore]));
     const { data: savedSchedules } = useCollection<SavedSchedule>(useMemo(() => firestore ? collection(firestore, 'savedSchedules') : null, [firestore]));
+    const { data: customTemplates } = useCollection<{ id: string; content: string }>(useMemo(() => firestore ? collection(firestore, 'memorandumTemplates') : null, [firestore]));
 
     const currentUserProfile = useMemo(() => {
         if (!authUser || !workers) return null;
@@ -148,20 +150,28 @@ export default function DocumentManagementPage() {
 
     const showTurnoLine = selectedType === "Memorando de Llamado de Atención";
 
+    // Template Sync
+    useEffect(() => {
+        if (selectedReason) {
+            const custom = customTemplates?.find(t => t.id === selectedReason);
+            setEditableContent(custom?.content || DEFAULT_TEMPLATES[selectedReason] || "");
+            setIsEditing(false);
+        } else {
+            setEditableContent("");
+        }
+    }, [selectedReason, customTemplates]);
+
     // Intelligent Shift Lookup
     useEffect(() => {
-        if (selectedType === "Memorando de Llamado de Atención" && selectedUserIds.length === 1 && eventDate && savedSchedules && workers) {
-            const worker = workers.find(w => w.id === selectedUserIds[0]);
+        if (selectedType === "Memorando de Llamado de Atención" && selectedUserId && eventDate && savedSchedules && workers) {
+            const worker = workers.find(w => w.id === selectedUserId);
             if (!worker) return;
 
             try {
                 const dateObj = parseISO(eventDate);
-                // Same logic as schedule generator: period is determined by day 21
                 const periodDate = dateObj.getDate() < 21 ? dateObj : addMonths(dateObj, 1);
                 const periodId = format(periodDate, 'yyyy-MM');
                 
-                // NEW IMPROVED LOGIC: Instead of relying on a docId format, search through all schedules of the period
-                // to find where this worker is listed.
                 const periodSchedules = savedSchedules.filter(s => s.id.startsWith(periodId));
                 let foundShift = "";
                 let foundInSchedules = false;
@@ -178,7 +188,6 @@ export default function DocumentManagementPage() {
                 if (foundInSchedules) {
                     setEventShift(foundShift);
                 } else {
-                    // If not found in ANY schedule for that period, clear it
                     setEventShift("");
                 }
             } catch (e) {
@@ -188,19 +197,26 @@ export default function DocumentManagementPage() {
         } else if (selectedType !== "Memorando de Llamado de Atención") {
             setEventShift("");
         }
-    }, [selectedType, selectedUserIds, eventDate, savedSchedules, workers]);
+    }, [selectedType, selectedUserId, eventDate, savedSchedules, workers]);
 
-    const generatedPreview = useMemo(() => {
-        if (!selectedReason) return "";
-        let text = templates[selectedReason] || "";
-        if (additionalDetail.trim()) {
-            text += `\n\nDetalles adicionales: ${additionalDetail}`;
+    const handleSaveTemplate = async () => {
+        if (!firestore || !selectedReason || !editableContent.trim()) return;
+        setIsSavingTemplate(true);
+        try {
+            await setDoc(doc(firestore, 'memorandumTemplates', selectedReason), {
+                content: editableContent
+            });
+            toast({ title: 'Plantilla Guardada', description: 'El texto preestablecido para este motivo ha sido actualizado.' });
+            setIsEditing(false);
+        } catch (e) {
+            toast({ variant: 'destructive', title: 'Error', description: 'No se pudo guardar la plantilla.' });
+        } finally {
+            setIsSavingTemplate(false);
         }
-        return text;
-    }, [selectedReason, additionalDetail]);
+    };
 
     const handleIssueMemorandums = async () => {
-        if (!firestore || !currentUserProfile || !selectedType || !selectedReason || selectedUserIds.length === 0) {
+        if (!firestore || !currentUserProfile || !selectedType || !selectedReason || !selectedUserId) {
             toast({ variant: 'destructive', title: 'Faltan datos', description: 'Por favor complete todos los campos requeridos.' });
             return;
         }
@@ -209,47 +225,48 @@ export default function DocumentManagementPage() {
         const batch = writeBatch(firestore);
         const memoRef = collection(firestore, 'memorandums');
         const now = Date.now();
-        const year = new Date().getFullYear();
+        const currentYear = new Date().getFullYear();
         
         const nextId = (memorandums?.length || 0) + 1;
 
-        selectedUserIds.forEach((workerId, index) => {
-            const worker = workers?.find(w => w.id === workerId);
-            if (!worker) return;
+        const worker = workers?.find(w => w.id === selectedUserId);
+        if (!worker) {
+            setIsSaving(false);
+            return;
+        }
 
-            const empresaAbbr = worker.empresa?.slice(0,3).toUpperCase() || 'SEG';
-            const code = `MEM-${empresaAbbr}-${year}-${String(nextId + index).padStart(4, '0')}`;
-            const newDoc = doc(memoRef);
-            
-            const memoData: Omit<Memorandum, 'id'> = {
-                code,
-                type: selectedType as MemorandumType,
-                reason: selectedReason,
-                targetUserId: worker.id,
-                targetUserName: `${worker.nombres} ${worker.apellidos}`,
-                targetUserCargo: worker.cargo,
-                issuerId: currentUserProfile.id,
-                issuerName: `${currentUserProfile.nombres} ${currentUserProfile.apellidos}`,
-                issuerCargo: currentUserProfile.cargo,
-                content: generatedPreview,
-                status: "issued",
-                createdAt: now,
-            };
-            batch.set(newDoc, memoData);
-        });
+        const empresaAbbr = worker.empresa?.slice(0,3).toUpperCase() || 'SEG';
+        const code = `MEM-${empresaAbbr}-${currentYear}-${String(nextId).padStart(4, '0')}`;
+        const newDoc = doc(memoRef);
+        
+        const memoData: Omit<Memorandum, 'id'> = {
+            code,
+            type: selectedType as MemorandumType,
+            reason: selectedReason,
+            targetUserId: worker.id,
+            targetUserName: `${worker.nombres} ${worker.apellidos}`,
+            targetUserCargo: worker.cargo,
+            issuerId: currentUserProfile.id,
+            issuerName: `${currentUserProfile.nombres} ${currentUserProfile.apellidos}`,
+            issuerCargo: currentUserProfile.cargo,
+            content: editableContent,
+            status: "issued",
+            createdAt: now,
+        };
+        batch.set(newDoc, memoData);
 
         try {
             await batch.commit();
-            toast({ title: 'Documentos Emitidos', description: `Se han generado ${selectedUserIds.length} memorandos oficialmente.` });
+            toast({ title: 'Documento Emitido', description: `Se ha generado el memorando ${code} oficialmente.` });
             setSelectedType("");
             setSelectedReason("");
-            setSelectedWorkers([]);
-            setAdditionalDetail("");
+            setSelectedUserId("");
             setEventShift("");
+            setEditableContent("");
             setActiveTab("history");
         } catch (error) {
             console.error(error);
-            toast({ variant: 'destructive', title: 'Error', description: 'No se pudieron emitir los documentos.' });
+            toast({ variant: 'destructive', title: 'Error', description: 'No se pudo emitir el documento.' });
         } finally {
             setIsSaving(false);
         }
@@ -277,6 +294,10 @@ export default function DocumentManagementPage() {
             m.reason.toLowerCase().includes(lower)
         );
     }, [memorandums, memoFilter]);
+
+    const selectedWorkerData = useMemo(() => {
+        return workers?.find(w => w.id === selectedUserId);
+    }, [workers, selectedUserId]);
 
     return (
         <div className="space-y-6">
@@ -329,12 +350,13 @@ export default function DocumentManagementPage() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label>Destinatario(s)</Label>
-                                    <MultiSelectCombobox 
+                                    <Label>Destinatario</Label>
+                                    <Combobox 
                                         options={workers?.filter(w => w.Status === 'active').map(w => ({ label: `${w.apellidos} ${w.nombres} (${w.ubicacion || 'Sin puesto'})`, value: w.id })) || []}
-                                        selected={selectedUserIds}
-                                        onChange={setSelectedWorkers}
-                                        placeholder="Seleccionar personal..."
+                                        value={selectedUserId}
+                                        onChange={setSelectedUserId}
+                                        placeholder="Seleccionar trabajador..."
+                                        searchPlaceholder="Buscar por nombre..."
                                     />
                                 </div>
 
@@ -346,9 +368,9 @@ export default function DocumentManagementPage() {
                                     <div className={cn("space-y-2 transition-all", !showTurnoLine && "opacity-30 pointer-events-none")}>
                                         <Label className="flex items-center gap-1.5">
                                             Turno
-                                            {showTurnoLine && selectedUserIds.length === 1 && eventShift && (
+                                            {showTurnoLine && selectedUserId && eventShift && (
                                                 <Badge variant="secondary" className="h-4 px-1 text-[9px] bg-blue-100 text-blue-700 border-none animate-in fade-in zoom-in duration-300">
-                                                    <Sparkles className="h-2 w-2 mr-0.5" /> Auto-detectado
+                                                    <Sparkles className="h-2 w-2 mr-0.5" /> Detectado
                                                 </Badge>
                                             )}
                                         </Label>
@@ -360,16 +382,6 @@ export default function DocumentManagementPage() {
                                         />
                                     </div>
                                 </div>
-
-                                <div className="space-y-2">
-                                    <Label>Detalle Adicional (Opcional)</Label>
-                                    <Textarea 
-                                        placeholder="Contexto adicional que se agregará al texto base..."
-                                        value={additionalDetail}
-                                        onChange={(e) => setAdditionalDetail(e.target.value)}
-                                        className="h-24"
-                                    />
-                                </div>
                             </CardContent>
                         </Card>
 
@@ -377,7 +389,7 @@ export default function DocumentManagementPage() {
                             <CardHeader className="bg-slate-50 border-b">
                                 <div className="text-center space-y-1">
                                     <h3 className="font-black text-slate-900 uppercase">
-                                        EMPRESA DE SEGURIDAD {selectedUserIds.length > 0 ? (workers?.find(w => w.id === selectedUserIds[0])?.empresa || 'XXXXX') : 'XXXXX'}
+                                        {selectedWorkerData?.empresa || 'XXXXX'}
                                     </h3>
                                     <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Sistema de Gestión Documental – Performa</p>
                                 </div>
@@ -386,25 +398,55 @@ export default function DocumentManagementPage() {
                                 <div className="space-y-6 max-w-2xl mx-auto font-serif text-slate-800">
                                     <div className="flex justify-between text-sm">
                                         <div className="space-y-1">
-                                            <p><span className="font-bold">Código:</span> MEM-2025-XXXX</p>
+                                            <p><span className="font-bold">Código:</span> MEM-{selectedWorkerData?.empresa?.slice(0,3).toUpperCase() || 'XXX'}-{new Date().getFullYear()}-XXXX</p>
                                             <p><span className="font-bold">Fecha:</span> {format(new Date(), "d 'de' MMMM 'de' yyyy", { locale: es })}</p>
                                         </div>
                                     </div>
 
                                     <div className="space-y-1 text-sm">
-                                        <p><span className="font-bold">PARA:</span> {selectedUserIds.length === 1 ? `${workers?.find(w => w.id === selectedUserIds[0])?.nombres} ${workers?.find(w => w.id === selectedUserIds[0])?.apellidos}` : (selectedUserIds.length > 1 ? 'PERSONAL SELECCIONADO' : '____________________')}</p>
-                                        <p><span className="font-bold">CARGO:</span> {selectedUserIds.length === 1 ? workers?.find(w => w.id === selectedUserIds[0])?.cargo : (selectedUserIds.length > 1 ? 'PERSONAL OPERATIVO' : '____________________')}</p>
-                                        <p><span className="font-bold">PUESTO:</span> {selectedUserIds.length === 1 ? workers?.find(w => w.id === selectedUserIds[0])?.ubicacion : '____________________'}</p>
+                                        <p><span className="font-bold">PARA:</span> {selectedWorkerData ? `${selectedWorkerData.nombres} ${selectedWorkerData.apellidos}` : '____________________'}</p>
+                                        <p><span className="font-bold">CARGO:</span> {selectedWorkerData ? selectedWorkerData.cargo : '____________________'}</p>
+                                        <p><span className="font-bold">PUESTO:</span> {selectedWorkerData ? selectedWorkerData.ubicacion : '____________________'}</p>
                                         {showTurnoLine && <p><span className="font-bold">TURNO:</span> {eventShift || '____________________'}</p>}
                                     </div>
 
-                                    <div className="border-y py-2">
+                                    <div className="border-y py-2 flex justify-between items-center">
                                         <p className="font-bold text-sm">ASUNTO: {selectedType ? `${selectedType} – ${selectedReason || '__________'}` : '____________________'}</p>
+                                        {selectedReason && (
+                                            <Button 
+                                                variant="ghost" 
+                                                size="sm" 
+                                                className="h-7 text-[10px] font-bold"
+                                                onClick={() => setIsEditing(!isEditing)}
+                                            >
+                                                {isEditing ? <CheckCircle className="mr-1 h-3 w-3" /> : <Edit3 className="mr-1 h-3 w-3" />}
+                                                {isEditing ? 'Finalizar Edición' : 'Editar Texto'}
+                                            </Button>
+                                        )}
                                     </div>
 
                                     <div className="text-sm leading-relaxed whitespace-pre-wrap min-h-[200px]">
                                         {selectedReason ? (
-                                            generatedPreview
+                                            isEditing ? (
+                                                <div className="space-y-4">
+                                                    <Textarea 
+                                                        value={editableContent}
+                                                        onChange={(e) => setEditableContent(e.target.value)}
+                                                        className="min-h-[200px] font-serif text-sm leading-relaxed"
+                                                    />
+                                                    <Button 
+                                                        size="sm" 
+                                                        className="bg-primary text-xs" 
+                                                        onClick={handleSaveTemplate}
+                                                        disabled={isSavingTemplate}
+                                                    >
+                                                        {isSavingTemplate ? <LoaderCircle className="mr-2 h-3 w-3 animate-spin" /> : <Save className="mr-2 h-3 w-3" />}
+                                                        Guardar como Plantilla Permanente
+                                                    </Button>
+                                                </div>
+                                            ) : (
+                                                editableContent
+                                            )
                                         ) : (
                                             <div className="h-full flex items-center justify-center text-muted-foreground italic">
                                                 Seleccione un tipo y motivo para generar el contenido del documento.
@@ -429,7 +471,7 @@ export default function DocumentManagementPage() {
                                 <Button 
                                     className="ml-auto min-w-[200px]" 
                                     onClick={handleIssueMemorandums}
-                                    disabled={isSaving || !selectedType || !selectedReason || selectedUserIds.length === 0}
+                                    disabled={isSaving || isEditing || !selectedType || !selectedReason || !selectedUserId}
                                 >
                                     {isSaving ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                                     Emitir y Notificar
