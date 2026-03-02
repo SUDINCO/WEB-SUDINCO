@@ -27,7 +27,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext } from "@/components/ui/carousel";
+import { 
+  Carousel, 
+  CarouselContent, 
+  CarouselItem, 
+  CarouselPrevious, 
+  CarouselNext 
+} from "@/components/ui/carousel";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 
 import {
@@ -255,6 +261,7 @@ function EventCreatorDialog({ open, onOpenChange, selectedDate, currentUserProfi
 export default function DashboardHomePage() {
   const router = useRouter();
   const { user: authUser, loading: authLoading } = useUser();
+  const { recentLinks } = useRecentLinks();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [reactionsToShow, setReactionsToShow] = useState<{
     postAuthor: string;
@@ -483,7 +490,7 @@ export default function DashboardHomePage() {
           </AlertDialog>
 
           <aside className="hidden lg:flex col-span-1 flex-col gap-6">
-              <Card><CardHeader><CardTitle>Accesos Rápidos</CardTitle><CardDescription>Tus páginas más visitadas recientemente.</CardDescription></CardHeader><CardContent><div className="grid grid-cols-3 gap-2">{useRecentLinks().recentLinks.map((link, index) => (<Link href={link.href} key={link.href} className="flex flex-col items-center justify-center p-2 rounded-lg hover:bg-muted text-center space-y-1 group"><div className={cn("p-3 rounded-full group-hover:scale-110 transition-transform", index % 3 === 0 ? 'bg-blue-100 text-blue-700' : index % 3 === 1 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700')}><link.icon className="h-5 w-5" /></div><p className="text-xs font-medium text-muted-foreground group-hover:text-primary transition-colors">{link.name}</p></Link>))}</div></CardContent></Card>
+              <Card><CardHeader><CardTitle>Accesos Rápidos</CardTitle><CardDescription>Tus páginas más visitadas recientemente.</CardDescription></CardHeader><CardContent><div className="grid grid-cols-3 gap-2">{recentLinks.map((link, index) => (<Link href={link.href} key={link.href} className="flex flex-col items-center justify-center p-2 rounded-lg hover:bg-muted text-center space-y-1 group"><div className={cn("p-3 rounded-full group-hover:scale-110 transition-transform", index % 3 === 0 ? 'bg-blue-100 text-blue-700' : index % 3 === 1 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700')}><link.icon className="h-5 w-5" /></div><p className="text-xs font-medium text-muted-foreground group-hover:text-primary transition-colors">{link.name}</p></Link>))}</div></CardContent></Card>
               <Card><CardHeader><CardTitle>Mi Calendario</CardTitle></CardHeader><CardContent className="space-y-4"><div className="flex justify-center"><Calendar mode="single" selected={new Date()} onSelect={(date) => handleDateSelect(date)} className="rounded-md" modifiers={{ vacation: vacationDaysModifier.vacation, publicationEvent: publicationEventDays, simpleEvent: simpleEventDays }} modifiersClassNames={{ vacation: 'bg-primary text-primary-foreground rounded-full', publicationEvent: 'border-2 border-accent rounded-full', simpleEvent: 'border-2 border-green-500 rounded-full' }} locale={es} size="sm" /></div><Button variant="outline" className="w-full" onClick={handleOpenEventDialog}><CalendarIcon className="mr-2 h-4 w-4" /> Crear Evento</Button></CardContent></Card>
           </aside>
           <main className="col-span-1 lg:col-span-2 min-h-0 space-y-6">
