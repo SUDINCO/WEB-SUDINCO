@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
@@ -31,7 +32,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/table';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -315,7 +316,7 @@ export default function DocumentManagementPage() {
                 const dateObj = parseISO(eventDate);
                 const periodDate = dateObj.getDate() < 21 ? dateObj : addMonths(dateObj, 1);
                 const periodId = format(periodDate, 'yyyy-MM');
-                const periodSchedules = savedSchedules.filter(s => s.id.startsWith(periodId));
+                const periodSchedules = savedSchedules.filter(s => s.id.startsWith(periodIdentifier));
                 let foundShift = "";
                 let foundInSchedules = false;
 
