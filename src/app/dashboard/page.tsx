@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useMemo, useState, useEffect } from 'react';
@@ -114,6 +113,12 @@ import { useRecentLinks } from '@/hooks/use-recent-links';
 import { toast } from '@/hooks/use-toast';
 import type { HiringApproval, PerformanceEvaluation, UserProfile, Memorandum, Vacation, EquipmentHandover, Holiday } from "@/lib/types";
 
+type CalendarEvent = {
+  type: 'holiday' | 'vacation' | 'publication';
+  title: string;
+  category?: string;
+};
+
 const getInitials = (name: string = '', lastName: string = '') => {
     const names = name.split(' ');
     const lastNames = lastName.split(' ');
@@ -158,7 +163,7 @@ export default function DashboardHomePage() {
   } | null>(null);
 
   const [postToDelete, setPostToDelete] = useState<any | null>(null);
-  const [selectedDayEvents, setSelectedDayEvents] = useState<{ date: Date; events: any[] } | null>(null);
+  const [selectedDayEvents, setSelectedDayEvents] = useState<{ date: Date; events: CalendarEvent[] } | null>(null);
 
   const firestore = useFirestore();
   const { data: users, isLoading: usersLoading } = useCollection<UserProfile>(useMemo(() => firestore ? collection(firestore, 'users') : null, [firestore]));
@@ -329,7 +334,7 @@ export default function DashboardHomePage() {
   }, [users]);
 
   const handleDayClick = (day: Date) => {
-    const events = [];
+    const events: CalendarEvent[] = [];
     
     // Check Holidays
     const dayHolidays = holidaysData?.filter(h => {
