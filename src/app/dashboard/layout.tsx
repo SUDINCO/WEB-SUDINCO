@@ -64,6 +64,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isAppsMenuOpen, setAppsMenuOpen] = useState(false);
   const [birthdayBadgeSeen, setBirthdayBadgeSeen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
   const { user, loading: userLoading } = useUser();
   const { userProfile, userRole, isLoading: profileLoading } = useUserProfile();
@@ -79,6 +80,10 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const { data: equipmentHandovers } = useCollection<EquipmentHandover>(useMemo(() => firestore ? collection(firestore, 'equipmentHandovers') : null, [firestore]));
 
   const isLoading = userLoading || profileLoading;
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     if (pathname) {
@@ -118,8 +123,8 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   }, [user, resetInactivityTimer]);
 
   useEffect(() => {
-    if (!isLoading && !user) router.push('/');
-  }, [user, isLoading, router]);
+    if (!isLoading && !user && isMounted) router.push('/');
+  }, [user, isLoading, router, isMounted]);
 
   const onSignOutClick = () => {
     if (auth) signOut(auth).finally(() => router.push('/'));
@@ -170,6 +175,13 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const activeModule = useMemo(() => navLinks.find(module => (module.sublinks && module.sublinks.some(sublink => isActive(sublink.href))) || (module.groups && module.groups.some(group => group.sublinks.some(sublink => isActive(sublink.href)))) )?.module, [navLinks, pathname]);
   const activeGroup = useMemo(() => activeModule ? navLinks.find(m => m.module === activeModule)?.groups?.find(group => group.sublinks.some(sublink => isActive(sublink.href)))?.title : null, [activeModule, navLinks, pathname]);
   
+  const userNameDisplay = useMemo(() => {
+    if (!userProfile) return "...";
+    const firstName = userProfile.nombres?.split(' ')[0] || "";
+    const firstLastName = userProfile.apellidos?.split(' ')[0] || "";
+    return `${firstName} ${firstLastName}`.trim() || user?.email || "";
+  }, [userProfile, user]);
+
   const NavigationMenu = () => (
     <nav className="grid gap-2 text-lg font-medium">
       <Link href="/dashboard" className="flex items-center justify-center gap-2 text-lg font-semibold py-4"><Image src="https://i.postimg.cc/JhmPRP3p/LOGO1.png" alt="Acceso PERFORMA" width={150} height={50} /></Link>
@@ -198,11 +210,11 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                 <Link href="/dashboard"><Image src="https://i.postimg.cc/JhmPRP3p/LOGO1.png" alt="PERFORMA" width={100} height={35} className="app-header-logo" /></Link>
                 <div className="header-icons">
                   <DropdownMenu onOpenChange={(open) => { if(open) setBirthdayBadgeSeen(true); }}>
-                    <DropdownMenuTrigger asChild><Button variant="ghost" className="header-icon-btn"><Cake />{todayBirthdays.length > 0 && !birthdayBadgeSeen && <span className="badge bg-accent">{todayBirthdays.length}</span>}</Button></DropdownMenuTrigger>
+                    <DropdownMenuTrigger asChild><Button variant="ghost" className="header-icon-btn"><Cake />{todayBirthdays.length > 0 && !birthdayBadgeSeen && isMounted && <span className="badge bg-accent">{todayBirthdays.length}</span>}</Button></DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-72"><DropdownMenuLabel className="flex items-center gap-2 text-accent font-bold"><Gift className="h-4 w-4" />Cumpleaños de Hoy</DropdownMenuLabel><DropdownMenuSeparator />{todayBirthdays.length > 0 ? (<div className="max-h-80 overflow-y-auto">{todayBirthdays.map((bday) => (<DropdownMenuItem key={bday.id} className="flex items-center gap-3 py-3"><Avatar className="h-9 w-9 border-2 border-accent"><AvatarImage src={bday.photoUrl} /><AvatarFallback>{bday.nombres[0]}</AvatarFallback></Avatar><div className="flex flex-col min-w-0"><span className="text-xs font-bold truncate text-accent uppercase">{bday.nombres} {bday.apellidos}</span><span className="text-[10px] text-muted-foreground italic">¡Hoy está celebrando su día!</span></div></DropdownMenuItem>))}</div>) : (<div className="py-6 text-center text-xs text-muted-foreground italic">No hay cumpleaños hoy.</div>)}</DropdownMenuContent>
                   </DropdownMenu>
                   <DropdownMenu>
-                    <DropdownMenuTrigger asChild><Button variant="ghost" className="header-icon-btn"><Bell />{tasks.length > 0 && <span className="badge">{tasks.length}</span>}</Button></DropdownMenuTrigger>
+                    <DropdownMenuTrigger asChild><Button variant="ghost" className="header-icon-btn"><Bell />{tasks.length > 0 && isMounted && <span className="badge">{tasks.length}</span>}</Button></DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-72"><DropdownMenuLabel>Notificaciones</DropdownMenuLabel><DropdownMenuSeparator />{tasks.length > 0 ? (<div className="max-h-80 overflow-y-auto">{tasks.map((task) => (<DropdownMenuItem key={task.id} asChild><Link href={task.href} className="flex items-start gap-3 py-3 cursor-pointer"><task.icon className="h-5 w-5 mt-0.5 text-primary shrink-0" /><span className="text-xs leading-tight font-medium">{task.title}</span></Link></DropdownMenuItem>))}</div>) : (<div className="py-6 text-center text-xs text-muted-foreground flex flex-col items-center gap-2"><CheckCircle className="h-8 w-8 text-green-500/50" />No tienes tareas pendientes.</div>)}</DropdownMenuContent>
                   </DropdownMenu>
                   <DropdownMenu>
@@ -221,7 +233,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
           <header className="sticky top-0 z-50 flex h-16 shrink-0 items-center justify-between gap-4 border-b bg-primary px-4 md:px-6 text-white">
             <div className="flex items-center gap-2 md:gap-4"><Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}><SheetTrigger asChild><Button variant="ghost" className="flex items-center gap-2 text-white hover:bg-primary-foreground/10 px-3 py-2 h-auto text-base rounded-md"><Menu className="h-5 w-5" /><span className="font-medium hidden md:inline">MENÚ</span></Button></SheetTrigger><SheetContent side="left" className="flex flex-col bg-primary text-white border-r-0 p-0"><SheetHeader><SheetTitle className="sr-only">Menú</SheetTitle></SheetHeader><NavigationMenu /></SheetContent></Sheet><Link href="/dashboard" className="flex items-center gap-2 text-white hover:bg-primary-foreground/10 rounded-md px-3 py-2 text-base"><Home className="h-5 w-5" /><span className="font-medium hidden md:inline">INICIO</span></Link></div>
             <div className="flex items-center"><Image src="https://i.postimg.cc/JhmPRP3p/LOGO1.png" alt="PERFORMA" width={120} height={40} /></div>
-            <div className="flex items-center gap-4"><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" className="flex items-center gap-2 text-white hover:bg-primary-foreground/10 px-3 py-2 h-auto text-base rounded-md"><User className="h-5 w-5" /><span className="font-medium hidden md:inline">{user?.email}</span><ChevronDown className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-56"><DropdownMenuLabel>{userProfile?.rol || "Sin rol"}</DropdownMenuLabel><DropdownMenuSeparator /><DropdownMenuItem asChild><Link href="/dashboard/profile">Mi Perfil</Link></DropdownMenuItem><DropdownMenuSeparator /><DropdownMenuItem onSelect={onSignOutClick}>Cerrar Sesión</DropdownMenuItem></DropdownMenuContent></DropdownMenu></div>
+            <div className="flex items-center gap-4"><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" className="flex items-center gap-2 text-white hover:bg-primary-foreground/10 px-3 py-2 h-auto text-base rounded-md"><User className="h-5 w-5" /><span className="font-medium hidden md:inline">{isMounted ? userNameDisplay : "..."}</span><ChevronDown className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-56"><DropdownMenuLabel>{userProfile?.rol || "Sin rol"}</DropdownMenuLabel><DropdownMenuSeparator /><DropdownMenuItem asChild><Link href="/dashboard/profile">Mi Perfil</Link></DropdownMenuItem><DropdownMenuSeparator /><DropdownMenuItem onSelect={onSignOutClick}>Cerrar Sesión</DropdownMenuItem></DropdownMenuContent></DropdownMenu></div>
           </header>
           <div className="flex-1 overflow-y-auto"><main className="p-4 lg:p-6 bg-background min-h-full">{children}</main></div>
         </div>

@@ -1,13 +1,10 @@
 
 "use client";
 
-import React, { useMemo, useState, useEffect, useRef } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
 
 import {
   Card,
@@ -18,7 +15,6 @@ import {
   CardFooter
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Calendar } from '@/components/ui/calendar';
 import {
@@ -34,7 +30,6 @@ import {
   CarouselPrevious, 
   CarouselNext 
 } from "@/components/ui/carousel";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 
 import {
   Briefcase,
@@ -115,16 +110,8 @@ import {
   AlertDialogFooter,
 } from "@/components/ui/alert-dialog";
 import { Separator } from '@/components/ui/separator';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useRecentLinks } from '@/hooks/use-recent-links';
-import type { HiringApproval, PerformanceEvaluation, UserProfile, Memorandum, Vacation, EquipmentHandover } from "@/lib/types";
-
-const eventSchema = z.object({
-  title: z.string().min(1, 'El título es obligatorio.'),
-  eventTime: z.string().optional(),
-});
+import type { HiringApproval, PerformanceEvaluation, UserProfile, Memorandum, Vacation, EquipmentHandover, Holiday } from "@/lib/types";
 
 const getInitials = (name: string = '', lastName: string = '') => {
     const names = name.split(' ');
@@ -159,107 +146,7 @@ const publicationCategories = [
     { value: 'Marketplace', label: 'Marketplace', icon: Rss },
 ];
 
-function EventCreatorDialog({ open, onOpenChange, selectedDate, currentUserProfile }: { open: boolean, onOpenChange: (open: boolean) => void, selectedDate: Date | null, currentUserProfile: UserProfile | null }) {
-    const firestore = useFirestore();
-    const form = useForm<z.infer<typeof eventSchema>>({
-        resolver: zodResolver(eventSchema),
-        defaultValues: {
-            title: '',
-            eventTime: '',
-        },
-    });
-    
-    useEffect(() => {
-        if(open) {
-            form.reset();
-        }
-    }, [open, form]);
-
-    async function onSubmit(data: z.infer<typeof eventSchema>) {
-        if (!selectedDate || !currentUserProfile || !firestore) {
-            toast({
-                variant: "destructive",
-                title: "Error",
-                description: "No se puede crear el evento. Falta información.",
-            });
-            return;
-        }
-
-        const newEvent = {
-            title: data.title,
-            eventDate: format(selectedDate, 'yyyy-MM-dd'),
-            eventTime: data.eventTime || null,
-            creatorId: currentUserProfile.id,
-            creatorName: `${currentUserProfile.nombres} ${currentUserProfile.apellidos}`,
-        };
-
-        try {
-            await addDoc(collection(firestore, 'simpleEvents'), newEvent);
-            toast({
-                title: "Evento Creado",
-                description: "Tu evento ha sido añadido al calendario.",
-            });
-            onOpenChange(false);
-        } catch (error) {
-            console.error("Error creating simple event:", error);
-            toast({
-                variant: "destructive",
-                title: "Error",
-                description: "No se pudo crear el evento.",
-            });
-        }
-    }
-
-    return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Crear Nuevo Evento</DialogTitle>
-                    <DialogDescription>
-                        Añade un evento o recordatorio para el {selectedDate ? format(selectedDate, 'd \'de\' MMMM', { locale: es }) : ''}.
-                    </DialogDescription>
-                </DialogHeader>
-                <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-                        <FormField
-                            control={form.control}
-                            name="title"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Título del Evento</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="Ej: Reunión de equipo" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="eventTime"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Hora (Opcional)</FormLabel>
-                                    <FormControl>
-                                        <Input type="time" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
-                            <Button type="submit">Guardar Evento</Button>
-                        </DialogFooter>
-                    </form>
-                </Form>
-            </DialogContent>
-        </Dialog>
-    );
-}
-
 export default function DashboardHomePage() {
-  const router = useRouter();
   const { user: authUser, loading: authLoading } = useUser();
   const { recentLinks } = useRecentLinks();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -269,9 +156,6 @@ export default function DashboardHomePage() {
     lovers: UserProfile[];
   } | null>(null);
 
-  const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
-  const [selectedEventDate, setSelectedEventDate] = useState<Date | null>(null);
-  
   const [postToDelete, setPostToDelete] = useState<any | null>(null);
 
   const firestore = useFirestore();
@@ -281,6 +165,7 @@ export default function DashboardHomePage() {
   const { data: vacationRequests, isLoading: vacationsLoading } = useCollection<Vacation>(useMemo(() => firestore ? collection(firestore, 'vacationRequests') : null, [firestore]));
   const { data: memorandums } = useCollection<Memorandum>(useMemo(() => firestore ? collection(firestore, 'memorandums') : null, [firestore]));
   const { data: equipmentHandovers } = useCollection<EquipmentHandover>(useMemo(() => firestore ? collection(firestore, 'equipmentHandovers') : null, [firestore]));
+  const { data: holidaysData, isLoading: holidaysLoading } = useCollection<Holiday>(useMemo(() => firestore ? collection(firestore, 'holidays') : null, [firestore]));
 
   const publicationsCollectionRef = useMemo(() => {
     if (!firestore) return null;
@@ -298,9 +183,7 @@ export default function DashboardHomePage() {
   }, [firestore]);
   const { data: upcomingEvents, isLoading: eventsLoading } = useCollection<any>(eventsCollectionRef);
   
-  const { data: simpleEvents, isLoading: simpleEventsLoading } = useCollection<any>(useMemo(() => firestore ? collection(firestore, 'simpleEvents') : null, [firestore]));
-
-  const isLoading = authLoading || usersLoading || approvalsLoading || evaluationsLoading || vacationsLoading || publicationsLoading || eventsLoading || simpleEventsLoading;
+  const isLoading = authLoading || usersLoading || approvalsLoading || evaluationsLoading || vacationsLoading || publicationsLoading || eventsLoading || holidaysLoading;
 
   const currentUserProfile = useMemo(() => {
     if (!authUser || !users || !authUser.email) return null;
@@ -328,18 +211,6 @@ export default function DashboardHomePage() {
     return approvedPublications.filter(p => p.category === selectedCategory);
   }, [approvedPublications, selectedCategory]);
 
-  const handleDateSelect = (date: Date | undefined) => {
-    if (date) {
-        setSelectedEventDate(date);
-        setIsEventDialogOpen(true);
-    }
-  };
-
-  const handleOpenEventDialog = () => {
-    setSelectedEventDate(new Date());
-    setIsEventDialogOpen(true);
-  };
-  
   const handleDeletePost = async () => {
     if (!postToDelete || !firestore) return;
     try {
@@ -413,7 +284,7 @@ export default function DashboardHomePage() {
             let current = parseISO(v.startDate);
             const end = parseISO(v.endDate);
             while(current <= end) {
-                range.push(current);
+                range.push(new Date(current));
                 current = add(current, { days: 1 });
             }
             return range;
@@ -425,10 +296,19 @@ export default function DashboardHomePage() {
         return upcomingEvents.map(event => parseISO(event.eventDate!)).filter(date => !isNaN(date.getTime()));
   }, [upcomingEvents]);
 
-  const simpleEventDays = useMemo(() => {
-        if (!simpleEvents) return [];
-        return simpleEvents.map(event => parseISO(event.eventDate)).filter(date => !isNaN(date.getTime()));
-  }, [simpleEvents]);
+  const holidaysDays = useMemo(() => {
+    if (!holidaysData) return [];
+    const dates: Date[] = [];
+    holidaysData.forEach(h => {
+        let current = typeof h.startDate === 'string' ? parseISO(h.startDate) : h.startDate;
+        const end = typeof h.endDate === 'string' ? parseISO(h.endDate) : h.endDate;
+        while(current <= end) {
+            dates.push(new Date(current));
+            current = add(current, { days: 1 });
+        }
+    });
+    return dates;
+  }, [holidaysData]);
 
   const birthdays = useMemo(() => {
     if (!users) return { today: [], upcoming: [] };
@@ -458,12 +338,11 @@ export default function DashboardHomePage() {
 
   return (
     <>
-      <div className="bg-background pb-6 -mt-6 -mx-6 px-6">
+      <div className="bg-background pb-6 -mt-6 -mx-6 px-6 pt-6">
           <h1 className="text-3xl font-bold tracking-tight">Bienvenido, {currentUserProfile?.nombres}</h1>
           <p className="text-muted-foreground">Este es tu centro de mando para PERFORMA.</p>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          <EventCreatorDialog open={isEventDialogOpen} onOpenChange={setIsEventDialogOpen} selectedDate={selectedEventDate} currentUserProfile={currentUserProfile || null} />
           <Dialog open={!!reactionsToShow} onOpenChange={() => setReactionsToShow(null)}>
               <DialogContent>
                   <DialogHeader><DialogTitle>Reacciones para la publicación de {reactionsToShow?.postAuthor}</DialogTitle></DialogHeader>
@@ -491,7 +370,7 @@ export default function DashboardHomePage() {
 
           <aside className="hidden lg:flex col-span-1 flex-col gap-6">
               <Card><CardHeader><CardTitle>Accesos Rápidos</CardTitle><CardDescription>Tus páginas más visitadas recientemente.</CardDescription></CardHeader><CardContent><div className="grid grid-cols-3 gap-2">{recentLinks.map((link, index) => (<Link href={link.href} key={link.href} className="flex flex-col items-center justify-center p-2 rounded-lg hover:bg-muted text-center space-y-1 group"><div className={cn("p-3 rounded-full group-hover:scale-110 transition-transform", index % 3 === 0 ? 'bg-blue-100 text-blue-700' : index % 3 === 1 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700')}><link.icon className="h-5 w-5" /></div><p className="text-xs font-medium text-muted-foreground group-hover:text-primary transition-colors">{link.name}</p></Link>))}</div></CardContent></Card>
-              <Card><CardHeader><CardTitle>Mi Calendario</CardTitle></CardHeader><CardContent className="space-y-4"><div className="flex justify-center"><Calendar mode="single" selected={new Date()} onSelect={(date) => handleDateSelect(date)} className="rounded-md" modifiers={{ vacation: vacationDaysModifier.vacation, publicationEvent: publicationEventDays, simpleEvent: simpleEventDays }} modifiersClassNames={{ vacation: 'bg-primary text-primary-foreground rounded-full', publicationEvent: 'border-2 border-accent rounded-full', simpleEvent: 'border-2 border-green-500 rounded-full' }} locale={es} size="sm" /></div><Button variant="outline" className="w-full" onClick={handleOpenEventDialog}><CalendarIcon className="mr-2 h-4 w-4" /> Crear Evento</Button></CardContent></Card>
+              <Card><CardHeader><CardTitle>Mi Calendario</CardTitle></CardHeader><CardContent className="space-y-4"><div className="flex justify-center"><Calendar mode="single" selected={new Date()} className="rounded-md" modifiers={{ vacation: vacationDaysModifier.vacation, publicationEvent: publicationEventDays, holiday: holidaysDays }} modifiersClassNames={{ vacation: 'bg-primary text-primary-foreground rounded-full', publicationEvent: 'border-2 border-accent rounded-full', holiday: 'bg-destructive/20 text-destructive-foreground rounded-full font-bold' }} locale={es} size="sm" /></div></CardContent></Card>
           </aside>
           <main className="col-span-1 lg:col-span-2 min-h-0 space-y-6">
               <Card className="h-full flex flex-col">
