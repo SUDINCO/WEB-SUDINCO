@@ -1,6 +1,7 @@
+
 "use client";
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -61,27 +62,19 @@ import {
   X,
   Edit,
   Trash2,
-  CaseSensitive,
-  ImageIcon,
   FileText,
   CalendarCheck,
   ShieldAlert,
 } from 'lucide-react';
 import { useUser, useCollection, useFirestore } from '@/firebase';
-import { collection, query, orderBy, limit, doc, updateDoc, arrayUnion, arrayRemove, where, addDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, orderBy, limit, doc, updateDoc, arrayUnion, arrayRemove, where, deleteDoc } from 'firebase/firestore';
 import {
   format,
   formatDistanceToNow,
   isWithinInterval,
   startOfToday,
-  endOfToday,
   add,
-  isSameMonth,
   parseISO,
-  getYear,
-  setYear,
-  addYears,
-  isBefore,
   isSameDay,
   differenceInHours
 } from 'date-fns';
@@ -113,11 +106,12 @@ import { useRecentLinks } from '@/hooks/use-recent-links';
 import { toast } from '@/hooks/use-toast';
 import type { HiringApproval, PerformanceEvaluation, UserProfile, Memorandum, Vacation, EquipmentHandover, Holiday } from "@/lib/types";
 
-type CalendarEvent = {
+// Interfaz para el manejo tipado de eventos en el calendario
+interface CalendarEvent {
   type: 'holiday' | 'vacation' | 'publication';
   title: string;
   category?: string;
-};
+}
 
 const getInitials = (name: string = '', lastName: string = '') => {
     const names = name.split(' ');
@@ -300,7 +294,7 @@ export default function DashboardHomePage() {
    
   const publicationEventDays = useMemo(() => {
         if (!upcomingEvents) return [];
-        return upcomingEvents.map(event => parseISO(event.eventDate!)).filter(date => !isNaN(date.getTime()));
+        return upcomingEvents.map((event: any) => parseISO(event.eventDate!)).filter((date: Date) => !isNaN(date.getTime()));
   }, [upcomingEvents]);
 
   const holidaysDays = useMemo(() => {
@@ -353,8 +347,8 @@ export default function DashboardHomePage() {
     dayVacations.forEach(v => events.push({ type: 'vacation', title: `Mis Vacaciones (${v.totalDays} días)` }));
 
     // Check Publication Events
-    const dayEvents = upcomingEvents?.filter(e => e.eventDate && isSameDay(parseISO(e.eventDate), day));
-    dayEvents?.forEach(e => events.push({ type: 'publication', title: e.text, category: e.category }));
+    const dayEvents = upcomingEvents?.filter((e: any) => e.eventDate && isSameDay(parseISO(e.eventDate), day));
+    dayEvents?.forEach((e: any) => events.push({ type: 'publication', title: e.text, category: e.category }));
 
     if (events.length > 0) {
         setSelectedDayEvents({ date: day, events });
@@ -533,7 +527,7 @@ export default function DashboardHomePage() {
                   {[...birthdays.today, ...birthdays.upcoming].length > 1 && (<><CarouselPrevious className="-left-4" /><CarouselNext className="-right-4" /></>)}
                 </Carousel>
               ) : (<div className="flex h-full items-center justify-center text-center"><p className="text-sm text-muted-foreground">No hay cumpleaños este mes.</p></div>)}</CardContent></Card>
-              <Card className="flex flex-col"><div className="flex flex-col">{(tasks.length > 0 || (upcomingEvents?.length || 0) > 0) ? (<>{tasks.length > 0 && (<><CardHeader><CardTitle>Mis Tareas ({tasks.length})</CardTitle><CardDescription>Acciones pendientes que requieren tu atención.</CardDescription></CardHeader><CardContent><ScrollArea className="h-40 pr-2"><div className="space-y-2">{tasks.map(task => (<Link href={task.href} key={task.id} className="block p-2 rounded-lg hover:bg-muted"><div className="flex items-center justify-between"><div className="flex items-center gap-3 min-w-0"><task.icon className="h-5 w-5 text-primary shrink-0" /><p className="text-sm font-medium truncate">{task.title}</p></div><ChevronRight className="h-4 w-4 text-muted-foreground ml-auto shrink-0" /></div></Link>))}</div></ScrollArea></CardContent></>)}{(tasks.length > 0 && (upcomingEvents?.length || 0) > 0) && <Separator className="my-0 mx-6" />}{(upcomingEvents?.length || 0) > 0 && (<><CardHeader><CardTitle>Próximos Eventos</CardTitle></CardHeader><CardContent>{eventsLoading ? (<div className="space-y-4"><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /></div>) : (<ScrollArea className="h-40 pr-2"><div className="space-y-4">{upcomingEvents.map(event => (<div key={event.id} className="flex items-start gap-4"><div className="flex flex-col items-center justify-center p-2 bg-muted rounded-md border"><span className="text-sm font-bold text-primary">{format(parseISO(event.eventDate!), 'dd')}</span><span className="text-xs uppercase text-muted-foreground">{format(parseISO(event.eventDate!), 'MMM', { locale: es })}</span></div><div className="min-w-0 flex-1"><p className="text-sm font-semibold truncate">{event.category}</p><p className="text-sm text-muted-foreground truncate">{event.text}</p></div></div>))}</div></ScrollArea>)}</CardContent></>)}</>) : (<CardContent className="flex-grow flex items-center justify-center p-6"><div className="text-center text-muted-foreground"><CheckCircle className="mx-auto h-12 w-12 text-green-500" /><h3 className="mt-2 text-sm font-semibold">Todo en orden</h3><p className="mt-1 text-sm">No tienes tareas ni eventos próximos.</p></div></CardContent>)}</div></Card>
+              <Card className="flex flex-col"><div className="flex flex-col">{(tasks.length > 0 || (upcomingEvents?.length || 0) > 0) ? (<>{tasks.length > 0 && (<><CardHeader><CardTitle>Mis Tareas ({tasks.length})</CardTitle><CardDescription>Acciones pendientes que requieren tu atención.</CardDescription></CardHeader><CardContent><ScrollArea className="h-40 pr-2"><div className="space-y-2">{tasks.map(task => (<Link href={task.href} key={task.id} className="block p-2 rounded-lg hover:bg-muted"><div className="flex items-center justify-between"><div className="flex items-center gap-3 min-w-0"><task.icon className="h-5 w-5 text-primary shrink-0" /><p className="text-sm font-medium truncate">{task.title}</p></div><ChevronRight className="h-4 w-4 text-muted-foreground ml-auto shrink-0" /></div></Link>))}</div></ScrollArea></CardContent></>)}{(tasks.length > 0 || (upcomingEvents?.length || 0) > 0) && <Separator className="my-0 mx-6" />}{ (upcomingEvents && upcomingEvents.length > 0) && (<><CardHeader><CardTitle>Próximos Eventos</CardTitle></CardHeader><CardContent>{eventsLoading ? (<div className="space-y-4"><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /></div>) : (<ScrollArea className="h-40 pr-2"><div className="space-y-4">{upcomingEvents?.map((event: any) => (<div key={event.id} className="flex items-start gap-4"><div className="flex flex-col items-center justify-center p-2 bg-muted rounded-md border"><span className="text-sm font-bold text-primary">{format(parseISO(event.eventDate!), 'dd')}</span><span className="text-xs uppercase text-muted-foreground">{format(parseISO(event.eventDate!), 'MMM', { locale: es })}</span></div><div className="min-w-0 flex-1"><p className="text-sm font-semibold truncate">{event.category}</p><p className="text-sm text-muted-foreground truncate">{event.text}</p></div></div>))}</div></ScrollArea>)}</CardContent></>)}</>) : (<CardContent className="flex-grow flex items-center justify-center p-6"><div className="text-center text-muted-foreground"><CheckCircle className="mx-auto h-12 w-12 text-green-500" /><h3 className="mt-2 text-sm font-semibold">Todo en orden</h3><p className="mt-1 text-sm">No tienes tareas ni eventos próximos.</p></div></CardContent>)}</div></Card>
           </aside>
       </div>
     </>
