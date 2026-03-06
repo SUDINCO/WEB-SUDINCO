@@ -179,7 +179,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     if (!userProfile) return "...";
     const firstName = userProfile.nombres?.split(' ')[0] || "";
     const firstLastName = userProfile.apellidos?.split(' ')[0] || "";
-    return `${firstName} ${firstLastName}`.trim() || user?.email || "";
+    return `${firstLastName} ${firstName}`.trim() || user?.email || "";
   }, [userProfile, user]);
 
   const NavigationMenu = () => (

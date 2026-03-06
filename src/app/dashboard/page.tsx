@@ -157,6 +157,7 @@ export default function DashboardHomePage() {
   } | null>(null);
 
   const [postToDelete, setPostToDelete] = useState<any | null>(null);
+  const [selectedDayEvents, setSelectedDayEvents] = useState<{ date: Date; events: any[] } | null>(null);
 
   const firestore = useFirestore();
   const { data: users, isLoading: usersLoading } = useCollection<UserProfile>(useMemo(() => firestore ? collection(firestore, 'users') : null, [firestore]));
@@ -326,6 +327,34 @@ export default function DashboardHomePage() {
     return { today: todayBirthdays, upcoming: upcomingBirthdays };
   }, [users]);
 
+  const handleDayClick = (day: Date) => {
+    const events = [];
+    
+    // Check Holidays
+    const dayHolidays = holidaysData?.filter(h => {
+        const start = typeof h.startDate === 'string' ? parseISO(h.startDate) : h.startDate;
+        const end = typeof h.endDate === 'string' ? parseISO(h.endDate) : h.endDate;
+        return isWithinInterval(day, { start, end });
+    });
+    dayHolidays?.forEach(h => events.push({ type: 'holiday', title: h.name }));
+
+    // Check Vacations
+    const dayVacations = userApprovedVacations.filter(v => {
+        const start = parseISO(v.startDate);
+        const end = parseISO(v.endDate);
+        return isWithinInterval(day, { start, end });
+    });
+    dayVacations.forEach(v => events.push({ type: 'vacation', title: `Mis Vacaciones (${v.totalDays} días)` }));
+
+    // Check Publication Events
+    const dayEvents = upcomingEvents?.filter(e => e.eventDate && isSameDay(parseISO(e.eventDate), day));
+    dayEvents?.forEach(e => events.push({ type: 'publication', title: e.text, category: e.category }));
+
+    if (events.length > 0) {
+        setSelectedDayEvents({ date: day, events });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="grid h-full grid-cols-1 gap-6 lg:grid-cols-4">
@@ -358,6 +387,30 @@ export default function DashboardHomePage() {
                   </div>
               </DialogContent>
           </Dialog>
+
+          <Dialog open={!!selectedDayEvents} onOpenChange={() => setSelectedDayEvents(null)}>
+              <DialogContent>
+                  <DialogHeader>
+                      <DialogTitle>Eventos para el {selectedDayEvents && format(selectedDayEvents.date, 'd MMMM, yyyy', { locale: es })}</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                      {selectedDayEvents?.events.map((ev, i) => (
+                          <div key={i} className="flex items-start gap-3 p-3 rounded-lg border bg-muted/30">
+                              {ev.type === 'holiday' && <Badge className="bg-red-500 hover:bg-red-600 mt-1 shrink-0">Feriado</Badge>}
+                              {ev.type === 'vacation' && <Badge className="bg-blue-500 hover:bg-blue-600 mt-1 shrink-0">Vacaciones</Badge>}
+                              {ev.type === 'publication' && <Badge className="bg-amber-500 hover:bg-amber-600 mt-1 shrink-0">{ev.category}</Badge>}
+                              <div className="space-y-1">
+                                  <p className="font-semibold leading-none">{ev.title}</p>
+                              </div>
+                          </div>
+                      ))}
+                  </div>
+                  <DialogFooter>
+                      <Button onClick={() => setSelectedDayEvents(null)}>Cerrar</Button>
+                  </DialogFooter>
+              </DialogContent>
+          </Dialog>
+
           <AlertDialog open={!!postToDelete} onOpenChange={() => setPostToDelete(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
@@ -370,7 +423,51 @@ export default function DashboardHomePage() {
 
           <aside className="hidden lg:flex col-span-1 flex-col gap-6">
               <Card><CardHeader><CardTitle>Accesos Rápidos</CardTitle><CardDescription>Tus páginas más visitadas recientemente.</CardDescription></CardHeader><CardContent><div className="grid grid-cols-3 gap-2">{recentLinks.map((link, index) => (<Link href={link.href} key={link.href} className="flex flex-col items-center justify-center p-2 rounded-lg hover:bg-muted text-center space-y-1 group"><div className={cn("p-3 rounded-full group-hover:scale-110 transition-transform", index % 3 === 0 ? 'bg-blue-100 text-blue-700' : index % 3 === 1 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700')}><link.icon className="h-5 w-5" /></div><p className="text-xs font-medium text-muted-foreground group-hover:text-primary transition-colors">{link.name}</p></Link>))}</div></CardContent></Card>
-              <Card><CardHeader><CardTitle>Mi Calendario</CardTitle></CardHeader><CardContent className="space-y-4"><div className="flex justify-center"><Calendar mode="single" selected={new Date()} className="rounded-md" modifiers={{ vacation: vacationDaysModifier.vacation, publicationEvent: publicationEventDays, holiday: holidaysDays }} modifiersClassNames={{ vacation: 'bg-primary text-primary-foreground rounded-full', publicationEvent: 'border-2 border-accent rounded-full', holiday: 'bg-destructive/20 text-destructive-foreground rounded-full font-bold' }} locale={es} size="sm" /></div></CardContent></Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Mi Calendario</CardTitle>
+                  <CardDescription>Eventos y estados institucionales</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex justify-center">
+                    <Calendar 
+                      mode="single" 
+                      selected={new Date()} 
+                      className="rounded-md border shadow-sm" 
+                      modifiers={{ 
+                        vacation: vacationDaysModifier.vacation, 
+                        publicationEvent: publicationEventDays, 
+                        holiday: holidaysDays 
+                      }} 
+                      modifiersClassNames={{ 
+                        vacation: 'bg-blue-100 text-blue-700 border-blue-200 border font-bold hover:bg-blue-200', 
+                        publicationEvent: 'bg-amber-100 text-amber-700 border-amber-200 border font-bold hover:bg-amber-200', 
+                        holiday: 'bg-red-100 text-red-700 border-red-200 border font-bold hover:bg-red-200' 
+                      }} 
+                      locale={es} 
+                      size="sm" 
+                      onDayClick={handleDayClick}
+                    />
+                  </div>
+                  <div className="space-y-2 pt-2">
+                    <p className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Leyenda</p>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2 text-xs font-medium">
+                        <span className="h-3 w-3 rounded-full bg-red-100 border border-red-200 shadow-sm" />
+                        <span>Días Festivos / Feriados</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs font-medium">
+                        <span className="h-3 w-3 rounded-full bg-blue-100 border border-blue-200 shadow-sm" />
+                        <span>Mis Vacaciones Aprobadas</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs font-medium">
+                        <span className="h-3 w-3 rounded-full bg-amber-100 border border-amber-200 shadow-sm" />
+                        <span>Comunicados Institucionales</span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
           </aside>
           <main className="col-span-1 lg:col-span-2 min-h-0 space-y-6">
               <Card className="h-full flex flex-col">
@@ -386,7 +483,7 @@ export default function DashboardHomePage() {
                         filteredPublications.map(post => {
                           const author = users?.find(u => u.id === post.authorId);
                           const likes = post.reactions?.like?.length || 0;
-                          const loves = post.reactions?.love?.length || 0;
+                          const lovers = post.reactions?.love?.length || 0;
                           const hasLiked = !!(currentUserProfile && post.reactions?.like?.includes(currentUserProfile.id));
                           const hasLoved = !!(currentUserProfile && post.reactions?.love?.includes(currentUserProfile.id));
                           const isAuthor = currentUserProfile && post.authorId === currentUserProfile.id;
