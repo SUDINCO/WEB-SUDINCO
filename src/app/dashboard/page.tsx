@@ -111,6 +111,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Separator } from '@/components/ui/separator';
 import { useRecentLinks } from '@/hooks/use-recent-links';
+import { toast } from '@/hooks/use-toast';
 import type { HiringApproval, PerformanceEvaluation, UserProfile, Memorandum, Vacation, EquipmentHandover, Holiday } from "@/lib/types";
 
 const getInitials = (name: string = '', lastName: string = '') => {
@@ -503,7 +504,30 @@ export default function DashboardHomePage() {
               </Card>
           </main>
           <aside className="hidden lg:flex col-span-1 flex-col gap-6">
-              <Card className="flex flex-col"><CardHeader><CardTitle>Celebraciones del Mes</CardTitle><CardDescription>{format(new Date(), 'MMMM', { locale: es })}</CardDescription></CardHeader><CardContent className="flex flex-col items-center justify-center flex-1">{[...birthdays.today, ...birthdays.upcoming].length > 0 ? (<Carousel opts={{ align: "start", loop: [...birthdays.today, ...birthdays.upcoming].length > 1 }} className="w-full max-w-xs"><CarouselContent>{[...birthdays.today, ...birthdays.upcoming].map((user) => (<CarouselItem key={user.id}><div className="p-1"><div className="flex flex-col items-center text-center p-4"><Avatar className="h-16 w-16 mb-3 border-4 border-accent"><AvatarImage src={user.photoUrl} /><AvatarFallback>{user.nombres[0]}{user.apellidos[0]}</AvatarFallback></Avatar><h3 className="font-semibold text-md text-foreground">{user.nombres} {user.apellidos}</h3><div className="flex items-center gap-2 text-sm text-muted-foreground"><Gift className="h-4 w-4 text-accent" /><p>{isSameDay(user.birthDate!, new Date()) ? '¡Feliz Cumpleaños Hoy!' : format(user.birthDate!, 'd MMMM', { locale: es })}</p></div></div></div></CarouselItem>))}</CarouselContent>{[...birthdays.today, ...birthdays.upcoming].length > 1 && (<><CarouselPrevious className="-left-4" /><CarouselNext className="-right-4" /></>)}</Carousel>) : (<div className="flex h-full items-center justify-center text-center"><p className="text-sm text-muted-foreground">No hay cumpleaños este mes.</p></div>)}</CardContent></Card>
+              <Card className="flex flex-col"><CardHeader><CardTitle>Celebraciones del Mes</CardTitle><CardDescription>{format(new Date(), 'MMMM', { locale: es })}</CardDescription></CardHeader><CardContent className="flex flex-col items-center justify-center flex-1">{[...birthdays.today, ...birthdays.upcoming].length > 0 ? (
+                <Carousel opts={{ align: "start", loop: [...birthdays.today, ...birthdays.upcoming].length > 1 }} className="w-full max-w-xs">
+                  <CarouselContent>
+                    {[...birthdays.today, ...birthdays.upcoming].map((user) => (
+                      <CarouselItem key={user.id}>
+                        <div className="p-1">
+                          <div className="flex flex-col items-center text-center p-4">
+                            <Avatar className="h-16 w-16 mb-3 border-4 border-accent">
+                              <AvatarImage src={user.photoUrl} />
+                              <AvatarFallback>{user.nombres[0]}{user.apellidos[0]}</AvatarFallback>
+                            </Avatar>
+                            <h3 className="font-semibold text-md text-foreground">{user.nombres} {user.apellidos}</h3>
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Gift className="h-4 w-4 text-accent" />
+                              <p>{isSameDay(user.birthDate!, new Date()) ? '¡Feliz Cumpleaños Hoy!' : format(user.birthDate!, 'd MMMM', { locale: es })}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </CarouselItem>
+                    ))}
+                  </CarouselContent>
+                  {[...birthdays.today, ...birthdays.upcoming].length > 1 && (<><CarouselPrevious className="-left-4" /><CarouselNext className="-right-4" /></>)}
+                </Carousel>
+              ) : (<div className="flex h-full items-center justify-center text-center"><p className="text-sm text-muted-foreground">No hay cumpleaños este mes.</p></div>)}</CardContent></Card>
               <Card className="flex flex-col"><div className="flex flex-col">{(tasks.length > 0 || (upcomingEvents?.length || 0) > 0) ? (<>{tasks.length > 0 && (<><CardHeader><CardTitle>Mis Tareas ({tasks.length})</CardTitle><CardDescription>Acciones pendientes que requieren tu atención.</CardDescription></CardHeader><CardContent><ScrollArea className="h-40 pr-2"><div className="space-y-2">{tasks.map(task => (<Link href={task.href} key={task.id} className="block p-2 rounded-lg hover:bg-muted"><div className="flex items-center justify-between"><div className="flex items-center gap-3 min-w-0"><task.icon className="h-5 w-5 text-primary shrink-0" /><p className="text-sm font-medium truncate">{task.title}</p></div><ChevronRight className="h-4 w-4 text-muted-foreground ml-auto shrink-0" /></div></Link>))}</div></ScrollArea></CardContent></>)}{(tasks.length > 0 && (upcomingEvents?.length || 0) > 0) && <Separator className="my-0 mx-6" />}{(upcomingEvents?.length || 0) > 0 && (<><CardHeader><CardTitle>Próximos Eventos</CardTitle></CardHeader><CardContent>{eventsLoading ? (<div className="space-y-4"><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /></div>) : (<ScrollArea className="h-40 pr-2"><div className="space-y-4">{upcomingEvents.map(event => (<div key={event.id} className="flex items-start gap-4"><div className="flex flex-col items-center justify-center p-2 bg-muted rounded-md border"><span className="text-sm font-bold text-primary">{format(parseISO(event.eventDate!), 'dd')}</span><span className="text-xs uppercase text-muted-foreground">{format(parseISO(event.eventDate!), 'MMM', { locale: es })}</span></div><div className="min-w-0 flex-1"><p className="text-sm font-semibold truncate">{event.category}</p><p className="text-sm text-muted-foreground truncate">{event.text}</p></div></div>))}</div></ScrollArea>)}</CardContent></>)}</>) : (<CardContent className="flex-grow flex items-center justify-center p-6"><div className="text-center text-muted-foreground"><CheckCircle className="mx-auto h-12 w-12 text-green-500" /><h3 className="mt-2 text-sm font-semibold">Todo en orden</h3><p className="mt-1 text-sm">No tienes tareas ni eventos próximos.</p></div></CardContent>)}</div></Card>
           </aside>
       </div>
